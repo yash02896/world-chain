@@ -39,7 +39,7 @@ sequenceDiagram
 
     OPS-->>OPS: SimulatePayloads
     OPS-->>OPS: ConfirmPayload
-    OPS ->> EES: engine_forkchoiceUpdated
+    OPS ->> ELS: engine_forkchoiceUpdated
 
     %% Block propagation to peers
     OPS->>OPB: Peer newly proposed block
