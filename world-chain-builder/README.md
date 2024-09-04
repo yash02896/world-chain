@@ -14,22 +14,35 @@ To request a block, the proposer does a http request to the builder in parallel 
 
 ```mermaid
 sequenceDiagram
-    participant ELS as Execution Client (Sequencer)
     participant OPS as Op-Node (Sequencer)
+    participant ELS as Execution Client (Sequencer)
     participant OPB as Op-Node (Builder)
     participant ELB as Execution Client (Builder)
+
+    %% Do we need this? Can the payload attributes just be sent with the fcu?
+    ELB-->>OPB: Subscribe to `payload_attributes` events
+
+    OPS-->>ELS: POST `engine_forkchoiceUpdated(forkchoiceState, PayloadAttributes)`
+    ELS->>ELS: Start building block for `payloadId`
+
+    OPS->>OPB: Peer `forkChoiceUpdated` notification
+    OPB-->>ELB: POST `engine_forkchoiceUpdated(forkchoiceState, PayloadAttributes)`
+    ELB->>ELB: Start building block for `payloadId`
     
-    BB-->>OPB: payload_attributes events
-    OPS-->> OPB: Fork Choice Update (p2p)
-    OPB-->>BB: PayloadAttributes
-    
-    Note right of BB: timespan for building blocks
-    OPS->> BB: POST /eth/v1/builder/payload
-    BB-->>OPS: BuilderPayload
-    OPS->> EES: engine_getPayload
-    OPS-->>OPS: SimulatePayload
-    OPS-->>OPS: ConfirmPaylaod
+    Note over OPS: Request a new block from the builder with corresponding `payloadId`
+    OPS->> ELB: POST /eth/v1/builder/payload
+    Note over OPS: Request a default block from sequencer execution client
+    OPS->> ELS: engine_getPayload
+
+    ELB-->>OPS: BuilderPayload
+    ELS-->>OPS: ExecutionPayload
+
+    OPS-->>OPS: SimulatePayloads
+    OPS-->>OPS: ConfirmPayload
     OPS ->> EES: engine_forkchoiceUpdated
+
+    %% Block propagation to peers
+    OPS->>OPB: Peer newly proposed block
 ```
 
 The proposer and builder uses ECDSA secp256k1 signatures to authenticate the proposer and verify the authenticity of the payload from the builder.
