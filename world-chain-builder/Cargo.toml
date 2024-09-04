@@ -1,0 +1,25 @@
+[package]
+name = "world-chain-builder"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# reth
+reth = { git = "https://github.com/paradigmxyz/reth", version = "1.0.4" }
+reth-execution-errors = { git = "https://github.com/paradigmxyz/reth", version = "1.0.4" }
+reth-execution-types = { git = "https://github.com/paradigmxyz/reth", version = "1.0.4" }
+reth-exex = { git = "https://github.com/paradigmxyz/reth", features = [
+    "serde",
+], version = "1.0.4" }
+reth-node-api = { git = "https://github.com/paradigmxyz/reth", version = "1.0.4" }
+reth-node-core = { git = "https://github.com/paradigmxyz/reth", version = "1.0.4" }
+reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", version = "1.0.4" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", version = "1.0.4" }
+reth-provider = { git = "https://github.com/paradigmxyz/reth", version = "1.0.4" }
+
+
+[[bin]]
+name = "builder"
+path = "bin/builder.rs"
