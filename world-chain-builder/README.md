@@ -1,8 +1,5 @@
 # World Chain Builder
 
-
-[![Docker hub]()]()
-
 This is an implementation of a block builder for proposer / builder separation (PBS) in the optimism stack. Please see [this guide](https://github.com/flashbots/optimism/blob/daa43f158ffca0bfaba18391f688fed1d8a8f3d9/pbs/README.md) on how to run and test with a local devnet.
 
 ## Block Builder API Interation
