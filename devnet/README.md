@@ -1,5 +1,17 @@
+## World Chain Devnet
+
+Subtree of [optimism-package](https://github.com/ethpandaops/optimism-package)
+
+World Chain Devnet has an additional paricipant el_type `op-geth-builder`.
+
+The devnet can be spun up with `kurtosis run . --args-file network_params.yaml --enclave world-chain`
+
+Sometimes kurtosis breaks and is tough to fix. In this case run ./clean.sh (WARNING: This will nuke your entire local docker setup)
+
 ## Welcome to Optimism Package
+
 The default package for Optimism
+
 ```yaml
 optimism_package:
   participants:
@@ -18,6 +30,7 @@ Please note, by default your network will be running a `minimal` preset Ethereum
 You can also completely remove `ethereum_package` from your configuration in which case it will default to a `minimal` preset Ethereum network.
 
 ## Quickstart
+
 #### Run with your own configuration
 
 Kurtosis packages are parameterizable, meaning you can customize your network and its behavior to suit your needs by storing parameters in a file that you can pass in at runtime like so:
@@ -37,10 +50,10 @@ kurtosis clean -a
 This will stop and remove all running enclaves and **delete all data**.
 
 # L2 Contract deployer
+
 The enclave will automatically deploy an optimism L2 contract on the L1 network. The contract address will be printed in the logs. You can use this contract address to interact with the L2 network.
 
 Please refer to this Dockerfile if you want to see how the contract deployer image is built: [Dockerfile](https://github.com/ethpandaops/eth-client-docker-image-builder/blob/master/op-contract-deployer/Dockerfile)
-
 
 ## Configuration
 
@@ -51,13 +64,13 @@ optimism_package:
   # Specification of the optimism-participants in the network
   participants:
     # EL(Execution Layer) Specific flags
-      # The type of EL client that should be started
-      # Valid values are:
-      # op-geth
-      # op-reth
-      # op-erigon
-      # op-nethermind
-      # op-besu
+    # The type of EL client that should be started
+    # Valid values are:
+    # op-geth
+    # op-reth
+    # op-erigon
+    # op-nethermind
+    # op-besu
     - el_type: geth
 
       # The Docker image that should be used for the EL client; leave blank to use the default for the client type
@@ -69,7 +82,7 @@ optimism_package:
       # - op-besu: ghcr.io/optimism-java/op-besu:latest
       el_image: ""
 
-    # CL(Consensus Layer) Specific flags
+      # CL(Consensus Layer) Specific flags
       # The type of CL client that should be started
       # Valid values are:
       # op-node
@@ -125,7 +138,6 @@ optimism_package:
     # Defaults to None - not activated - decimal value
     # Offset is in seconds
     interop_time_offset: ""
-
 
   # Additional services to run alongside the network
   # Defaults to []
@@ -189,7 +201,9 @@ ethereum_package:
     - dora
     - blockscout
 ```
+
 Note: if configuring multiple L2s, make sure that the `network_id` and `name` are set to differentiate networks.
 
 ### Additional configurations
+
 Please find examples of additional configurations in the [test folder](.github/tests/).
