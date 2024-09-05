@@ -6,6 +6,7 @@ shared_utils = import_module(
 )
 # EL
 op_geth = import_module("./el/op-geth/op_geth_launcher.star")
+op_geth_builder = import_module("./el/op-geth-builder/op_geth_builder_launcher.star")
 op_reth = import_module("./el/op-reth/op_reth_launcher.star")
 op_erigon = import_module("./el/op-erigon/op_erigon_launcher.star")
 op_nethermind = import_module("./el/op-nethermind/op_nethermind_launcher.star")
@@ -27,6 +28,15 @@ def launch(
     l2_services_suffix,
 ):
     el_launchers = {
+        "op-geth-builder": {
+            "launcher": op_geth_builder.new_op_geth_builder_launcher(
+                el_cl_data,
+                jwt_file,
+                network_params.network,
+                network_params.network_id,
+            ),
+            "launch_method": op_geth_builder.launch,
+        },
         "op-geth": {
             "launcher": op_geth.new_op_geth_launcher(
                 el_cl_data,
