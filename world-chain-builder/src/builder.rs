@@ -22,7 +22,7 @@ impl<EvmConfig> PBHBuilder<EvmConfig> {
     }
 }
 
-/// Implementation of the [`PayloadBuilder`] trait for [`OptimismPayloadBuilder`].
+/// Implementation of the [`PayloadBuilder`] trait for [`PBHBuilder`].
 impl<Pool, Client, EvmConfig> PayloadBuilder<Pool, Client> for PBHBuilder<EvmConfig>
 where
     Client: StateProviderFactory,
