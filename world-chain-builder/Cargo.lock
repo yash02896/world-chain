@@ -8949,9 +8949,17 @@ name = "world-chain-builder"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "eyre",
+ "reth-basic-payload-builder",
+ "reth-chainspec",
  "reth-cli-util",
+ "reth-evm",
+ "reth-node-builder",
  "reth-node-optimism",
  "reth-optimism-cli",
+ "reth-payload-builder",
+ "reth-provider",
+ "reth-transaction-pool",
 ]
 
 [[package]]
