@@ -729,7 +729,7 @@ mod tests {
             .build(client, blob_store.clone());
         let op_tx_validator =
             OpTransactionValidator::new(eth_tx_validator).require_l1_data_gas_fee(false);
-        let root_validator = WorldChainRootValidator::new(client, 3600);
+        let root_validator = WorldChainRootValidator::new(client);
 
         let wc_validator =
             WorldChainTransactionValidator::new(op_tx_validator, root_validator, db.clone(), 30);
@@ -836,7 +836,7 @@ mod tests {
             .build(client, blob_store.clone());
         let op_tx_validator =
             OpTransactionValidator::new(eth_tx_validator).require_l1_data_gas_fee(false);
-        let root_validator = WorldChainRootValidator::new(client, 3600);
+        let root_validator = WorldChainRootValidator::new(client);
         let wc_validator =
             WorldChainTransactionValidator::new(op_tx_validator, root_validator, db.clone(), 30);
 

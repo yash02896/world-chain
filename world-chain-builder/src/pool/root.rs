@@ -10,6 +10,8 @@ use semaphore::Field;
 pub const OP_WORLD_ID: Address = address!("42ff98c4e85212a5d31358acbfe76a621b50fc02");
 /// The slot of the `_latestRoot` in the WorldID contract.
 pub const LATEST_ROOT_SLOT: U256 = U256::from_limbs([3, 0, 0, 0]);
+/// Root Expiration Period
+pub const ROOT_EXPIRATION_WINDOW: u64 = 60 * 60; // 1 hour
 
 /// A provider for managing and validating World Chain roots.
 #[derive(Debug, Clone)]
@@ -23,8 +25,6 @@ where
     valid_roots: BTreeMap<u64, Field>,
     /// The timestamp of the latest valid root.
     latest_valid_timestamp: u64,
-    /// The period after which a root is considered expired.
-    expiration_period: u64,
 }
 
 /// TODO: Handle Reorgs
@@ -38,12 +38,11 @@ where
     ///
     /// * `client` - The client used to aquire account state from the database.
     /// * `expiration_period` - The period after which a root is considered expired.
-    pub fn new(client: Client, expiration_period: u64) -> Self {
+    pub fn new(client: Client) -> Self {
         Self {
             client,
             valid_roots: BTreeMap::new(),
             latest_valid_timestamp: 0,
-            expiration_period,
         }
     }
 
@@ -59,10 +58,9 @@ where
     fn on_new_block(&mut self, block: &SealedBlock) -> ProviderResult<()> {
         let state = self.client.state_by_block_hash(block.hash())?;
         let root = state.storage(OP_WORLD_ID, LATEST_ROOT_SLOT.into())?;
-
+        self.latest_valid_timestamp = block.header.timestamp;
         if let Some(root) = root {
             self.valid_roots.insert(block.header.timestamp, root);
-            self.latest_valid_timestamp = block.header.timestamp;
             self.purge_invalid();
         } else {
             // We missed a block, we need to find the last valid root
@@ -76,9 +74,9 @@ where
 
     /// Purges all roots that are older than the expiration period.
     fn purge_invalid(&mut self) {
-        if self.latest_valid_timestamp > self.expiration_period {
+        if self.latest_valid_timestamp > ROOT_EXPIRATION_WINDOW {
             self.valid_roots.retain(|timestamp, _| {
-                *timestamp >= self.latest_valid_timestamp - self.expiration_period
+                *timestamp >= self.latest_valid_timestamp - ROOT_EXPIRATION_WINDOW
             });
         };
     }
@@ -117,8 +115,8 @@ where
     /// # Returns
     ///
     /// A new `WorldChainRootValidator<Client>` instance.
-    pub fn new(client: Client, expiration_period: u64) -> Self {
-        let cache = RootProvider::new(client, expiration_period);
+    pub fn new(client: Client) -> Self {
+        let cache = RootProvider::new(client);
 
         Self {
             cache: Arc::new(RwLock::new(cache)),

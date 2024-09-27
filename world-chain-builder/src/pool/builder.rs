@@ -53,7 +53,7 @@ where
                     // In --dev mode we can't require gas fees because we're unable to decode the L1
                     // block info
                     .require_l1_data_gas_fee(!ctx.config().dev.dev);
-                let root_validator = WorldChainRootValidator::new(validator.client().clone(), 10);
+                let root_validator = WorldChainRootValidator::new(validator.client().clone());
                 WorldChainTransactionValidator::new(
                     op_tx_validator,
                     root_validator,
