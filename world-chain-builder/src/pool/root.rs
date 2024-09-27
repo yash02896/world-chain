@@ -27,6 +27,7 @@ where
     expiration_period: u64,
 }
 
+/// TODO: Handle Reorgs
 impl<Client> RootProvider<Client>
 where
     Client: StateProviderFactory + BlockReaderIdExt,
@@ -37,13 +38,13 @@ where
     ///
     /// * `client` - The client used to aquire account state from the database.
     /// * `expiration_period` - The period after which a root is considered expired.
-    pub fn new(client: Client, expiration_period: u64) -> ProviderResult<Self> {
-        Ok(Self {
+    pub fn new(client: Client, expiration_period: u64) -> Self {
+        Self {
             client,
             valid_roots: BTreeMap::new(),
             latest_valid_timestamp: 0,
             expiration_period,
-        })
+        }
     }
 
     /// Commits any changes to the state.
@@ -146,8 +147,31 @@ where
     /// # Returns
     ///
     /// A `ProviderResult<()>` indicating success or failure.
-    pub fn on_new_block(&self, block: &SealedBlock) -> ProviderResult<()> {
-        self.cache.write().on_new_block(block)?;
-        Ok(())
+    pub fn on_new_block(&self, block: &SealedBlock) {
+        if let Err(e) = self.cache.write().on_new_block(block) {
+            tracing::error!("Failed to commit new block: {e}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    impl<Client> WorldChainRootValidator<Client>
+    where
+        Client: StateProviderFactory + BlockReaderIdExt,
+    {
+        pub fn set_client(&mut self, client: Client) {
+            self.cache.write().set_client(client);
+        }
+    }
+
+    impl<Client> RootProvider<Client>
+    where
+        Client: StateProviderFactory + BlockReaderIdExt,
+    {
+        pub fn set_client(&mut self, client: Client) {
+            self.client = client;
+        }
     }
 }

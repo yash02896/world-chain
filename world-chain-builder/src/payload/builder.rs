@@ -681,8 +681,8 @@ mod tests {
     use crate::{
         pbh::semaphore::SemaphoreProof,
         pool::{
-            ordering::WorldChainOrdering, tx::WorldChainPooledTransaction,
-            validator::WorldChainTransactionValidator,
+            ordering::WorldChainOrdering, root::WorldChainRootValidator,
+            tx::WorldChainPooledTransaction, validator::WorldChainTransactionValidator,
         },
     };
 
@@ -729,8 +729,10 @@ mod tests {
             .build(client, blob_store.clone());
         let op_tx_validator =
             OpTransactionValidator::new(eth_tx_validator).require_l1_data_gas_fee(false);
+        let root_validator = WorldChainRootValidator::new(client, 3600);
 
-        let wc_validator = WorldChainTransactionValidator::new(op_tx_validator, db.clone(), 30);
+        let wc_validator =
+            WorldChainTransactionValidator::new(op_tx_validator, root_validator, db.clone(), 30);
 
         let wc_noop_validator = WorldChainNoopValidator::new(wc_validator);
         let ordering = WorldChainOrdering::new(db.clone());
@@ -834,8 +836,9 @@ mod tests {
             .build(client, blob_store.clone());
         let op_tx_validator =
             OpTransactionValidator::new(eth_tx_validator).require_l1_data_gas_fee(false);
-
-        let wc_validator = WorldChainTransactionValidator::new(op_tx_validator, db.clone(), 30);
+        let root_validator = WorldChainRootValidator::new(client, 3600);
+        let wc_validator =
+            WorldChainTransactionValidator::new(op_tx_validator, root_validator, db.clone(), 30);
 
         let wc_noop_validator = WorldChainNoopValidator::new(wc_validator);
         let ordering = WorldChainOrdering::new(db.clone());
