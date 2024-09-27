@@ -6,7 +6,6 @@ use semaphore::hash_to_field;
 use semaphore::protocol::verify_proof;
 use std::str::FromStr as _;
 use std::sync::Arc;
-use tracing::warn;
 
 use reth_db::{Database, DatabaseEnv, DatabaseError, DatabaseWriteOperation};
 use reth_node_optimism::txpool::OpTransactionValidator;
@@ -25,6 +24,7 @@ use super::error::{
     TransactionValidationError, WorldChainTransactionPoolError, WorldChainTransactionPoolInvalid,
 };
 use super::ordering::WorldChainOrdering;
+use super::root::WorldChainRootValidator;
 use super::tx::{WorldChainPoolTransaction, WorldChainPooledTransaction};
 
 /// Type alias for World Chain transaction pool
@@ -43,6 +43,7 @@ where
     Client: StateProviderFactory + BlockReaderIdExt,
 {
     inner: OpTransactionValidator<Client, Tx>,
+    root_validator: WorldChainRootValidator<Client>,
     database_env: Arc<DatabaseEnv>,
     num_pbh_txs: u16,
 }
@@ -55,11 +56,13 @@ where
     /// Create a new [`WorldChainTransactionValidator`].
     pub fn new(
         inner: OpTransactionValidator<Client, Tx>,
+        root_validator: WorldChainRootValidator<Client>,
         database_env: Arc<DatabaseEnv>,
         num_pbh_txs: u16,
     ) -> Self {
         Self {
             inner,
+            root_validator,
             database_env,
             num_pbh_txs,
         }
@@ -83,9 +86,12 @@ where
     /// Ensure the provided root is on chain and valid
     pub fn validate_root(
         &self,
-        _semaphore_proof: &SemaphoreProof,
+        semaphore_proof: &SemaphoreProof,
     ) -> Result<(), TransactionValidationError> {
-        warn!("Root validation is not implemented yet");
+        let is_valid = self.root_validator.validate_root(semaphore_proof.root);
+        if !is_valid {
+            return Err(WorldChainTransactionPoolInvalid::InvalidRoot.into());
+        }
         Ok(())
     }
 
@@ -269,7 +275,8 @@ where
     }
 
     fn on_new_head_block(&self, new_tip_block: &SealedBlock) {
-        self.inner.on_new_head_block(new_tip_block)
+        self.inner.on_new_head_block(new_tip_block);
+        self.root_validator.on_new_block(new_tip_block);
     }
 }
 
