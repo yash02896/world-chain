@@ -31,12 +31,8 @@ pub enum WorldChainTransactionPoolInvalid {
 pub enum WorldChainTransactionPoolError {
     #[error(transparent)]
     Database(#[from] DatabaseError),
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum RootProviderError {
-    #[error("Failed to get state")]
-    State(#[from] ProviderError),
+    #[error(transparent)]
+    RootProvider(#[from] ProviderError),
 }
 
 impl PoolTransactionError for WorldChainTransactionPoolInvalid {
@@ -57,9 +53,6 @@ pub enum TransactionValidationError {
     /// The transaction is considered invalid indefinitely: It violates constraints that prevent
     /// this transaction from ever becoming valid.
     Invalid(InvalidPoolTransactionError),
-    /// The root provider failed to fetch valid roots
-    /// from the database
-    RootProviderError(RootProviderError),
     /// An error occurred while trying to validate the transaction
     Error(Box<dyn std::error::Error + Send + Sync>),
 }
@@ -82,9 +75,6 @@ impl TransactionValidationError {
             TransactionValidationError::Invalid(e) => TransactionValidationOutcome::Invalid(tx, e),
             TransactionValidationError::Error(e) => {
                 TransactionValidationOutcome::Error(*tx.hash(), e)
-            }
-            TransactionValidationError::RootProviderError(e) => {
-                TransactionValidationOutcome::Error(*tx.hash(), Box::new(e))
             }
         }
     }
