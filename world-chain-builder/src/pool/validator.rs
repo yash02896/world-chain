@@ -6,7 +6,6 @@ use semaphore::hash_to_field;
 use semaphore::protocol::verify_proof;
 use std::str::FromStr as _;
 use std::sync::Arc;
-use tracing::warn;
 
 use reth_db::{Database, DatabaseEnv, DatabaseError};
 use reth_node_optimism::txpool::OpTransactionValidator;
@@ -23,6 +22,7 @@ use crate::pbh::tx::Prefix;
 
 use super::error::{TransactionValidationError, WorldChainTransactionPoolInvalid};
 use super::ordering::WorldChainOrdering;
+use super::root::WorldChainRootValidator;
 use super::tx::{WorldChainPoolTransaction, WorldChainPooledTransaction};
 
 /// Type alias for World Chain transaction pool
@@ -41,6 +41,7 @@ where
     Client: StateProviderFactory + BlockReaderIdExt,
 {
     inner: OpTransactionValidator<Client, Tx>,
+    root_validator: WorldChainRootValidator<Client>,
     pub(crate) database_env: Arc<DatabaseEnv>,
     num_pbh_txs: u16,
 }
@@ -53,11 +54,13 @@ where
     /// Create a new [`WorldChainTransactionValidator`].
     pub fn new(
         inner: OpTransactionValidator<Client, Tx>,
+        root_validator: WorldChainRootValidator<Client>,
         database_env: Arc<DatabaseEnv>,
         num_pbh_txs: u16,
     ) -> Self {
         Self {
             inner,
+            root_validator,
             database_env,
             num_pbh_txs,
         }
@@ -81,9 +84,12 @@ where
     /// Ensure the provided root is on chain and valid
     pub fn validate_root(
         &self,
-        _semaphore_proof: &SemaphoreProof,
+        semaphore_proof: &SemaphoreProof,
     ) -> Result<(), TransactionValidationError> {
-        warn!("Root validation is not implemented yet");
+        let is_valid = self.root_validator.validate_root(semaphore_proof.root);
+        if !is_valid {
+            return Err(WorldChainTransactionPoolInvalid::InvalidRoot.into());
+        }
         Ok(())
     }
 
@@ -249,7 +255,9 @@ where
     }
 
     fn on_new_head_block(&self, new_tip_block: &SealedBlock) {
-        self.inner.on_new_head_block(new_tip_block)
+        self.inner.on_new_head_block(new_tip_block);
+        // TODO: Handle reorgs
+        self.root_validator.on_new_block(new_tip_block);
     }
 }
 
@@ -265,15 +273,18 @@ mod tests {
     use reth_chainspec::MAINNET;
     use reth_node_optimism::txpool::OpTransactionValidator;
     use reth_primitives::{
-        PooledTransactionsElement, Signature, Transaction, TransactionSigned,
-        TransactionSignedEcRecovered, TxDeposit,
+        BlockBody, PooledTransactionsElement, SealedBlock, SealedHeader, Signature, Transaction,
+        TransactionSigned, TransactionSignedEcRecovered, TxDeposit,
     };
     use reth_provider::test_utils::{ExtendedAccount, MockEthProvider};
     use reth_transaction_pool::{
         blobstore::InMemoryBlobStore, validate::EthTransactionValidatorBuilder,
         EthPooledTransaction, TransactionOrigin, TransactionValidationOutcome,
     };
-    use reth_transaction_pool::{Pool, PoolTransaction as _, TransactionPool};
+    use reth_transaction_pool::{
+        Pool, PoolTransaction as _, TransactionPool, TransactionValidator,
+    };
+
     use revm_primitives::hex;
     use semaphore::identity::Identity;
     use semaphore::poseidon_tree::LazyPoseidonTree;
@@ -285,6 +296,7 @@ mod tests {
     use crate::pbh::semaphore::{Proof, SemaphoreProof};
     use crate::pbh::tx::Prefix;
     use crate::pool::ordering::WorldChainOrdering;
+    use crate::pool::root::{WorldChainRootValidator, LATEST_ROOT_SLOT, OP_WORLD_ID};
     use crate::pool::tx::WorldChainPooledTransaction;
     use crate::pool::validator::WorldChainTransactionValidator;
 
@@ -327,12 +339,13 @@ mod tests {
         let validator = EthTransactionValidatorBuilder::new(MAINNET.clone())
             .no_shanghai()
             .no_cancun()
-            .build(client, InMemoryBlobStore::default());
+            .build(client.clone(), InMemoryBlobStore::default());
         let validator = OpTransactionValidator::new(validator).require_l1_data_gas_fee(false);
         let temp_dir = tempdir().unwrap();
         let path = temp_dir.path().join("db");
         let db = load_world_chain_db(&path, false).unwrap();
-        WorldChainTransactionValidator::new(validator, db, 30)
+        let root_validator = WorldChainRootValidator::new(client);
+        WorldChainTransactionValidator::new(validator, root_validator, db, 30)
     }
 
     fn valid_proof(
@@ -417,6 +430,20 @@ mod tests {
             transaction.sender(),
             ExtendedAccount::new(transaction.nonce(), alloy_primitives::U256::MAX),
         );
+        // Insert a world id root into the OpWorldId Account
+        validator.inner.client().add_account(
+            OP_WORLD_ID,
+            ExtendedAccount::new(0, alloy_primitives::U256::ZERO).extend_storage(vec![(
+                LATEST_ROOT_SLOT.into(),
+                transaction.semaphore_proof.clone().unwrap().root,
+            )]),
+        );
+        let header = SealedHeader::default();
+        let body = BlockBody::default();
+        let block = SealedBlock::new(header, body);
+
+        // Propogate the block to the root validator
+        validator.on_new_head_block(&block);
 
         let ordering = WorldChainOrdering::new(validator.database_env.clone());
 
@@ -438,6 +465,7 @@ mod tests {
 
         let start = chrono::Utc::now();
         let res = pool.add_external_transaction(transaction.clone()).await;
+
         let second_insert = chrono::Utc::now() - start;
         println!("second_insert: {second_insert:?}");
 
@@ -504,6 +532,78 @@ mod tests {
         let formated = super::format_date(date);
         let expected = "012021".to_string();
         assert_eq!(formated, expected);
+    }
+
+    #[test]
+    fn test_validate_root() {
+        let mut validator = world_chain_validator();
+        let root = Field::from(1u64);
+        let proof = Proof(semaphore::protocol::Proof(
+            (U256::from(1u64), U256::from(2u64)),
+            (
+                [U256::from(3u64), U256::from(4u64)],
+                [U256::from(5u64), U256::from(6u64)],
+            ),
+            (U256::from(7u64), U256::from(8u64)),
+        ));
+        let semaphore_proof = SemaphoreProof {
+            external_nullifier: "0-012025-11".to_string(),
+            external_nullifier_hash: Field::from(9u64),
+            nullifier_hash: Field::from(10u64),
+            signal_hash: Field::from(11u64),
+            root,
+            proof,
+        };
+        let header = SealedHeader::default();
+        let body = BlockBody::default();
+        let block = SealedBlock::new(header, body);
+        let client = MockEthProvider::default();
+        // Insert a world id root into the OpWorldId Account
+        client.add_account(
+            OP_WORLD_ID,
+            ExtendedAccount::new(0, alloy_primitives::U256::ZERO)
+                .extend_storage(vec![(LATEST_ROOT_SLOT.into(), Field::from(1u64))]),
+        );
+        validator.root_validator.set_client(client);
+        validator.on_new_head_block(&block);
+        let res = validator.validate_root(&semaphore_proof);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_invalidate_root() {
+        let mut validator = world_chain_validator();
+        let root = Field::from(0);
+        let proof = Proof(semaphore::protocol::Proof(
+            (U256::from(1u64), U256::from(2u64)),
+            (
+                [U256::from(3u64), U256::from(4u64)],
+                [U256::from(5u64), U256::from(6u64)],
+            ),
+            (U256::from(7u64), U256::from(8u64)),
+        ));
+        let semaphore_proof = SemaphoreProof {
+            external_nullifier: "0-012025-11".to_string(),
+            external_nullifier_hash: Field::from(9u64),
+            nullifier_hash: Field::from(10u64),
+            signal_hash: Field::from(11u64),
+            root,
+            proof,
+        };
+        let header = SealedHeader::default();
+        let body = BlockBody::default();
+        let block = SealedBlock::new(header, body);
+        let client = MockEthProvider::default();
+        // Insert a world id root into the OpWorldId Account
+        client.add_account(
+            OP_WORLD_ID,
+            ExtendedAccount::new(0, alloy_primitives::U256::ZERO)
+                .extend_storage(vec![(LATEST_ROOT_SLOT.into(), Field::from(1u64))]),
+        );
+        validator.root_validator.set_client(client);
+        validator.on_new_head_block(&block);
+        let res = validator.validate_root(&semaphore_proof);
+        assert!(res.is_err());
     }
 
     #[test]

@@ -1,3 +1,5 @@
+use reth_provider::ProviderError;
+
 use reth_db::{DatabaseError, DatabaseWriteOperation};
 use reth_transaction_pool::error::{InvalidPoolTransactionError, PoolTransactionError};
 use reth_transaction_pool::{PoolTransaction, TransactionValidationOutcome};
@@ -22,12 +24,16 @@ pub enum WorldChainTransactionPoolInvalid {
     InvalidSemaphoreProof,
     #[error("duplicate tx hash")]
     DuplicateTxHash,
+    #[error("invalid root")]
+    InvalidRoot,
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum WorldChainTransactionPoolError {
     #[error(transparent)]
     Database(#[from] DatabaseError),
+    #[error(transparent)]
+    RootProvider(#[from] ProviderError),
 }
 
 impl PoolTransactionError for WorldChainTransactionPoolInvalid {

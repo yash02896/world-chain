@@ -15,3 +15,11 @@ devnet-down:
 # Builds and tags the world-chain-builder image
 build:
     @just ./devnet/build
+
+# Tests the world-chain-builder
+test:
+    @just ./world-chain-builder/test
+
+# Formats the world-chain-builder
+fmt:
+    @just ./world-chain-builder/fmt

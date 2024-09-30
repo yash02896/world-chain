@@ -11,6 +11,7 @@ use reth_transaction_pool::TransactionValidationTaskExecutor;
 use tracing::{debug, info};
 
 use crate::pool::ordering::WorldChainOrdering;
+use crate::pool::root::WorldChainRootValidator;
 use crate::pool::validator::WorldChainTransactionValidator;
 
 use super::validator::WorldChainTransactionPool;
@@ -52,8 +53,10 @@ where
                     // In --dev mode we can't require gas fees because we're unable to decode the L1
                     // block info
                     .require_l1_data_gas_fee(!ctx.config().dev.dev);
+                let root_validator = WorldChainRootValidator::new(validator.client().clone());
                 WorldChainTransactionValidator::new(
                     op_tx_validator,
+                    root_validator,
                     self.db.clone(),
                     self.num_pbh_txs,
                 )
