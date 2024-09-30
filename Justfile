@@ -20,6 +20,6 @@ build:
 test:
     @just ./world-chain-builder/test
 
-# Builds the world-chain-builder
+# Formats the world-chain-builder
 fmt:
     @just ./world-chain-builder/fmt
