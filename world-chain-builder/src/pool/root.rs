@@ -36,7 +36,7 @@ impl<Client> RootProvider<Client>
 where
     Client: StateProviderFactory + BlockReaderIdExt,
 {
-    /// Creates a new RootProvider instance.
+    /// Creates a new [`RootProvider`] instance.
     ///
     /// # Arguments
     ///
@@ -99,7 +99,7 @@ pub struct WorldChainRootValidator<Client>
 where
     Client: StateProviderFactory + BlockReaderIdExt,
 {
-    /// The RootProvider used for caching and managing roots.
+    /// The [`RootProvider`] used for caching and managing roots.
     cache: Arc<RwLock<RootProvider<Client>>>,
 }
 
@@ -107,16 +107,11 @@ impl<Client> WorldChainRootValidator<Client>
 where
     Client: StateProviderFactory + BlockReaderIdExt,
 {
-    /// Creates a new WorldChainRootValidator instance.
+    /// Creates a new [`WorldChainRootValidator`] instance.
     ///
     /// # Arguments
     ///
     /// * `client` - The client used for state and block operations.
-    /// * `expiration_period` - The period after which a root is considered expired.
-    ///
-    /// # Returns
-    ///
-    /// A new `WorldChainRootValidator<Client>` instance.
     pub fn new(client: Client) -> Self {
         let cache = RootProvider::new(client);
 
