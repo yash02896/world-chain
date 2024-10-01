@@ -4,6 +4,6 @@ set positional-arguments
 test:
     cargo test
 
-# Builds the world-chain-builder
+# Formats the world-chain-builder
 fmt:
     cargo fmt

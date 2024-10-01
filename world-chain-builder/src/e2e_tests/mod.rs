@@ -47,6 +47,7 @@ use crate::pool::root::OP_WORLD_ID;
 use crate::pool::tx::WorldChainPooledTransaction;
 use crate::pool::validator::tests::valid_proof;
 use crate::pool::validator::WorldChainTransactionValidator;
+use crate::primitives::recover_raw_transaction;
 use crate::primitives::WorldChainPooledTransactionsElement;
 
 pub const DEV_SIGNER: &str = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -151,7 +152,7 @@ type Adapter = NodeAdapter<
 pub type NodeTestContextType = NodeTestContext<Adapter, WorldChainAddOns>;
 
 #[tokio::test]
-async fn simple_e2e_test() -> eyre::Result<()> {
+async fn test_can_send_raw_pbh_encoded_envelope() -> eyre::Result<()> {
     // Create a raw signed transfer
     let raw_tx = TransactionTestContext::transfer_tx_bytes(1, DEV_SIGNER.parse().unwrap()).await;
     let mut data = raw_tx.as_ref();
@@ -165,14 +166,20 @@ async fn simple_e2e_test() -> eyre::Result<()> {
     );
 
     // Create a pbh pooled transaction element
-    let pbh_ppoled_tx_element = WorldChainPooledTransactionsElement {
+    let world_chain_pooled_tx_element = WorldChainPooledTransactionsElement {
         inner: recovered,
         semaphore_proof: Some(proof.clone()),
     };
 
     // Re-encode the envolope
     let mut buff = Vec::<u8>::new();
-    pbh_ppoled_tx_element.encode(&mut buff);
+    world_chain_pooled_tx_element.encode(&mut buff);
+
+    // Pre-validate the decoding
+    let pooled_transaction_element = recover_raw_transaction(buff.clone().into());
+    assert!(
+        pooled_transaction_element.is_ok_and(|e| e.0.semaphore_proof.is_some_and(|p| p == proof))
+    );
 
     let chain_spec = get_chain_spec(proof.root);
 
@@ -181,6 +188,8 @@ async fn simple_e2e_test() -> eyre::Result<()> {
     let mut node = nodes.pop().unwrap();
 
     // make the node advance
+    // Failing here with
+    // Error: validation service unreachable
     let tx_hash = node.rpc.inject_tx(buff.into()).await?;
 
     // make the node advance
