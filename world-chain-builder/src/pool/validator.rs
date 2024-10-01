@@ -266,7 +266,7 @@ fn format_date(date: DateTime<chrono::Utc>) -> String {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use alloy_primitives::TxKind;
     use chrono::{TimeZone, Utc};
     use ethers_core::types::U256;
@@ -348,7 +348,7 @@ mod tests {
         WorldChainTransactionValidator::new(validator, root_validator, db, 30)
     }
 
-    fn valid_proof(
+    pub fn valid_proof(
         identity: &mut [u8],
         tx_hash: &[u8],
         time: chrono::DateTime<Utc>,
