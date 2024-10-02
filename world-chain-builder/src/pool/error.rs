@@ -1,15 +1,19 @@
-use reth_provider::ProviderError;
-
 use reth_db::{DatabaseError, DatabaseWriteOperation};
+use reth_provider::ProviderError;
 use reth_transaction_pool::error::{InvalidPoolTransactionError, PoolTransactionError};
 use reth_transaction_pool::{PoolTransaction, TransactionValidationOutcome};
+use semaphore::Field;
+
+use crate::pbh::semaphore::ExternalNullifierParsingError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum WorldChainTransactionPoolInvalid {
     #[error("nullifier has already been seen")]
     NullifierAlreadyExists,
-    #[error("invalid external nullifier")]
-    InvalidExternalNullifier,
+    #[error("invalid external nullifier - {0}")]
+    InvalidExternalNullifier(ExternalNullifierParsingError),
+    #[error("invalid external nullifier hash - expected {expected:?} got {actual:?}")]
+    InvalidExternalNullifierHash { expected: Field, actual: Field },
     #[error("invalid external nullifier prefix")]
     InvalidExternalNullifierPrefix,
     #[error("invalid external nullifier period")]
