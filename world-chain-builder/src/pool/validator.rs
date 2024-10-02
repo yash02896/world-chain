@@ -19,7 +19,7 @@ use super::ordering::WorldChainOrdering;
 use super::root::WorldChainRootValidator;
 use super::tx::{WorldChainPoolTransaction, WorldChainPooledTransaction};
 use crate::pbh::db::{ExecutedPbhNullifierTable, ValidatedPbhTransactionTable};
-use crate::pbh::semaphore::{ExternalNullifier, MonthMarker, SemaphoreProof, TREE_DEPTH};
+use crate::pbh::semaphore::{DateMarker, ExternalNullifier, SemaphoreProof, TREE_DEPTH};
 
 /// Type alias for World Chain transaction pool
 pub type WorldChainTransactionPool<Client, S> = Pool<
@@ -104,8 +104,15 @@ where
             .map_err(WorldChainTransactionPoolInvalid::InvalidExternalNullifier)
             .map_err(TransactionValidationError::from)?;
 
-        let current_date = MonthMarker::from(date);
-        if external_nullifier.month != current_date {
+        // In most cases these will be the same value, but at the month boundary
+        // we'll still accept the previous month if the transaction is at most a minute late
+        // or the next month if the transaction is at most a minute early
+        let valid_dates = vec![
+            DateMarker::from(date - chrono::Duration::minutes(1)),
+            DateMarker::from(date),
+            DateMarker::from(date + chrono::Duration::minutes(1)),
+        ];
+        if valid_dates.iter().all(|d| external_nullifier.month != *d) {
             return Err(WorldChainTransactionPoolInvalid::InvalidExternalNullifierPeriod.into());
         }
 
@@ -285,9 +292,7 @@ mod tests {
     use test_case::test_case;
 
     use crate::pbh::db::load_world_chain_db;
-    use crate::pbh::semaphore::{
-        ExternalNullifier, MonthMarker, Proof, SemaphoreProof, TREE_DEPTH,
-    };
+    use crate::pbh::semaphore::{DateMarker, ExternalNullifier, Proof, SemaphoreProof, TREE_DEPTH};
     use crate::pool::ordering::WorldChainOrdering;
     use crate::pool::root::{WorldChainRootValidator, LATEST_ROOT_SLOT, OP_WORLD_ID};
     use crate::pool::tx::WorldChainPooledTransaction;
@@ -346,7 +351,7 @@ mod tests {
         pbh_nonce: u16,
     ) -> SemaphoreProof {
         let external_nullifier =
-            ExternalNullifier::new(MonthMarker::from(time), pbh_nonce).to_string();
+            ExternalNullifier::new(DateMarker::from(time), pbh_nonce).to_string();
 
         create_proof(identity, external_nullifier, tx_hash, TREE_DEPTH)
     }
@@ -631,8 +636,29 @@ mod tests {
             .unwrap();
     }
 
+    #[test_case("v1-012025-0", "2024-12-31 23:59:30Z" ; "a minute early")]
+    #[test_case("v1-012025-0", "2025-02-01 00:00:30Z" ; "a minute late")]
+    fn validate_external_nullifier_at_time(external_nullifier: &str, time: &str) {
+        let validator = world_chain_validator();
+        let date: chrono::DateTime<Utc> = time.parse().unwrap();
+
+        let semaphore_proof = SemaphoreProof {
+            external_nullifier: external_nullifier.to_string(),
+            external_nullifier_hash: hash_to_field(external_nullifier.as_bytes()),
+            nullifier_hash: Field::ZERO,
+            signal_hash: Field::ZERO,
+            root: Field::ZERO,
+            proof: Default::default(),
+        };
+
+        validator
+            .validate_external_nullifier(date, &semaphore_proof)
+            .unwrap();
+    }
+
     #[test_case("v0-012025-0")]
     #[test_case("v1-022025-0")]
+    #[test_case("v1-122024-0")]
     #[test_case("v1-002025-0")]
     #[test_case("v1-012025-30")]
     #[test_case("v1-012025")]
@@ -640,7 +666,7 @@ mod tests {
     #[test_case("v1-012025-0-0")]
     fn validate_external_nullifier_invalid(external_nullifier: &str) {
         let validator = world_chain_validator();
-        let date = chrono::Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        let date = chrono::Utc.with_ymd_and_hms(2025, 1, 1, 12, 0, 0).unwrap();
 
         let semaphore_proof = SemaphoreProof {
             external_nullifier: external_nullifier.to_string(),

@@ -60,18 +60,18 @@ pub struct SemaphoreProof {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExternalNullifier {
-    pub month: MonthMarker,
+    pub month: DateMarker,
     pub nonce: u16,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MonthMarker {
+pub struct DateMarker {
     pub year: i32,
     pub month: u32,
 }
 
 impl ExternalNullifier {
-    pub fn new(month: MonthMarker, nonce: u16) -> Self {
+    pub fn new(month: DateMarker, nonce: u16) -> Self {
         Self { month, nonce }
     }
 }
@@ -137,13 +137,13 @@ impl FromStr for ExternalNullifier {
     }
 }
 
-impl MonthMarker {
+impl DateMarker {
     pub fn new(year: i32, month: u32) -> Self {
         Self { year, month }
     }
 }
 
-impl<T> From<T> for MonthMarker
+impl<T> From<T> for DateMarker
 where
     T: Datelike,
 {
@@ -155,8 +155,8 @@ where
     }
 }
 
-impl From<MonthMarker> for NaiveDate {
-    fn from(value: MonthMarker) -> Self {
+impl From<DateMarker> for NaiveDate {
+    fn from(value: DateMarker) -> Self {
         NaiveDate::from_ymd_opt(value.year, value.month, 1).unwrap()
     }
 }
@@ -173,7 +173,7 @@ pub enum MonthMarkerParsingError {
     InvalidYear(std::num::ParseIntError),
 }
 
-impl FromStr for MonthMarker {
+impl FromStr for DateMarker {
     type Err = MonthMarkerParsingError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -193,11 +193,11 @@ impl FromStr for MonthMarker {
             return Err(MonthMarkerParsingError::MonthOutOfRange { month });
         }
 
-        Ok(MonthMarker { year, month })
+        Ok(DateMarker { year, month })
     }
 }
 
-impl std::fmt::Display for MonthMarker {
+impl std::fmt::Display for DateMarker {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:02}{:04}", self.month, self.year)
     }
@@ -252,7 +252,7 @@ mod test {
     #[test_case("022024")]
     #[test_case("022025")]
     fn parse_month_marker_roundtrip(s: &str) {
-        let m: MonthMarker = s.parse().unwrap();
+        let m: DateMarker = s.parse().unwrap();
 
         assert_eq!(m.to_string(), s);
     }
@@ -263,6 +263,6 @@ mod test {
     #[test_case("" ; "empty")]
     #[test_case("23012024" ; "too long")]
     fn parse_month_marker_invalid(s: &str) {
-        s.parse::<MonthMarker>().unwrap_err();
+        s.parse::<DateMarker>().unwrap_err();
     }
 }
