@@ -1,6 +1,5 @@
 #[cfg(test)]
 pub mod e2e_tests;
-pub mod network;
 pub mod node;
 pub mod payload;
 pub mod pbh;

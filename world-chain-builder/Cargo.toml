@@ -3,7 +3,7 @@ name = "world-chain-builder"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+default-run = "world-chain-builder"
 
 [dependencies]
 # reth
@@ -61,6 +61,7 @@ op-alloy-network = "0.2"
 alloy-consensus = "0.3"
 alloy-network = "0.3"
 alloy-primitives = "0.8"
+# alloy-provider = "0.3"
 alloy-rpc-types-eth = "0.3"
 alloy-rpc-types = "0.3"
 alloy-rlp = "0.3"
@@ -92,6 +93,7 @@ tikv-jemallocator = { version = "0.6.0", optional = true }
 
 [dev-dependencies]
 tempfile = "3"
+test-case = "3"
 ethers-core = { git = "https://github.com/gakonst/ethers-rs", default-features = false }
 reth-provider = { git = "https://github.com/ewoolsey/reth", rev = "b2848f", features = [
     "test-utils",
@@ -110,3 +112,7 @@ jemalloc = ["tikv-jemallocator"]
 [[bin]]
 name = "world-chain-builder"
 path = "bin/world-chain-builder.rs"
+
+[[bin]]
+name = "toolkit"
+path = "bin/toolkit.rs"
