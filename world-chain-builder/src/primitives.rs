@@ -18,7 +18,7 @@ pub struct WorldChainPooledTransactionsElement {
 
 impl Encodable for WorldChainPooledTransactionsElement {
     fn encode(&self, out: &mut dyn alloy_rlp::BufMut) {
-        self.inner.encode_enveloped(out);
+        self.inner.encode(out);
         if let Some(semaphore_proof) = &self.semaphore_proof {
             semaphore_proof.encode(out);
         }
@@ -58,6 +58,13 @@ impl WorldChainPooledTransactionsElement {
             inner,
             semaphore_proof,
         })
+    }
+
+    pub fn encode_enveloped(&self, out: &mut dyn alloy_rlp::BufMut) {
+        self.inner.encode_enveloped(out);
+        if let Some(semaphore_proof) = &self.semaphore_proof {
+            semaphore_proof.encode(out);
+        }
     }
 
     pub fn try_into_ecrecovered(

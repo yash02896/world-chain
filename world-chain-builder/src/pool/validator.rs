@@ -344,7 +344,7 @@ pub mod tests {
         let temp_dir = tempdir().unwrap();
         let path = temp_dir.path().join("db");
         let db = load_world_chain_db(&path, false).unwrap();
-        let root_validator = WorldChainRootValidator::new(client);
+        let root_validator = WorldChainRootValidator::new(client).unwrap();
         WorldChainTransactionValidator::new(validator, root_validator, db, 30)
     }
 
