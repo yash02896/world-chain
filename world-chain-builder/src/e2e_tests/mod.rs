@@ -54,6 +54,8 @@ use std::{
     sync::Arc,
 };
 
+pub const DEV_CHAIN_ID: u64 = 8453;
+
 type Adapter = NodeAdapter<
     FullNodeTypesAdapter<
         NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
@@ -96,7 +98,7 @@ pub struct WorldChainBuilderTestContext {
 
 impl WorldChainBuilderTestContext {
     pub async fn setup() -> eyre::Result<Self> {
-        let wallets = Wallet::new(20).with_chain_id(8453).gen();
+        let wallets = Wallet::new(20).with_chain_id(DEV_CHAIN_ID).gen();
         let mut tree = LazyPoseidonTree::new(30, Field::from(0)).derived();
         let mut identities = HashMap::new();
         for (i, signer) in wallets.iter().enumerate() {
