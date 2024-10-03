@@ -107,7 +107,7 @@ where
         // In most cases these will be the same value, but at the month boundary
         // we'll still accept the previous month if the transaction is at most a minute late
         // or the next month if the transaction is at most a minute early
-        let valid_dates = vec![
+        let valid_dates = [
             DateMarker::from(date - chrono::Duration::minutes(1)),
             DateMarker::from(date),
             DateMarker::from(date + chrono::Duration::minutes(1)),
@@ -120,7 +120,7 @@ where
             return Err(WorldChainTransactionPoolInvalid::InvalidExternalNullifierNonce.into());
         }
 
-        let external_nullifier_hash = hash_to_field(&semaphore_proof.external_nullifier.as_bytes());
+        let external_nullifier_hash = hash_to_field(semaphore_proof.external_nullifier.as_bytes());
         if external_nullifier_hash != semaphore_proof.external_nullifier_hash {
             return Err(
                 WorldChainTransactionPoolInvalid::InvalidExternalNullifierHash {
@@ -182,7 +182,7 @@ where
 
         let date = chrono::Utc::now();
         self.validate_root(semaphore_proof)?;
-        self.validate_external_nullifier(date, &semaphore_proof)?;
+        self.validate_external_nullifier(date, semaphore_proof)?;
         self.validate_nullifier(semaphore_proof)?;
         self.validate_signal_hash(transaction.hash(), semaphore_proof)?;
 
