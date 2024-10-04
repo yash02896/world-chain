@@ -52,6 +52,7 @@ use semaphore::{
 use std::{
     collections::{BTreeMap, HashMap},
     sync::Arc,
+    time::Duration,
 };
 
 pub const DEV_CHAIN_ID: u64 = 8453;
@@ -221,8 +222,7 @@ impl WorldChainBuilderTestContext {
 
 #[tokio::test]
 async fn test_can_build_pbh_payload() -> eyre::Result<()> {
-    // std::env::set_var("RUST_LOG", "info");
-    reth_tracing::init_test_tracing();
+    tokio::time::sleep(Duration::from_secs(1)).await;
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
     let mut pbh_tx_hashes = vec![];
     for signer in ctx.pbh_wallets.iter() {
@@ -240,7 +240,7 @@ async fn test_can_build_pbh_payload() -> eyre::Result<()> {
     let block_hash = payload.block().hash();
     let block_number = payload.block().number;
 
-    let tip = pbh_tx_hashes[0].clone();
+    let tip = pbh_tx_hashes[0];
     ctx.node
         .assert_new_block(tip, block_hash, block_number)
         .await?;
@@ -250,8 +250,7 @@ async fn test_can_build_pbh_payload() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn test_transaction_pool_ordering() -> eyre::Result<()> {
-    // std::env::set_var("RUST_LOG", "trace");
-    reth_tracing::init_test_tracing();
+    tokio::time::sleep(Duration::from_secs(1)).await;
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
     let non_pbh_tx = tx(ctx.node.inner.chain_spec().chain.id(), None, 0);
     let wallet = ctx.pbh_wallets[0].clone();
@@ -278,7 +277,7 @@ async fn test_transaction_pool_ordering() -> eyre::Result<()> {
     let block_hash = payload.block().hash();
     let block_number = payload.block().number;
 
-    let tip = pbh_tx_hashes[0].clone();
+    let tip = pbh_tx_hashes[0];
     ctx.node
         .assert_new_block(tip, block_hash, block_number)
         .await?;
@@ -288,8 +287,7 @@ async fn test_transaction_pool_ordering() -> eyre::Result<()> {
 
 #[tokio::test]
 async fn test_invalidate_dup_tx_and_nullifier() -> eyre::Result<()> {
-    // std::env::set_var("RUST_LOG", "info");
-    reth_tracing::init_test_tracing();
+    tokio::time::sleep(Duration::from_secs(1)).await;
     let ctx = WorldChainBuilderTestContext::setup().await?;
     let signer = ctx.pbh_wallets[0].clone();
     let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0).await;

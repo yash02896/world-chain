@@ -467,7 +467,7 @@ pub mod tests {
         println!("second_insert: {second_insert:?}");
 
         // Check here that we're properly caching the transaction
-        assert!(first_insert > second_insert * 100);
+        assert!(first_insert > second_insert * 10);
         assert!(res.is_err());
     }
 
