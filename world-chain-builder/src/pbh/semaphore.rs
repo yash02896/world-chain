@@ -189,7 +189,7 @@ impl FromStr for DateMarker {
             .map_err(MonthMarkerParsingError::InvalidMonth)?;
         let year = year.parse().map_err(MonthMarkerParsingError::InvalidYear)?;
 
-        if month < 1 || month > 12 {
+        if !(1..=12).contains(&month) {
             return Err(MonthMarkerParsingError::MonthOutOfRange { month });
         }
 
