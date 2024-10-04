@@ -177,8 +177,10 @@ mod tests {
         timestamp: u64,
         root: Field,
     ) {
-        let mut header = Header::default();
-        header.timestamp = timestamp;
+        let header = Header {
+            timestamp,
+            ..Default::default()
+        };
         let block = Block {
             header,
             ..Default::default()

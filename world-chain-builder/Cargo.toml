@@ -107,6 +107,7 @@ reth-node-core = { git = "https://github.com/ewoolsey/reth", rev = "b2848f" }
 reth-tracing = { git = "https://github.com/ewoolsey/reth", rev = "b2848f" }
 alloy-signer = "0.3"
 alloy-signer-local = "0.3"
+
 [features]
 jemalloc = ["tikv-jemallocator"]
 
