@@ -293,7 +293,6 @@ pub mod tests {
     use tempfile::tempdir;
     use test_case::test_case;
 
-    use super::*;
     use crate::date_marker::DateMarker;
     use crate::external_nullifier::ExternalNullifier;
     use crate::pbh::db::load_world_chain_db;

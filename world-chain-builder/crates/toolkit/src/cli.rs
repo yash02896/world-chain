@@ -1,4 +1,4 @@
-use bytes::{Bytes, BytesMut};
+use bytes::Bytes;
 use chrono::NaiveDate;
 use clap::Parser;
 use identity_source::IdentitySource;
