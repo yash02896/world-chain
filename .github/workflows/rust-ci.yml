@@ -38,4 +38,4 @@ jobs:
         with:
           cache-on-failure: true
       - name: fmt + lint
-        run: just lint
+        run: just fmt
