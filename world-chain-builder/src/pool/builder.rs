@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use reth_db::DatabaseEnv;
 use reth::builder::components::PoolBuilder;
 use reth::builder::{BuilderContext, FullNodeTypes, NodeTypes};
+use reth::transaction_pool::blobstore::DiskFileBlobStore;
+use reth::transaction_pool::TransactionValidationTaskExecutor;
+use reth_db::DatabaseEnv;
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_node::txpool::OpTransactionValidator;
 use reth_provider::CanonStateSubscriptions;
-use reth::transaction_pool::blobstore::DiskFileBlobStore;
-use reth::transaction_pool::TransactionValidationTaskExecutor;
 use tracing::{debug, info};
 
 use crate::pool::ordering::WorldChainOrdering;
