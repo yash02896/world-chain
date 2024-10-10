@@ -1,11 +1,11 @@
 use std::{path::Path, sync::Arc};
 
 use eyre::eyre::Result;
-use reth_db::DatabaseEnv;
 use reth::api::{FullNodeComponents, NodeAddOns};
 use reth::builder::{
     components::ComponentsBuilder, FullNodeTypes, Node, NodeTypes, NodeTypesWithEngine,
 };
+use reth_db::DatabaseEnv;
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_node::{
     args::RollupArgs,

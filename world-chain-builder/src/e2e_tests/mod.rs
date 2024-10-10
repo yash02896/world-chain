@@ -162,13 +162,9 @@ impl WorldChainBuilderTestContext {
         pbh_nonce: u16,
         tx_nonce: u64,
     ) -> Bytes {
-        let raw_tx = TransactionTestContext::transfer_tx_bytes(
-            self.node.inner.chain_spec().chain.id(),
-            signer.clone(),
-            tx_nonce,
-        )
-        .await;
-
+        let tx = tx(DEV_CHAIN_ID, None, tx_nonce);
+        let envelope = TransactionTestContext::sign_tx(signer.clone(), tx).await;
+        let raw_tx = envelope.encoded_2718();
         let mut data = raw_tx.as_ref();
         let recovered = PooledTransactionsElement::decode_enveloped(&mut data).unwrap();
         let proof = self.valid_proof(
