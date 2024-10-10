@@ -51,6 +51,7 @@ use semaphore::{
     protocol::{generate_nullifier_hash, generate_proof},
     Field,
 };
+use serial_test::serial;
 use std::{
     collections::{BTreeMap, HashMap},
     sync::Arc,
@@ -227,6 +228,7 @@ impl WorldChainBuilderTestContext {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_can_build_pbh_payload() -> eyre::Result<()> {
     tokio::time::sleep(Duration::from_secs(1)).await;
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
@@ -255,6 +257,7 @@ async fn test_can_build_pbh_payload() -> eyre::Result<()> {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_transaction_pool_ordering() -> eyre::Result<()> {
     tokio::time::sleep(Duration::from_secs(1)).await;
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
@@ -298,6 +301,7 @@ async fn test_transaction_pool_ordering() -> eyre::Result<()> {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_invalidate_dup_tx_and_nullifier() -> eyre::Result<()> {
     tokio::time::sleep(Duration::from_secs(1)).await;
     let ctx = WorldChainBuilderTestContext::setup().await?;
@@ -310,6 +314,7 @@ async fn test_invalidate_dup_tx_and_nullifier() -> eyre::Result<()> {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_dup_pbh_nonce() -> eyre::Result<()> {
     tokio::time::sleep(Duration::from_secs(1)).await;
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
