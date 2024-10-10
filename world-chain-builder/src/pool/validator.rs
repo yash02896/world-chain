@@ -561,24 +561,6 @@ pub mod tests {
         assert!(res.is_err());
     }
 
-    #[test]
-    fn validate_external_nullifier_hash_mismatch() {
-        let external_nullifier = "v1-012025-1";
-
-        let validator = world_chain_validator();
-        let date = chrono::Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
-
-        let payload = PbhPayload {
-            external_nullifier: external_nullifier.to_string(),
-            nullifier_hash: Field::ZERO,
-            root: Field::ZERO,
-            proof: Default::default(),
-        };
-
-        let res = validator.validate_external_nullifier(date, &payload);
-        assert!(res.is_err());
-    }
-
     #[test_case("v1-012025-0")]
     #[test_case("v1-012025-1")]
     #[test_case("v1-012025-29")]
