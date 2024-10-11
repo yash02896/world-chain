@@ -152,6 +152,27 @@ def launch(
                     )
                 )
             
+            if el_builder_type not in el_launchers:
+                fail(
+                    "Unsupported launcher '{0}', need one of '{1}'".format(
+                        el_builder_type, ",".join(el_launchers.keys())
+                    )
+                )
+            
+            if cl_builder_type not in cl_launchers:
+                fail(
+                    "Unsupported launcher '{0}', need one of '{1}'".format(
+                        cl_builder_type, ",".join(cl_launchers.keys())
+                    )
+                )
+            
+            if engine_relay_type not in engine_relay_launchers:
+                fail(
+                    "Unsupported launcher '{0}', need one of '{1}'".format(
+                        engine_relay_type, ",".join(engine_relay_launchers.keys())
+                    )
+                )
+            
             el_launcher, el_launch_method = (
                 el_launchers[el_type]["launcher"],
                 el_launchers[el_type]["launch_method"],
@@ -180,23 +201,15 @@ def launch(
             # Zero-pad the index using the calculated zfill value
             index_str = shared_utils.zfill_custom(index + 1, len(str(len(participants))))
 
-            el_service_name = "op-el-{0}-{1}-{2}{3}".format(
-                index_str, el_type, cl_type, l2_services_suffix
-            )
+            el_service_name = "wc-admin-{0}".format(el_type)
 
-            cl_service_name = "op-cl-{0}-{1}-{2}{3}".format(
-                index_str, cl_type, el_type, l2_services_suffix
-            )
+            cl_service_name = "wc-admin-{0}".format(cl_type)
 
-            el_builder_service_name = "op-el-{0}-{1}-{2}{3}".format(
-                index_str, el_builder_type, cl_builder_type, l2_services_suffix
-            )
+            el_builder_service_name = "wc-admin-{0}-builder".format(el_builder_type)
 
-            cl_builder_service_name = "op-cl-{0}-{1}-{2}{3}".format(
-                index_str, cl_builder_type, el_builder_type, l2_services_suffix
-            )
+            cl_builder_service_name = "wc-admin-{0}-builder".format(cl_builder_type)
 
-            engine_relayer_service_name = "op-{0}".format(engine_relay_type)
+            engine_relayer_service_name = "wc-admin-{0}-engine".format(engine_relay_type)
             
             # First launch the Sequencer, and the Builder
             el_builder_context = el_builder_launch_method(
@@ -206,9 +219,7 @@ def launch(
                 participant.el_builder_image,
                 all_el_contexts,
                 sequencer_enabled,
-                all_cl_contexts[0]
-                if len(all_cl_contexts) > 0
-                else None,  # sequencer context
+                None,  # sequencer context
             )
 
             el_context = el_launch_method(
@@ -218,9 +229,7 @@ def launch(
                 participant.el_image,
                 all_el_contexts,
                 True, # sequencer enabled
-                all_cl_contexts[0]
-                if len(all_cl_contexts) > 0
-                else None,  # sequencer context
+                None,  # sequencer context
             )
 
             # Launch the Engine Relay w/ engine rpc on el_context/el_builder_context
