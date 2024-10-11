@@ -14,6 +14,10 @@ DEFAULT_EL_IMAGES = {
     "op-besu": "ghcr.io/optimism-java/op-besu:latest",
 }
 
+DEFAULT_ENGINE_IMAGES = {
+    "rollup-boost": "leytont/rollup-boost:latest",
+}
+
 DEFAULT_CL_IMAGES = {
     "op-node": "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:develop",
     "hildr": "ghcr.io/optimism-java/hildr:latest",
@@ -43,10 +47,17 @@ def input_parser(plan, input_args):
     return struct(
         participants=[
             struct(
+                admin=participant["admin"],
                 el_type=participant["el_type"],
                 el_image=participant["el_image"],
+                el_builder_type=participant["el_builder_type"],
+                el_builder_image=participant["el_builder_image"],
                 cl_type=participant["cl_type"],
                 cl_image=participant["cl_image"],
+                cl_builder_type=participant["cl_builder_type"],
+                cl_builder_image=participant["cl_builder_image"],
+                engine_relay_type=participant["engine_relay_type"],
+                engine_relay_image=participant["engine_relay_image"],
                 count=participant["count"],
             )
             for participant in result["participants"]
@@ -84,6 +95,7 @@ def parse_network_params(plan, input_args):
                 result["network_params"][sub_attr] = sub_value
         elif attr == "participants":
             participants = []
+            participants.append(world_chain_admin_participant())
             for participant in input_args["participants"]:
                 new_participant = default_participant()
                 for sub_attr, sub_value in participant.items():
@@ -129,7 +141,7 @@ def parse_network_params(plan, input_args):
 
 def default_input_args(input_args):
     network_params = default_network_params()
-    participants = [default_participant()]
+    participants = [world_chain_admin_participant()]
     op_contract_deployer_params = default_op_contract_deployer_params()
     return {
         "participants": participants,
@@ -140,9 +152,9 @@ def default_input_args(input_args):
 
 def default_network_params():
     return {
-        "network": "kurtosis",
+        "network": "world-chain",
         "network_id": "2151908",
-        "name": "op-kurtosis",
+        "name": "world-chain",
         "seconds_per_slot": 2,
         "fjord_time_offset": 0,
         "granite_time_offset": None,
@@ -151,8 +163,25 @@ def default_network_params():
     }
 
 
+def world_chain_admin_participant():
+    return {
+        "admin": True,
+        "el_type": "op-geth",
+        "el_image": DEFAULT_EL_IMAGES["op-geth"],
+        "el_builder_type": "world-chain",
+        "el_builder_image": DEFAULT_EL_IMAGES["world-chain"],
+        "cl_type": "op-node",
+        "cl_image": DEFAULT_CL_IMAGES["op-node"],
+        "cl_builder_type": "op-node",
+        "cl_builder_image": DEFAULT_CL_IMAGES["op-node"],
+        "engine_relay_type": "rollup-boost",
+        "engine_relay_image": DEFAULT_ENGINE_IMAGES["rollup-boost"],
+        "count": 1,
+    }
+
 def default_participant():
     return {
+        "admin": False,
         "el_type": "op-geth",
         "el_image": "",
         "cl_type": "op-node",
