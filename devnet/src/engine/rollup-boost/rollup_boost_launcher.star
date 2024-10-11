@@ -59,7 +59,6 @@ def launch(
     )
 
 
-# TODO: Pass the EL context of the Sequencer, and world-chain-builder
 def get_config(
     plan,
     el_cl_genesis_data,
@@ -84,10 +83,9 @@ def get_config(
 
     public_ports = {}
     cmd = [
-        "rollup-boost",
         "--jwt-path=" + constants.JWT_MOUNT_PATH_ON_CONTAINER,
         "--l2-url={0}".format(L2_EXECUTION_ENGINE_ENDPOINT),
-        "--builder={0}".format(BUILDER_EXECUTION_ENGINE_ENDPOINT),
+        "--builder-url={0}".format(BUILDER_EXECUTION_ENGINE_ENDPOINT),
         "--rpc-port={0}".format(RPC_PORT_NUM),
         "--boost-sync",
         "--log-level=debug"     
