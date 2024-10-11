@@ -17,6 +17,7 @@ rollup_boost = import_module("./engine/rollup-boost/rollup_boost_launcher.star")
 
 # CL
 op_node = import_module("./cl/op-node/op_node_launcher.star")
+op_node_builder = import_module("./cl/op-node-builder/op_node_builder_launcher.star")
 hildr = import_module("./cl/hildr/hildr_launcher.star")
 
 
@@ -115,6 +116,12 @@ def launch(
                 el_cl_data, jwt_file, network_params
             ),
             "launch_method": op_node.launch,
+        },
+        "op-node-builder": {
+            "launcher": op_node_builder.new_op_node_launcher(
+                el_cl_data, jwt_file, network_params
+            ),
+            "launch_method": op_node_builder.launch,
         },
         "hildr": {
             "launcher": hildr.new_hildr_launcher(el_cl_data, jwt_file, network_params),
@@ -218,7 +225,7 @@ def launch(
                 el_builder_service_name,
                 participant.el_builder_image,
                 all_el_contexts,
-                sequencer_enabled,
+                False, # sequencer disabled
                 None,  # sequencer context
             )
 
@@ -256,8 +263,8 @@ def launch(
                 sequencer_enabled,
             )
 
-            # TODO: --p2p.static=/dns/<ipv4>/tcp/9003/p2p/
             # Launch the CL Builder
+            # TODO: --p2p.static=/dns/<ipv4>/tcp/9003/p2p/
             cl_builder_context = cl_builder_launch_method(
                 plan,
                 cl_builder_launcher,

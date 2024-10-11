@@ -172,7 +172,7 @@ def world_chain_admin_participant():
         "el_builder_image": DEFAULT_EL_IMAGES["world-chain"],
         "cl_type": "op-node",
         "cl_image": DEFAULT_CL_IMAGES["op-node"],
-        "cl_builder_type": "op-node",
+        "cl_builder_type": "op-node-builder",
         "cl_builder_image": DEFAULT_CL_IMAGES["op-node"],
         "engine_relay_type": "rollup-boost",
         "engine_relay_image": DEFAULT_ENGINE_IMAGES["rollup-boost"],
