@@ -32,17 +32,7 @@ where
     async fn send_raw_transaction(&self, tx: Bytes) -> Result<B256, Self::Error> {
         let (recovered, inner_tx) = recover_raw_transaction(tx.clone())?;
         let pool_transaction = <Self::Pool as TransactionPool>::Transaction::from_pooled(recovered);
-
-        // On optimism, transactions are forwarded directly to the sequencer to be included in
-        // blocks that it builds.
-        if let Some(client) = self.raw_tx_forwarder().as_ref() {
-            if pool_transaction.semaphore_proof.is_none() {
-                tracing::debug!( target: "rpc::eth",  "forwarding raw transaction to");
-                let _ = client.forward_raw_transaction(&inner_tx).await.inspect_err(|err| {
-                    tracing::debug!(target: "rpc::eth", %err, hash=% *pool_transaction.hash(), "failed to forward raw transaction");
-                });
-            }
-        }
+        let pbh_tx = pool_transaction.semaphore_proof.is_some();
 
         // submit the transaction to the pool with a `Local` origin
         let hash = self
@@ -50,6 +40,17 @@ where
             .add_transaction(TransactionOrigin::Local, pool_transaction)
             .await
             .map_err(Self::Error::from_eth_err)?;
+
+        // On optimism, transactions are forwarded directly to the sequencer to be included in
+        // blocks that it builds.
+        if let Some(client) = self.raw_tx_forwarder().as_ref() {
+            if !pbh_tx {
+                tracing::debug!( target: "rpc::eth",  "forwarding raw transaction to");
+                let _ = client.forward_raw_transaction(&inner_tx).await.inspect_err(|err| {
+                    tracing::debug!(target: "rpc::eth", %err, hash=?*hash, "failed to forward raw transaction");
+                });
+            }
+        }
 
         Ok(hash)
     }
