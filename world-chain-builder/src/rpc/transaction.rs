@@ -36,10 +36,12 @@ where
         // On optimism, transactions are forwarded directly to the sequencer to be included in
         // blocks that it builds.
         if let Some(client) = self.raw_tx_forwarder().as_ref() {
-            tracing::debug!( target: "rpc::eth",  "forwarding raw transaction to");
-            let _ = client.forward_raw_transaction(&inner_tx).await.inspect_err(|err| {
+            if pool_transaction.semaphore_proof.is_none() {
+                tracing::debug!( target: "rpc::eth",  "forwarding raw transaction to");
+                let _ = client.forward_raw_transaction(&inner_tx).await.inspect_err(|err| {
                     tracing::debug!(target: "rpc::eth", %err, hash=% *pool_transaction.hash(), "failed to forward raw transaction");
                 });
+            }
         }
 
         // submit the transaction to the pool with a `Local` origin
