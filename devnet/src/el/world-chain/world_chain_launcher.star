@@ -169,11 +169,6 @@ def get_config(
         "--port={0}".format(discovery_port),
     ]
 
-    if not sequencer_enabled:
-        cmd.append(
-            "--rollup.sequencer-http={0}".format(sequencer_context.beacon_http_url)
-        )
-
     if len(existing_el_clients) > 0:
         cmd.append(
             "--bootnodes="
