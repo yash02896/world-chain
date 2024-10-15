@@ -41,7 +41,7 @@ pub struct ProveArgs {
     pub tx: Bytes,
 
     /// The PBH prefix
-    #[clap(short = 'P', long, default_value = "v1")]
+    #[clap(long, default_value = "v1")]
     pub prefix: Prefix,
 
     /// The PBH nonce for the priority tx
