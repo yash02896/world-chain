@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 MNEMONIC="test test test test test test test test test test test junk"
-BUILDER_SOCKET="http://localhost:52294"
+# This needs to be configured to the enclave (public rpc ports are non-deterministic)
+BUILDER_SOCKET="http://localhost:58495"
 export IDENTITY=11ff11
 export INCLUSION_PROOF_URL="https://signup-orb-ethereum.stage-crypto.worldcoin.dev/inclusionProof"
 
@@ -9,7 +10,7 @@ make_txs() {
     local fixture_file=$1
     declare -a local_fixture=()
     for t in {0..29}; do
-            tx=$(cast mktx --private-key "$2" 0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF --value 1ether --rpc-url "$BUILDER_SOCKET" --nonce "$i")
+            tx=$(cast mktx --private-key "$2" 0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF --value $3 --rpc-url "$BUILDER_SOCKET" --nonce "$t")
             transaction=$(toolkit prove -t "$tx" -N "$t")
             local_fixture[$t]="$transaction"
     done
@@ -19,8 +20,9 @@ make_txs() {
     echo "Finished Process: $3"
 }
 
-for x in {0..19}; do
-    echo "Started Process: ${x}"
+# Configure for more signer's
+for x in {0..0}; do
+    echo "Started Process: $x"
     signer=($(echo $(cast wallet private-key --mnemonic "${MNEMONIC}" --mnemonic-index $x)))
     tmp_file="/tmp/fixture_$x.tmp"
     make_txs "$tmp_file" "$signer" "$x" &

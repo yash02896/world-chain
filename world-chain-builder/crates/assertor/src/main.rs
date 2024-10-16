@@ -1,3 +1,4 @@
+//! Binary to assert specific behavior in the World Chain devnet
 use core::time;
 use std::{
     process::Command,
@@ -13,15 +14,9 @@ use clap::Parser;
 use eyre::eyre::{eyre, Result};
 use serde::Deserialize;
 use tokio::time::sleep;
-use tracing::{info, trace};
+use tracing::{debug, info};
 
 const PBH_FIXTURE: &str = include_str!("../../../../devnet/fixtures/fixture.json");
-
-/// The endpoint of the WorldChain Builder client.
-const BUILDER_SOCKET: &str = "http://localhost:57283";
-
-/// The endpoint of the Sequencer client.
-const SEQUENCER_SOCKET: &str = "http://localhost:TODO";
 
 #[derive(Deserialize, Clone)]
 pub struct PbhFixture {
@@ -31,12 +26,11 @@ pub struct PbhFixture {
 #[derive(Parser)]
 pub struct Args {
     /// Build a PBH block from transaction fixtures with the given number of transactions
-    #[clap(short, long, conflicts_with = "fallback_test")]
-    pub build_test: Option<u16>,
+    #[clap(short, long, conflicts_with = "fallback")]
+    pub build: bool,
     /// Run a Fallback test
-    #[clap(short, long, conflicts_with = "build_test")]
-    pub fallback_test: Option<u16>,
-    
+    #[clap(short, long, conflicts_with = "build")]
+    pub fallback: bool,
 }
 
 #[tokio::main]
@@ -46,32 +40,49 @@ async fn main() -> Result<()> {
         .init();
     let args = Args::parse();
 
-    // Grab the ports 
-    // let sequencer_provider =
-    //     Arc::new(ProviderBuilder::default().on_http(SEQUENCER_SOCKET.parse().unwrap()));
-    let builder_provider =
-        Arc::new(ProviderBuilder::default().on_http(BUILDER_SOCKET.parse().unwrap()));
-    let timeout = std::time::Duration::from_secs(30);
-    info!("Waiting for the devnet");
-    // let f = async {
-    //     let wait_0 = wait(sequencer_provider.clone(), timeout);
-    //     let wait_1 = wait(builder_provider.clone(), timeout);
-    //     tokio::join!(wait_0, wait_1);
-    // };
-    // f.await;
+    // Grab the ports
+    let builder_socket = run_command(
+        "kurtosis",
+        &[
+            "port",
+            "print",
+            "world-chain",
+            "wc-admin-world-chain-builder",
+            "rpc",
+        ],
+    )?;
 
-    wait(builder_provider.clone(), timeout).await;
+    let sequencer_socket = run_command(
+        "kurtosis",
+        &["port", "print", "world-chain", "wc-admin-op-geth", "rpc"],
+    )?;
+
+    let sequencer_provider =
+        Arc::new(ProviderBuilder::default().on_http(sequencer_socket.parse().unwrap()));
+    let builder_provider =
+        Arc::new(ProviderBuilder::default().on_http(builder_socket.parse().unwrap()));
+
+    let timeout = std::time::Duration::from_secs(30);
+
+    info!("Waiting for the devnet");
+
+    let f = async {
+        let wait_0 = wait(sequencer_provider.clone(), timeout);
+        let wait_1 = wait(builder_provider.clone(), timeout);
+        tokio::join!(wait_0, wait_1);
+    };
+    f.await;
 
     info!("Devnet is ready");
 
-    if let Some(num_txs) = args.build_test {
+    if args.build {
         info!("Running block building test");
-        assert_build(builder_provider, num_txs).await?;
+        assert_build(builder_provider).await?;
     }
 
-    if let Some(_num_txs) = args.fallback_test {
+    if args.fallback {
         info!("Running Sequencer fallback test");
-        // fallback(sequencer_provider, builder_provider).unwrap();
+        assert_fallback(sequencer_provider).await?;
     }
 
     Ok(())
@@ -97,47 +108,62 @@ where
     }
 }
 
-pub async fn assert_build<T, P>(builder_provider: Arc<P>, num_txs: u16) -> Result<()>
+pub async fn assert_build<T, P>(builder_provider: Arc<P>) -> Result<()>
 where
     T: Transport + Clone,
     P: Provider<T>,
 {
     let fixture = serde_json::from_str::<PbhFixture>(PBH_FIXTURE)?;
-    let transactions = fixture.fixture[1..num_txs as usize +1].to_vec();
-    let futs = transactions
-        .iter()
-        .map(|tx| async {
-            // Pbh Transactions are isolated within the builder.
-            // This ensures that the builder is building the block(s).
-            let builder_provider = builder_provider.clone();
-            let tx = builder_provider
-                .send_raw_transaction(tx)
-                .await
-                .expect("Failed to send tx");
-            let receipt = builder_provider
-                .get_transaction_receipt(*tx.tx_hash())
-                .await
-                .expect("Failed to get receipt for transaction");
-            trace!(receipt = ?receipt, "Transaction sent");
-            assert!(
-                receipt.is_some_and(|r| r.status() == true),
-                "Transaction failed"
-            );
+    let mut queue = vec![];
+    for transaction in fixture.fixture.iter() {
+        let tx = builder_provider.send_raw_transaction(transaction).await?;
+        queue.push(tx);
+    }
 
-            info!("Transaction sent: {:?}", tx.tx_hash());
-        })
-        .collect::<Vec<_>>();
+    let futs = queue.into_iter().map(|builder| async {
+        let hash = builder.tx_hash().clone();
+        let receipt = builder.get_receipt().await;
+        assert!(receipt.is_ok());
+        debug!(receipt = ?receipt.unwrap(), hash = ?hash, "Transaction Receipt Received");
+    });
 
     futures::future::join_all(futs).await;
+
     Ok(())
 }
 
-pub fn assert_fallback<T, P>(sequencer_provider: P, builder_provider: P) -> Result<()>
+pub async fn assert_fallback<T, P>(sequencer_provider: P) -> Result<()>
 where
     T: Transport + Clone,
     P: Provider<T>,
 {
-    // TODO:
+    // Grab the latest block number
+    let block_number = sequencer_provider.get_block_number().await?;
+    // Take the Builder service down.
+    run_command(
+        "kurtosis",
+        &[
+            "service",
+            "stop",
+            "world-chain",
+            "wc-admin-world-chain-builder",
+        ],
+    )?;
+    sleep(Duration::from_secs(3)).await;
+
+    // Assert the chain has progressed
+    let new_block_number = sequencer_provider.get_block_number().await?;
+    assert!(new_block_number > block_number);
+    // Restart the service
+    run_command(
+        "kurtosis",
+        &[
+            "service",
+            "start",
+            "world-chain",
+            "wc-admin-world-chain-builder",
+        ],
+    )?;
     Ok(())
 }
 
