@@ -43,7 +43,7 @@ use reth_optimism_evm::{OpExecutorProvider, OptimismEvmConfig};
 use reth_optimism_node::{engine::OptimismEngineValidator, OptimismPayloadBuilderAttributes};
 use reth_primitives::{PooledTransactionsElement, Withdrawals};
 use reth_provider::providers::BlockchainProvider;
-use revm_primitives::{bytes, Address, Bytes, FixedBytes, TxKind, B256, U256};
+use revm_primitives::{Address, Bytes, FixedBytes, TxKind, B256, U256};
 use semaphore::{
     hash_to_field,
     identity::Identity,
@@ -225,15 +225,6 @@ impl WorldChainBuilderTestContext {
             proof,
         }
     }
-}
-
-#[test]
-fn extract_root() -> eyre::Result<()> {
-    let raw = bytes!("02f8698320d5e480018409514a3582520894deadbeefdeadbeefdeadbeefdeadbeefdeadbeef8080c080a06992b735670fe604ff62c8c72916e3c9d30d5c8af20b0e3db76ba4edf5c401caa078e576904ab9f8712096a76a96ba3fe1b7142ccebe90f747f13b11ad2e0208b8f901518b76312d3130323032342d30a00fb52a8c913bf166574034087d5f1f5323dba5b972bdf6e0b879f82ec876f004a0133dbdee27c5f1171b0417dddf26d9664b775cc41f5676693d9c5184f42097c9b901000bf19cb5c47d0d44b2d89efa1abcce029d70480245f525c506862158114ce7e40a39ac91e8a218f532383a6bbd1d10f019a2b8db391762c701ca5d17bbbddb6a156d3164ba22de36ef22d26245752e7ff829a8a335d3e68537c9339d22ca01a316ed3d10f14b85002c0302290c048e3e20450521ba6dbd90ca9aa58ce5fabfd22f33a2b2b1b98b813e9092e80e5653129e90646cdb00ff71bf358702ca8afacd2a49ba91f5a5c6958398ed2f6c31fc29c5325068f9187f0bbea469188fef573a1c8fb32e1b087152482f326cba212c3f7a15139938c460d51e020d4fd2950cc50c2d1047a338170a4178a3f50039dec10a4300be09740f3e8d48aa8bc36d5405");
-    let envelope =
-        WorldChainPooledTransactionsElement::decode_enveloped(&mut raw.as_ref()).unwrap();
-    println!("{:?}", envelope.semaphore_proof.unwrap().root);
-    Ok(())
 }
 
 #[tokio::test]
