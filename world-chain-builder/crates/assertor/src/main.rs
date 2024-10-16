@@ -13,12 +13,12 @@ use clap::Parser;
 use eyre::eyre::{eyre, Result};
 use serde::Deserialize;
 use tokio::time::sleep;
-use tracing::info;
+use tracing::{info, trace};
 
 const PBH_FIXTURE: &str = include_str!("../../../../devnet/fixtures/fixture.json");
 
 /// The endpoint of the WorldChain Builder client.
-const BUILDER_SOCKET: &str = "http://localhost:54542";
+const BUILDER_SOCKET: &str = "http://localhost:57283";
 
 /// The endpoint of the Sequencer client.
 const SEQUENCER_SOCKET: &str = "http://localhost:TODO";
@@ -36,6 +36,7 @@ pub struct Args {
     /// Run a Fallback test
     #[clap(short, long, conflicts_with = "build_test")]
     pub fallback_test: Option<u16>,
+    
 }
 
 #[tokio::main]
@@ -44,20 +45,23 @@ async fn main() -> Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
     let args = Args::parse();
-    let sequencer_provider =
-        Arc::new(ProviderBuilder::default().on_http(SEQUENCER_SOCKET.parse().unwrap()));
+
+    // Grab the ports 
+    // let sequencer_provider =
+    //     Arc::new(ProviderBuilder::default().on_http(SEQUENCER_SOCKET.parse().unwrap()));
     let builder_provider =
         Arc::new(ProviderBuilder::default().on_http(BUILDER_SOCKET.parse().unwrap()));
     let timeout = std::time::Duration::from_secs(30);
     info!("Waiting for the devnet");
-    let f = async {
-        let wait_0 = wait(sequencer_provider.clone(), timeout);
-        let wait_1 = wait(builder_provider.clone(), timeout);
-        tokio::join!(wait_0, wait_1);
-    };
-    f.await;
+    // let f = async {
+    //     let wait_0 = wait(sequencer_provider.clone(), timeout);
+    //     let wait_1 = wait(builder_provider.clone(), timeout);
+    //     tokio::join!(wait_0, wait_1);
+    // };
+    // f.await;
 
-    // Wait for the denvet to be ready
+    wait(builder_provider.clone(), timeout).await;
+
     info!("Devnet is ready");
 
     if let Some(num_txs) = args.build_test {
@@ -99,7 +103,7 @@ where
     P: Provider<T>,
 {
     let fixture = serde_json::from_str::<PbhFixture>(PBH_FIXTURE)?;
-    let transactions = fixture.fixture[..num_txs as usize - 1].to_vec();
+    let transactions = fixture.fixture[1..num_txs as usize +1].to_vec();
     let futs = transactions
         .iter()
         .map(|tx| async {
@@ -114,10 +118,13 @@ where
                 .get_transaction_receipt(*tx.tx_hash())
                 .await
                 .expect("Failed to get receipt for transaction");
+            trace!(receipt = ?receipt, "Transaction sent");
             assert!(
                 receipt.is_some_and(|r| r.status() == true),
                 "Transaction failed"
             );
+
+            info!("Transaction sent: {:?}", tx.tx_hash());
         })
         .collect::<Vec<_>>();
 
