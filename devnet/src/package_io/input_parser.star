@@ -15,7 +15,7 @@ DEFAULT_EL_IMAGES = {
 }
 
 DEFAULT_ENGINE_IMAGES = {
-    "rollup-boost": "leytont/rollup-boost:latest",
+    "rollup-boost": "docker.io/leytont/rollup-boost:latest",
 }
 
 DEFAULT_CL_IMAGES = {
@@ -178,6 +178,7 @@ def world_chain_admin_participant():
         "engine_relay_image": DEFAULT_ENGINE_IMAGES["rollup-boost"],
         "count": 1,
     }
+
 
 def default_participant():
     return {

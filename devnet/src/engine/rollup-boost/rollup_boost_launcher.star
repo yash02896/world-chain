@@ -16,6 +16,7 @@ WS_PORT_NUM = 8546
 DISCOVERY_PORT_NUM = 30303
 RPC_PORT_ID = "rpc"
 
+
 def launch(
     plan,
     launcher,
@@ -24,7 +25,7 @@ def launch(
     existing_el_clients,
     sequencer_context,
     builder_context,
-): 
+):
     network_name = shared_utils.get_network_name(launcher.network)
 
     config = get_config(
@@ -37,7 +38,7 @@ def launch(
         service_name,
         existing_el_clients,
         sequencer_context,
-        builder_context
+        builder_context,
     )
 
     service = plan.add_service(service_name, config)
@@ -88,7 +89,7 @@ def get_config(
         "--builder-url={0}".format(BUILDER_EXECUTION_ENGINE_ENDPOINT),
         "--rpc-port={0}".format(RPC_PORT_NUM),
         "--boost-sync",
-        "--log-level=debug"     
+        "--log-level=debug",
     ]
 
     files = {

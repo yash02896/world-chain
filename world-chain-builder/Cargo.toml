@@ -14,7 +14,9 @@ reth = { git = "https://github.com/paradigmxyz/reth", rev = "c35b8be" }
 reth-cli-util = { git = "https://github.com/paradigmxyz/reth", rev = "c35b8be" }
 reth-evm = { git = "https://github.com/paradigmxyz/reth", rev = "c35b8be" }
 reth-db = { git = "https://github.com/paradigmxyz/reth", rev = "c35b8be" }
-reth-provider = { git = "https://github.com/paradigmxyz/reth", rev = "c35b8be" }
+reth-provider = { git = "https://github.com/paradigmxyz/reth", rev = "c35b8be", features = [
+    "test-utils",
+] }
 reth-basic-payload-builder = { git = "https://github.com/paradigmxyz/reth", rev = "c35b8be" }
 reth-prune-types = { git = "https://github.com/paradigmxyz/reth", rev = "c35b8be" }
 reth-trie = { git = "https://github.com/paradigmxyz/reth", rev = "c35b8be" }
