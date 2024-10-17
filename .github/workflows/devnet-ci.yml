@@ -20,9 +20,9 @@ jobs:
       - name: Run Devnet
         run: |
           just devnet-up
-      - name: Build
+      - name: Build PBH Block
         run: |
           just assertor -b
-      - name: Fallback'
+      - name: Sequencer Fallback
         run: |
           just assertor -f
