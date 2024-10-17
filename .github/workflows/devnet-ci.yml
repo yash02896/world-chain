@@ -1,0 +1,28 @@
+name: Block Building CI
+on:
+  pull_request:
+    branches: [main]
+    types: [review_requested, ready_for_review]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Setup Kurtosis
+        run: |
+          echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+          sudo apt update
+          sudo apt install kurtosis-cli
+          kurtosis analytics disable
+      - name: Run Devnet
+        run: |
+          just devnet-up
+      - name: Build
+        run: |
+          just assertor -b
+      - name: Fallback'
+        run: |
+          just assertor -f

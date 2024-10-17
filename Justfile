@@ -23,3 +23,8 @@ test:
 # Formats the world-chain-builder
 fmt:
     @just ./world-chain-builder/fmt
+
+# Runs the block building assertions
+# NOTE: The devnet needs to be running for this to work
+assertor *args='':
+    @just ./world-chain-builder/assertor $@
