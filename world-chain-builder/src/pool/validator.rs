@@ -19,7 +19,7 @@ use super::ordering::WorldChainOrdering;
 use super::root::WorldChainRootValidator;
 use super::tx::{WorldChainPoolTransaction, WorldChainPooledTransaction};
 use crate::pbh::date_marker::DateMarker;
-use crate::pbh::db::{ExecutedPbhNullifierTable, ValidatedPbhTransactionTable};
+use crate::pbh::db::{EmptyValue, ValidatedPbhTransactionTable};
 use crate::pbh::external_nullifier::ExternalNullifier;
 use crate::pbh::payload::{PbhPayload, TREE_DEPTH};
 
@@ -69,10 +69,10 @@ where
         &self.inner
     }
 
-    pub fn set_validated(&self, tx: &Tx, pbh_payload: &PbhPayload) -> Result<(), DatabaseError> {
-        let db_tx = self.pbh_db.tx_mut()?;
+    pub fn set_validated(&self, pbh_payload: &PbhPayload) -> Result<(), DatabaseError> {
+        let db_tx: reth_db::mdbx::tx::Tx<reth_db::mdbx::RW> = self.pbh_db.tx_mut()?;
         let mut cursor = db_tx.cursor_write::<ValidatedPbhTransactionTable>()?;
-        cursor.insert(*tx.hash(), pbh_payload.nullifier_hash.to_be_bytes().into())?;
+        cursor.insert(pbh_payload.nullifier_hash.to_be_bytes().into(), EmptyValue)?;
         db_tx.commit()?;
         Ok(())
     }
@@ -131,7 +131,9 @@ where
         pbh_payload: &PbhPayload,
     ) -> Result<(), TransactionValidationError> {
         let tx = self.pbh_db.tx()?;
-        match tx.get::<ExecutedPbhNullifierTable>(pbh_payload.nullifier_hash.to_be_bytes().into()) {
+        match tx
+            .get::<ValidatedPbhTransactionTable>(pbh_payload.nullifier_hash.to_be_bytes().into())
+        {
             Ok(Some(_)) => Err(WorldChainTransactionPoolInvalid::NullifierAlreadyExists.into()),
             Ok(None) => Ok(()),
             Err(e) => Err(TransactionValidationError::Error(
@@ -147,20 +149,13 @@ where
     ) -> Result<(), TransactionValidationError> {
         // Create db transaction and insert the nullifier hash
         // We do this first to prevent repeatedly validating the same transaction
-        //
-        // This should prevent DOS attacks for tranasctions with the same hash
-        // However i'm not sure there's anything we can do for transactions with different hashes
         let db_tx = self.pbh_db.tx_mut()?;
         let mut cursor = db_tx.cursor_write::<ValidatedPbhTransactionTable>()?;
-        cursor.insert(
-            *transaction.hash(),
-            payload.nullifier_hash.to_be_bytes().into(),
-        )?;
+        cursor.insert(payload.nullifier_hash.to_be_bytes().into(), EmptyValue)?;
 
         let date = chrono::Utc::now();
         self.validate_root(payload)?;
         self.validate_external_nullifier(date, payload)?;
-        self.validate_nullifier(payload)?;
 
         let res = verify_proof(
             payload.root,
@@ -187,13 +182,15 @@ where
         origin: TransactionOrigin,
         transaction: Tx,
     ) -> TransactionValidationOutcome<Tx> {
+        let validation_outcome = self.inner.validate_one(origin, transaction.clone());
+
         if let Some(pbh_payload) = transaction.pbh_payload() {
             if let Err(e) = self.validate_pbh_payload(&transaction, pbh_payload) {
                 return e.to_outcome(transaction);
             }
         };
 
-        self.inner.validate_one(origin, transaction.clone())
+        validation_outcome
     }
 
     /// Validates all given transactions.
@@ -504,9 +501,6 @@ pub mod tests {
             proof,
         };
 
-        let mut tx = get_non_pbh_transaction();
-        tx.pbh_payload = Some(payload.clone());
-
-        validator.set_validated(&tx, &payload).unwrap();
+        validator.set_validated(&payload).unwrap();
     }
 }

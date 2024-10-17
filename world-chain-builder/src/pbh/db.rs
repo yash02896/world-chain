@@ -16,21 +16,6 @@ use tracing::info;
 use reth_db::cursor::DbCursorRW;
 use reth_db::transaction::DbTxMut;
 
-/// Table for executed nullifiers.
-///
-/// This table stores the nullifiers of PBH transactions that have been
-/// included into a block after it has been sealed.
-#[derive(Debug, Clone, Default)]
-pub struct ExecutedPbhNullifierTable;
-
-impl Table for ExecutedPbhNullifierTable {
-    const NAME: &'static str = "ExecutedPbhNullifiers";
-
-    type Key = B256;
-
-    type Value = EmptyValue;
-}
-
 /// Table to store PBH validated transactions along with their nullifiers.
 ///
 /// When a trasnaction is validated before being inserted into the pool,
@@ -43,9 +28,9 @@ pub struct ValidatedPbhTransactionTable;
 impl Table for ValidatedPbhTransactionTable {
     const NAME: &'static str = "ValidatedPbhTransactions";
 
-    type Key = TxHash;
+    type Key = B256;
 
-    type Value = B256;
+    type Value = EmptyValue;
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -68,7 +53,7 @@ impl Compress for EmptyValue {
 /// don't forget to call db_tx.commit() at the very end
 pub fn set_pbh_nullifier(db_tx: &Tx<RW>, nullifier: Field) -> Result<(), DatabaseError> {
     let bytes: FixedBytes<32> = nullifier.into();
-    let mut cursor = db_tx.cursor_write::<ExecutedPbhNullifierTable>()?;
+    let mut cursor = db_tx.cursor_write::<ValidatedPbhTransactionTable>()?;
     cursor.insert(bytes, EmptyValue)?;
     Ok(())
 }
@@ -90,11 +75,6 @@ pub fn load_world_chain_db(
         .begin_rw_txn()
         .map_err(|e| DatabaseError::InitTx(e.into()))?;
 
-    tx.create_db(
-        Some(ExecutedPbhNullifierTable::NAME),
-        DatabaseFlags::default(),
-    )
-    .map_err(|e| DatabaseError::CreateTable(e.into()))?;
     tx.create_db(
         Some(ValidatedPbhTransactionTable::NAME),
         DatabaseFlags::default(),
