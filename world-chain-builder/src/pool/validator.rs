@@ -70,7 +70,7 @@ where
     }
 
     pub fn set_validated(&self, pbh_payload: &PbhPayload) -> Result<(), DatabaseError> {
-        let db_tx: reth_db::mdbx::tx::Tx<reth_db::mdbx::RW> = self.pbh_db.tx_mut()?;
+        let db_tx = self.pbh_db.tx_mut()?;
         let mut cursor = db_tx.cursor_write::<ValidatedPbhTransactionTable>()?;
         cursor.insert(pbh_payload.nullifier_hash.to_be_bytes().into(), EmptyValue)?;
         db_tx.commit()?;
@@ -124,22 +124,6 @@ where
         }
 
         Ok(())
-    }
-
-    pub fn validate_nullifier(
-        &self,
-        pbh_payload: &PbhPayload,
-    ) -> Result<(), TransactionValidationError> {
-        let tx = self.pbh_db.tx()?;
-        match tx
-            .get::<ValidatedPbhTransactionTable>(pbh_payload.nullifier_hash.to_be_bytes().into())
-        {
-            Ok(Some(_)) => Err(WorldChainTransactionPoolInvalid::NullifierAlreadyExists.into()),
-            Ok(None) => Ok(()),
-            Err(e) => Err(TransactionValidationError::Error(
-                format!("Error while fetching nullifier from database: {}", e).into(),
-            )),
-        }
     }
 
     pub fn validate_pbh_payload(
