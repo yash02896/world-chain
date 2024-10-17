@@ -70,7 +70,7 @@ where
     }
 
     pub fn set_validated(&self, pbh_payload: &PbhPayload) -> Result<(), DatabaseError> {
-        let db_tx: reth_db::mdbx::tx::Tx<reth_db::mdbx::RW> = self.pbh_db.tx_mut()?;
+        let db_tx = self.pbh_db.tx_mut()?;
         let mut cursor = db_tx.cursor_write::<ValidatedPbhTransactionTable>()?;
         cursor.insert(pbh_payload.nullifier_hash.to_be_bytes().into(), EmptyValue)?;
         db_tx.commit()?;
