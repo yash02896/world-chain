@@ -2,11 +2,16 @@ set positional-arguments
 
 # Tests the world-chain-builder
 test:
-    cargo test -- --test-threads=1
+    cargo test
 
 # Formats the world-chain-builder
-fmt:
-    cargo fmt
+fmt: fmt-fix fmt-check
+
+fmt-fix:
+  cargo +nightly fmt --all
+
+fmt-check:
+  cargo +nightly fmt --all -- --check
 
 # Runs the block building assertions
 assertor *args='':
