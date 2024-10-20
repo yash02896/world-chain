@@ -601,7 +601,7 @@ where
     ) -> TransactionValidationOutcome<Self::Transaction> {
         if let Some(pbh_paylaod) = transaction.pbh_payload() {
             self.inner
-                .set_validated(&transaction, pbh_paylaod)
+                .set_validated(pbh_paylaod)
                 .expect("Error when writing to the db");
         }
 
