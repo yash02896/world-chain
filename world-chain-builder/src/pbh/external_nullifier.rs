@@ -1,12 +1,9 @@
-use std::str::FromStr;
-
-use semaphore::{hash_to_field, Field};
-use thiserror::Error;
-
 use crate::pbh::date_marker::{DateMarker, DateMarkerParsingError};
-
+use semaphore::{hash_to_field, Field};
+use std::str::FromStr;
 use strum::EnumString;
 use strum_macros::Display;
+use thiserror::Error;
 
 #[derive(Display, EnumString, Debug, Clone, Copy, PartialEq, Eq)]
 #[strum(serialize_all = "snake_case")]
