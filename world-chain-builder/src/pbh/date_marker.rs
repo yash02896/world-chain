@@ -1,6 +1,5 @@
-use std::str::FromStr;
-
 use chrono::{Datelike, NaiveDate};
+use std::str::FromStr;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

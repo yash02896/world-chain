@@ -53,7 +53,6 @@ pub struct WorldChainPayloadBuilder<EvmConfig> {
     inner: OptimismPayloadBuilder<EvmConfig>,
     /// The percentage of the blockspace that should be reserved for verified transactions
     verified_blockspace_capacity: u8,
-    // TODO: NOTE: we need to insert the verified txs into the table after they are inserted into the block
     pbh_db: Arc<DatabaseEnv>,
 }
 
@@ -147,7 +146,6 @@ where
 
 #[derive(Debug)]
 pub struct WorldChainPayloadServiceBuilder {
-    // TODO: handle this field
     pub compute_pending_block: bool,
     pub verified_blockspace_capacity: u8,
     pub pbh_db: Arc<DatabaseEnv>,

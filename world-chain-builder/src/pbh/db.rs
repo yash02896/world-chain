@@ -1,20 +1,18 @@
-use std::path::Path;
-use std::sync::Arc;
-
 use alloy_primitives::TxHash;
 use bytes::BufMut;
+use reth_db::cursor::DbCursorRW;
 use reth_db::mdbx::tx::Tx;
 use reth_db::mdbx::{DatabaseArguments, DatabaseFlags, RW};
 use reth_db::{create_db, DatabaseError};
+use std::path::Path;
+use std::sync::Arc;
 // TODO: maybe think about some sort of data retention policy for PBH transactions.
 use reth_db::table::{Compress, Decompress, Table};
+use reth_db::transaction::DbTxMut;
 use revm_primitives::{FixedBytes, B256};
 use semaphore::Field;
 use serde::{Deserialize, Serialize};
 use tracing::info;
-
-use reth_db::cursor::DbCursorRW;
-use reth_db::transaction::DbTxMut;
 
 /// Table to store PBH validated transactions along with their nullifiers.
 ///

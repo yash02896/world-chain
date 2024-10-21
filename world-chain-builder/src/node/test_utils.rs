@@ -1,9 +1,3 @@
-use std::{
-    ops::{RangeBounds, RangeInclusive},
-    path::PathBuf,
-    sync::Arc,
-};
-
 use alloy_eips::{BlockHashOrNumber, BlockId, BlockNumberOrTag};
 use alloy_primitives::{
     map::{HashMap, HashSet},
@@ -40,6 +34,11 @@ use reth_trie::{
     updates::TrieUpdates, AccountProof, HashedPostState, HashedStorage, MultiProof, TrieInput,
 };
 use revm::primitives::{BlockEnv, CfgEnvWithHandlerCfg};
+use std::{
+    ops::{RangeBounds, RangeInclusive},
+    path::PathBuf,
+    sync::Arc,
+};
 use tokio::sync::{broadcast, watch};
 
 use crate::pool::{
