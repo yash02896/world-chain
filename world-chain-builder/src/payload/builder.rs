@@ -1,4 +1,3 @@
-use reth_db::transaction::DbTx;
 use reth_evm::ConfigureEvm;
 use std::sync::Arc;
 
@@ -18,7 +17,7 @@ use reth_basic_payload_builder::{
     PayloadBuilder, PayloadConfig, WithdrawalsOutcome,
 };
 use reth_chain_state::ExecutedBlock;
-use reth_db::{Database, DatabaseEnv, DatabaseError, DatabaseWriteOperation};
+use reth_db::DatabaseEnv;
 use reth_evm::system_calls::SystemCaller;
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_consensus::calculate_receipt_root_no_memo_optimism;
@@ -43,7 +42,6 @@ use revm_primitives::{
 };
 use tracing::{debug, trace, warn};
 
-use crate::pbh::db::set_pbh_nullifier;
 use crate::pool::noop::NoopWorldChainTransactionPool;
 use crate::pool::tx::WorldChainPoolTransaction;
 
@@ -53,7 +51,6 @@ pub struct WorldChainPayloadBuilder<EvmConfig> {
     inner: OptimismPayloadBuilder<EvmConfig>,
     /// The percentage of the blockspace that should be reserved for verified transactions
     verified_blockspace_capacity: u8,
-    pbh_db: Arc<DatabaseEnv>,
 }
 
 impl<EvmConfig> WorldChainPayloadBuilder<EvmConfig>
@@ -61,17 +58,12 @@ where
     EvmConfig: ConfigureEvm<Header = Header>,
 {
     /// `OptimismPayloadBuilder` constructor.
-    pub const fn new(
-        evm_config: EvmConfig,
-        verified_blockspace_capacity: u8,
-        pbh_db: Arc<DatabaseEnv>,
-    ) -> Self {
+    pub const fn new(evm_config: EvmConfig, verified_blockspace_capacity: u8) -> Self {
         let inner = OptimismPayloadBuilder::new(evm_config);
 
         Self {
             inner,
             verified_blockspace_capacity,
-            pbh_db,
         }
     }
 }
@@ -96,7 +88,6 @@ where
 
         worldchain_payload(
             self.inner.evm_config.clone(),
-            self.pbh_db.clone(),
             args,
             cfg_env,
             block_env,
@@ -132,7 +123,6 @@ where
 
         worldchain_payload(
             self.inner.evm_config.clone(),
-            self.pbh_db.clone(),
             args,
             cfg_env,
             block_env,
@@ -179,11 +169,8 @@ where
     ) -> eyre::Result<PayloadBuilderHandle<OptimismEngineTypes>> {
         let evm_config = OptimismEvmConfig::new(Arc::new((*ctx.chain_spec()).clone()));
 
-        let payload_builder = WorldChainPayloadBuilder::new(
-            evm_config,
-            self.verified_blockspace_capacity,
-            self.pbh_db,
-        );
+        let payload_builder =
+            WorldChainPayloadBuilder::new(evm_config, self.verified_blockspace_capacity);
 
         let conf = ctx.payload_builder_config();
 
@@ -222,7 +209,6 @@ where
 #[inline]
 pub(crate) fn worldchain_payload<EvmConfig, Pool, Client>(
     evm_config: EvmConfig,
-    pbh_db: Arc<DatabaseEnv>,
     args: BuildArguments<Pool, Client, OptimismPayloadBuilderAttributes, OptimismBuiltPayload>,
     initialized_cfg: CfgEnvWithHandlerCfg,
     initialized_block_env: BlockEnv,
@@ -741,7 +727,7 @@ mod tests {
         // Init the payload builder
         let verified_blockspace_cap = 50;
         let world_chain_payload_builder =
-            WorldChainPayloadBuilder::new(evm_config, verified_blockspace_cap, db.clone());
+            WorldChainPayloadBuilder::new(evm_config, verified_blockspace_cap);
 
         // Insert transactions into the pool
         let unverified_transactions = generate_mock_pooled_transactions(50, 100000, false);
@@ -857,7 +843,7 @@ mod tests {
         // Init the payload builder
         let verified_blockspace_cap = 10;
         let world_chain_payload_builder =
-            WorldChainPayloadBuilder::new(evm_config, verified_blockspace_cap, db.clone());
+            WorldChainPayloadBuilder::new(evm_config, verified_blockspace_cap);
 
         // Insert transactions into the pool
         let unverified_transactions = generate_mock_pooled_transactions(50, 100000, false);

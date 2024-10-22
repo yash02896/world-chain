@@ -322,24 +322,21 @@ async fn test_dup_pbh_nonce() -> eyre::Result<()> {
 
     let raw_tx_0 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
     ctx.node.rpc.inject_tx(raw_tx_0.clone()).await?;
-
     let raw_tx_1 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 1).await;
-    ctx.node.rpc.inject_tx(raw_tx_1.clone()).await?;
+
+    // Now that the nullifier has successfully been stored in
+    // the `ExecutedPbhNullifierTable`, inserting a new tx with the
+    // same pbh_nonce should fail to validate.
+    assert!(ctx.node.rpc.inject_tx(raw_tx_1.clone()).await.is_err());
 
     let (payload, _) = ctx
         .node
         .advance_block(vec![], optimism_payload_attributes)
         .await?;
 
-    // Both transactions should be successfully validated
-    // but only one should be included in the block
+    // One transaction should be successfully validated
+    // and included in the block.
     assert_eq!(payload.block().body.transactions.len(), 1);
-
-    // Now that the nullifier has successfully been stored in
-    // the `ExecutedPbhNullifierTable`, inserting a new tx with the
-    // same pbh_nonce should fail to validate.
-    let raw_tx_2 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 2).await;
-    assert!(ctx.node.rpc.inject_tx(raw_tx_2.clone()).await.is_err());
 
     Ok(())
 }

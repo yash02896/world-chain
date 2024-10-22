@@ -238,7 +238,7 @@ pub mod tests {
     use crate::pbh::payload::{PbhPayload, Proof};
     use crate::pool::ordering::WorldChainOrdering;
     use crate::pool::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
-    use crate::test::{get_non_pbh_transaction, get_pbh_transaction, world_chain_validator};
+    use crate::test::{get_pbh_transaction, world_chain_validator};
 
     #[tokio::test]
     async fn validate_pbh_transaction() {
