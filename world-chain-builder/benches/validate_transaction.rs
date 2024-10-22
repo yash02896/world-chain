@@ -37,7 +37,7 @@ where
 fn validator_setup() -> WorldChainTransactionValidator<MockEthProvider, WorldChainPooledTransaction>
 {
     let validator = world_chain_validator();
-    let transaction = get_pbh_transaction();
+    let transaction = get_pbh_transaction(0);
     validator.inner().client().add_account(
         transaction.sender(),
         ExtendedAccount::new(transaction.nonce(), alloy_primitives::U256::MAX),
@@ -82,14 +82,14 @@ fn non_pbh_setup() -> Setup {
 
 fn pbh_setup() -> Setup {
     let pool = pool_setup();
-    let transaction = get_pbh_transaction();
+    let transaction = get_pbh_transaction(0);
 
     Setup { pool, transaction }
 }
 
 fn spoofed_nullifier_setup() -> Setup {
     let pool = pool_setup();
-    let mut transaction = get_pbh_transaction();
+    let mut transaction = get_pbh_transaction(0);
     let pbh_payload = transaction.pbh_payload.as_mut().unwrap();
     pbh_payload.nullifier_hash = Field::default();
     Setup { pool, transaction }

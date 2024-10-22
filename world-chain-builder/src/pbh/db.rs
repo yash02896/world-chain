@@ -1,4 +1,3 @@
-use alloy_primitives::TxHash;
 use bytes::BufMut;
 use reth_db::cursor::DbCursorRW;
 use reth_db::mdbx::tx::Tx;

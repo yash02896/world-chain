@@ -238,12 +238,12 @@ pub mod tests {
     use crate::pbh::payload::{PbhPayload, Proof};
     use crate::pool::ordering::WorldChainOrdering;
     use crate::pool::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
-    use crate::test::{get_non_pbh_transaction, get_pbh_transaction, world_chain_validator};
+    use crate::test::{get_pbh_transaction, world_chain_validator};
 
     #[tokio::test]
     async fn validate_pbh_transaction() {
         let validator = world_chain_validator();
-        let transaction = get_pbh_transaction();
+        let transaction = get_pbh_transaction(0);
         validator.inner.client().add_account(
             transaction.sender(),
             ExtendedAccount::new(transaction.nonce(), alloy_primitives::U256::MAX),
@@ -295,7 +295,7 @@ pub mod tests {
     #[tokio::test]
     async fn invalid_external_nullifier_hash() {
         let validator = world_chain_validator();
-        let transaction = get_pbh_transaction();
+        let transaction = get_pbh_transaction(0);
 
         validator.inner.client().add_account(
             transaction.sender(),
@@ -318,7 +318,7 @@ pub mod tests {
     #[tokio::test]
     async fn invalid_signal_hash() {
         let validator = world_chain_validator();
-        let transaction = get_pbh_transaction();
+        let transaction = get_pbh_transaction(0);
 
         validator.inner.client().add_account(
             transaction.sender(),
