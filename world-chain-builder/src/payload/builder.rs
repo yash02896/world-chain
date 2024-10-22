@@ -656,11 +656,11 @@ where
 mod tests {
     use crate::{
         node::test_utils::{WorldChainNoopProvider, WorldChainNoopValidator},
-        pbh::payload::PbhPayload,
         pool::{
             ordering::WorldChainOrdering, root::WorldChainRootValidator,
             tx::WorldChainPooledTransaction, validator::WorldChainTransactionValidator,
         },
+        test::get_pbh_transaction,
     };
 
     use super::*;
@@ -961,7 +961,7 @@ mod tests {
         let mut rng = rand::thread_rng();
 
         (0..count)
-            .map(|_| {
+            .map(|i| {
                 let tx = reth_primitives::Transaction::Legacy(TxLegacy {
                     gas_price: 10,
                     gas_limit,
@@ -986,7 +986,7 @@ mod tests {
                 let pooled_tx = EthPooledTransaction::new(tx_recovered.clone(), 200);
 
                 let pbh_payload = if pbh {
-                    Some(PbhPayload::default())
+                    Some(get_pbh_transaction(i as u16).pbh_payload.unwrap())
                 } else {
                     None
                 };

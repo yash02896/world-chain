@@ -41,13 +41,13 @@ pub fn get_non_pbh_transaction() -> WorldChainPooledTransaction {
     }
 }
 
-pub fn get_pbh_transaction() -> WorldChainPooledTransaction {
+pub fn get_pbh_transaction(nonce: u16) -> WorldChainPooledTransaction {
     let eth_tx = get_eth_transaction();
     let pbh_payload = valid_pbh_payload(
         &mut [0; 32],
         eth_tx.hash().as_slice(),
         chrono::Utc::now(),
-        0,
+        nonce,
     );
     WorldChainPooledTransaction {
         inner: eth_tx,
