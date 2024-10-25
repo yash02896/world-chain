@@ -131,6 +131,10 @@ where
         transaction: &Tx,
         payload: &PbhPayload,
     ) -> Result<(), TransactionValidationError> {
+        // Validate the root first to prevent invalidating a valid transaction with a root that has
+        // not landed on chain yet
+        self.validate_root(payload)?;
+
         // Create db transaction and insert the nullifier hash
         // We do this first to prevent repeatedly validating the same transaction
         let db_tx = self.pbh_db.tx_mut()?;
@@ -138,7 +142,6 @@ where
         cursor.insert(payload.nullifier_hash.to_be_bytes().into(), EmptyValue)?;
 
         let date = chrono::Utc::now();
-        self.validate_root(payload)?;
         self.validate_external_nullifier(date, payload)?;
 
         let res = verify_proof(
