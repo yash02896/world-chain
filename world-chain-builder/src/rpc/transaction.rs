@@ -1,27 +1,24 @@
 //! Loads and formats OP transaction RPC response.
 
-use crate::{
-    pool::tx::WorldChainPooledTransaction, primitives::recover_raw_transaction,
-    rpc::WorldChainEthApi,
-};
+use crate::pool::tx::WorldChainPooledTransaction;
+use crate::{primitives::recover_raw_transaction, rpc::WorldChainEthApi};
+
 use alloy_primitives::{Bytes, B256};
-use reth::api::FullNodeComponents;
-use reth::core::rpc::eth::helpers::{EthSigner, EthTransactions, LoadTransaction, SpawnBlocking};
-use reth::core::rpc::eth::FromEthApiError;
+use reth::rpc::api::eth::helpers::{EthSigner, EthTransactions, LoadTransaction, SpawnBlocking};
+use reth::rpc::api::eth::{FromEthApiError, FullEthApiTypes};
+use reth::rpc::eth::RpcNodeCore;
 use reth::transaction_pool::{PoolTransaction, TransactionOrigin, TransactionPool};
-use reth::{core::rpc::eth::FullEthApiTypes, rpc::server_types::eth::EthStateCache};
 use reth_optimism_rpc::SequencerClient;
 use reth_provider::{BlockReaderIdExt, TransactionsProvider};
 
 impl<N> EthTransactions for WorldChainEthApi<N>
 where
-    Self: LoadTransaction<Pool: TransactionPool<Transaction = WorldChainPooledTransaction>>,
-    N: FullNodeComponents,
+    Self: LoadTransaction<
+        Pool: TransactionPool<Transaction = WorldChainPooledTransaction>,
+        Provider: BlockReaderIdExt,
+    >,
+    N: RpcNodeCore,
 {
-    fn provider(&self) -> impl BlockReaderIdExt {
-        EthTransactions::provider(&self.inner)
-    }
-
     fn signers(&self) -> &parking_lot::RwLock<Vec<Box<dyn EthSigner>>> {
         self.inner.signers()
     }
@@ -59,35 +56,14 @@ where
 impl<N> LoadTransaction for WorldChainEthApi<N>
 where
     Self: SpawnBlocking + FullEthApiTypes,
-    N: FullNodeComponents,
+    N: RpcNodeCore<Provider: TransactionsProvider, Pool: TransactionPool>,
 {
-    type Pool = N::Pool;
-
-    fn provider(&self) -> impl TransactionsProvider {
-        LoadTransaction::provider(&self.inner)
-    }
-
-    fn cache(&self) -> &EthStateCache {
-        self.inner.cache()
-    }
-
-    fn pool(&self) -> &Self::Pool {
-        self.inner.pool()
-    }
 }
 
 impl<N> WorldChainEthApi<N>
 where
-    N: FullNodeComponents,
+    N: RpcNodeCore,
 {
-    /// Sets a [`SequencerClient`] for `eth_sendRawTransaction` to forward transactions to.
-    pub fn set_sequencer_client(
-        &self,
-        sequencer_client: SequencerClient,
-    ) -> Result<(), tokio::sync::SetError<SequencerClient>> {
-        self.inner.set_sequencer_client(sequencer_client)
-    }
-
     /// Returns the [`SequencerClient`] if one is set.
     pub fn raw_tx_forwarder(&self) -> Option<SequencerClient> {
         self.inner.raw_tx_forwarder()
