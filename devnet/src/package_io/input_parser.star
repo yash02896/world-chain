@@ -15,7 +15,7 @@ DEFAULT_EL_IMAGES = {
 }
 
 DEFAULT_ENGINE_IMAGES = {
-    "rollup-boost": "docker.io/leytont/rollup-boost:latest",
+    "rollup-boost": "rollup-boost:latest",
 }
 
 DEFAULT_CL_IMAGES = {

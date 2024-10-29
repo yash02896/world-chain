@@ -177,7 +177,7 @@ mod tests {
 
         for hex_data in &input_too_short {
             let input_rlp = &mut &hex_data[..];
-            let res = WorldChainPooledTransactionsElement::decode(input_rlp);
+            let res = WorldChainPooledTransactionsElement::decode_2718(input_rlp);
 
             assert!(
                 res.is_err(),
@@ -187,7 +187,7 @@ mod tests {
 
             // this is a legacy tx so we can attempt the same test with decode_enveloped
             let input_rlp = &mut &hex_data[..];
-            let res = WorldChainPooledTransactionsElement::decode(input_rlp);
+            let res = WorldChainPooledTransactionsElement::decode_2718(input_rlp);
 
             assert!(
                 res.is_err(),
@@ -224,7 +224,7 @@ mod tests {
         let data = &hex!("d30b02808083c5cdeb8783c5acfd9e407c565656")[..];
 
         let input_rlp = &mut &data[..];
-        let res = WorldChainPooledTransactionsElement::decode(input_rlp);
+        let res = WorldChainPooledTransactionsElement::decode_2718(input_rlp);
         println!("{:?}", res);
         assert!(matches!(res, Ok(_tx)));
         assert!(input_rlp.is_empty());
@@ -237,7 +237,7 @@ mod tests {
         assert!(input_rlp.is_empty());
 
         // we can also decode_enveloped
-        let res = WorldChainPooledTransactionsElement::decode(&mut &data[..]);
+        let res = WorldChainPooledTransactionsElement::decode_2718(&mut &data[..]);
         assert!(matches!(res, Ok(_tx)));
     }
 }
