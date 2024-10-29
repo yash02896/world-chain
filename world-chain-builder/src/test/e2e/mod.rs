@@ -24,12 +24,14 @@ use alloy_network::{Ethereum, EthereumWallet, TransactionBuilder};
 use alloy_rpc_types::{TransactionInput, TransactionRequest};
 use alloy_signer_local::PrivateKeySigner;
 use chrono::Utc;
-use reth::{api::{FullNodeTypesAdapter, NodeTypesWithDBAdapter}, builder::components::Components};
 use reth::builder::{NodeAdapter, NodeBuilder, NodeConfig, NodeHandle};
-use reth::chainspec::ChainSpec;
 use reth::payload::{EthPayloadBuilderAttributes, PayloadId};
 use reth::tasks::TaskManager;
 use reth::transaction_pool::{blobstore::DiskFileBlobStore, TransactionValidationTaskExecutor};
+use reth::{
+    api::{FullNodeTypesAdapter, NodeTypesWithDBAdapter},
+    builder::components::Components,
+};
 use reth_db::{
     test_utils::{tempdir_path, TempDatabase},
     DatabaseEnv,
@@ -39,7 +41,7 @@ use reth_e2e_test_utils::{
 };
 use reth_evm::execute::BasicBlockExecutorProvider;
 use reth_node_core::args::RpcServerArgs;
-use reth_optimism_chainspec::{OpChainSpec, BASE_MAINNET};
+use reth_optimism_chainspec::{OpChainSpec, OpChainSpecBuilder};
 use reth_optimism_evm::{OpExecutionStrategyFactory, OptimismEvmConfig};
 use reth_optimism_node::OptimismPayloadBuilderAttributes;
 use reth_primitives::{PooledTransactionsElement, Withdrawals};
@@ -160,9 +162,7 @@ impl WorldChainBuilderTestContext {
             tree = tree.update(i, &identity.commitment());
         }
 
-        let op_chain_spec = Arc::new(OpChainSpec {
-            inner: get_chain_spec(tree.root()),
-        });
+        let op_chain_spec = Arc::new(get_chain_spec(tree.root()));
 
         let tasks = TaskManager::current();
         let exec = tasks.executor();
@@ -228,7 +228,7 @@ impl WorldChainBuilderTestContext {
         };
 
         let mut buff = Vec::<u8>::new();
-        world_chain_pooled_tx_element.encode_enveloped(&mut buff);
+        world_chain_pooled_tx_element.encode_2718(&mut buff);
         buff.into()
     }
 
@@ -415,10 +415,9 @@ fn tx(chain_id: u64, data: Option<Bytes>, nonce: u64) -> TransactionRequest {
 
 /// Builds an OP Mainnet chain spec with the given merkle root
 /// Populated in the OpWorldID contract.
-fn get_chain_spec(merkle_root: Field) -> ChainSpec {
+fn get_chain_spec(merkle_root: Field) -> OpChainSpec {
     let genesis: Genesis = serde_json::from_str(include_str!("assets/genesis.json")).unwrap();
-    ChainSpec::builder()
-        .chain(BASE_MAINNET.chain)
+    OpChainSpecBuilder::base_mainnet()
         .genesis(genesis.extend_accounts(vec![(
             OP_WORLD_ID,
             GenesisAccount::default().with_storage(Some(BTreeMap::from_iter(vec![(
@@ -426,5 +425,6 @@ fn get_chain_spec(merkle_root: Field) -> ChainSpec {
                 merkle_root.into(),
             )]))),
         )]))
+        .ecotone_activated()
         .build()
 }
