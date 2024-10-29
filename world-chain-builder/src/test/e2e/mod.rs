@@ -24,7 +24,7 @@ use alloy_network::{Ethereum, EthereumWallet, TransactionBuilder};
 use alloy_rpc_types::{TransactionInput, TransactionRequest};
 use alloy_signer_local::PrivateKeySigner;
 use chrono::Utc;
-use reth::builder::{NodeAdapter, NodeBuilder, NodeConfig, NodeHandle};
+use reth::{builder::{NodeAdapter, NodeBuilder, NodeConfig, NodeHandle}, transaction_pool::Pool};
 use reth::payload::{EthPayloadBuilderAttributes, PayloadId};
 use reth::tasks::TaskManager;
 use reth::transaction_pool::{blobstore::DiskFileBlobStore, TransactionValidationTaskExecutor};
@@ -63,20 +63,6 @@ use std::{
 
 pub const DEV_CHAIN_ID: u64 = 8453;
 
-// Type aliases
-
-// /// Type alias for a type of `NodeHelper`
-// pub type NodeHelperType<N, AO, Provider = BlockchainProvider<NodeTypesWithDBAdapter<N, TmpDB>>> =
-//     NodeTestContext<Adapter<N, Provider>, AO>;
-
-pub struct WorldChainBuilderTestContext {
-    pub pbh_wallets: Vec<PrivateKeySigner>,
-    pub tree: LazyPoseidonTree,
-    pub tasks: TaskManager,
-    pub node: Adapter,
-    pub identities: HashMap<Address, usize>,
-}
-
 type Adapter = NodeTestContext<
     NodeAdapter<
         FullNodeTypesAdapter<
@@ -85,7 +71,7 @@ type Adapter = NodeTestContext<
                 NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
             >,
         >,
-        reth::builder::components::Components<
+        Components<
             FullNodeTypesAdapter<
                 NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
                 BlockchainProvider<
@@ -127,7 +113,7 @@ type Adapter = NodeTestContext<
                         NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
                     >,
                 >,
-                reth::transaction_pool::Pool<
+                Pool<
                     TransactionValidationTaskExecutor<
                         WorldChainTransactionValidator<
                             BlockchainProvider<
@@ -149,6 +135,14 @@ type Adapter = NodeTestContext<
         >,
     >,
 >;
+
+pub struct WorldChainBuilderTestContext {
+    pub pbh_wallets: Vec<PrivateKeySigner>,
+    pub tree: LazyPoseidonTree,
+    pub tasks: TaskManager,
+    pub node: Adapter,
+    pub identities: HashMap<Address, usize>,
+}
 
 impl WorldChainBuilderTestContext {
     pub async fn setup() -> eyre::Result<Self> {
