@@ -82,7 +82,7 @@ where
 {
     type Error = OpEthApiError;
     type NetworkTypes = Optimism;
-    type TransactionCompat = OpEthApi<N>;
+    type TransactionCompat = Self;
 
     fn tx_resp_builder(&self) -> &Self::TransactionCompat {
         self

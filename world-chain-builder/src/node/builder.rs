@@ -8,6 +8,7 @@ use reth::builder::{
     components::ComponentsBuilder, FullNodeTypes, Node, NodeTypes, NodeTypesWithEngine,
 };
 use reth::builder::{NodeAdapter, NodeComponentsBuilder};
+use reth::rpc::eth::FullEthApiServer;
 use reth_db::DatabaseEnv;
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_node::engine::OptimismEngineValidator;
@@ -155,6 +156,7 @@ impl<N> NodeAddOns<N> for WorldChainAddOns<N>
 where
     N: FullNodeComponents<Types: NodeTypes<ChainSpec = OpChainSpec>>,
     OptimismEngineValidator: EngineValidator<<N::Types as NodeTypesWithEngine>::Engine>,
+    WorldChainEthApi<N>: FullEthApiServer,
 {
     type Handle = RpcHandle<N, WorldChainEthApi<N>>;
 
@@ -167,6 +169,7 @@ impl<N> RethRpcAddOns<N> for WorldChainAddOns<N>
 where
     N: FullNodeComponents<Types: NodeTypes<ChainSpec = OpChainSpec>>,
     OptimismEngineValidator: EngineValidator<<N::Types as NodeTypesWithEngine>::Engine>,
+    WorldChainEthApi<N>: FullEthApiServer,
 {
     type EthApi = WorldChainEthApi<N>;
 
