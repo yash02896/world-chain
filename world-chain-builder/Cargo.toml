@@ -108,8 +108,8 @@ reth-e2e-test-utils = { git = "https://github.com/paradigmxyz/reth", rev = "ddc9
 reth-consensus = { git = "https://github.com/paradigmxyz/reth", rev = "ddc9bda" }
 reth-node-core = { git = "https://github.com/paradigmxyz/reth", rev = "ddc9bda" }
 reth-tracing = { git = "https://github.com/paradigmxyz/reth", rev = "ddc9bda" }
-alloy-signer = "0.4"
-alloy-signer-local = "0.4"
+alloy-signer = { version = "0.5.4", default-features = false }
+alloy-signer-local = { version = "0.5.4", default-features = false }
 
 [features]
 jemalloc = ["tikv-jemallocator"]

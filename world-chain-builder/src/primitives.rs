@@ -1,3 +1,4 @@
+use alloy_eips::eip2718::Decodable2718;
 use alloy_rlp::{Decodable, Encodable};
 use reth::rpc::server_types::eth::{EthApiError, EthResult};
 use reth_primitives::transaction::TransactionConversionError;
@@ -42,7 +43,7 @@ impl Decodable for WorldChainPooledTransactionsElement {
 
 impl WorldChainPooledTransactionsElement {
     pub fn decode_enveloped(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let inner = PooledTransactionsElement::decode_enveloped(buf)?;
+        let inner = PooledTransactionsElement::decode_2718(buf)?;
         let pbh_payload = match PbhPayload::decode(buf) {
             Ok(res) => Some(res),
             Err(error) => {
@@ -55,7 +56,7 @@ impl WorldChainPooledTransactionsElement {
     }
 
     pub fn encode_enveloped(&self, out: &mut dyn alloy_rlp::BufMut) {
-        self.inner.encode_enveloped(out);
+        self.inner.encode(out);
         if let Some(pbh_payload) = &self.pbh_payload {
             pbh_payload.encode(out);
         }

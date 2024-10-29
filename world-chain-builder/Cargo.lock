@@ -908,22 +908,6 @@ dependencies = [
 
 [[package]]
 name = "alloy-signer-local"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "494e0a256f3e99f2426f994bcd1be312c02cb8f88260088dacb33a8b8936475f"
-dependencies = [
- "alloy-consensus 0.4.2",
- "alloy-network 0.4.2",
- "alloy-primitives",
- "alloy-signer 0.4.2",
- "async-trait",
- "k256",
- "rand",
- "thiserror",
-]
-
-[[package]]
-name = "alloy-signer-local"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6614f02fc1d5b079b2a4a5320018317b506fd0a6d67c1fd5542a71201724986c"
@@ -7523,7 +7507,7 @@ dependencies = [
  "alloy-eips 0.5.4",
  "alloy-primitives",
  "alloy-signer 0.5.4",
- "alloy-signer-local 0.5.4",
+ "alloy-signer-local",
  "auto_impl",
  "derive_more 1.0.0",
  "metrics 0.24.0",
@@ -7974,7 +7958,7 @@ dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
  "alloy-signer 0.5.4",
- "alloy-signer-local 0.5.4",
+ "alloy-signer-local",
  "derive_more 1.0.0",
  "eyre",
  "futures-util",
@@ -9419,7 +9403,7 @@ dependencies = [
  "alloy-rpc-types-txpool",
  "alloy-serde 0.5.4",
  "alloy-signer 0.5.4",
- "alloy-signer-local 0.5.4",
+ "alloy-signer-local",
  "async-trait",
  "derive_more 1.0.0",
  "futures",
@@ -13540,8 +13524,8 @@ dependencies = [
  "alloy-rlp",
  "alloy-rpc-types",
  "alloy-rpc-types-eth 0.5.4",
- "alloy-signer 0.4.2",
- "alloy-signer-local 0.4.2",
+ "alloy-signer 0.5.4",
+ "alloy-signer-local",
  "bytemuck",
  "bytes",
  "chrono",
