@@ -24,43 +24,25 @@ use alloy_network::{Ethereum, EthereumWallet, TransactionBuilder};
 use alloy_rpc_types::{TransactionInput, TransactionRequest};
 use alloy_signer_local::PrivateKeySigner;
 use chrono::Utc;
+use reth::{api::{FullNodeTypesAdapter, NodeTypesWithDBAdapter}, builder::components::Components};
+use reth::builder::{NodeAdapter, NodeBuilder, NodeConfig, NodeHandle};
+use reth::chainspec::ChainSpec;
+use reth::payload::{EthPayloadBuilderAttributes, PayloadId};
 use reth::tasks::TaskManager;
-use reth::transaction_pool::{
-    blobstore::DiskFileBlobStore, Pool, TransactionValidationTaskExecutor,
-};
-use reth::{api::FullNodeTypes, chainspec::ChainSpec};
-use reth::{
-    api::NodeTypes,
-    payload::{EthPayloadBuilderAttributes, PayloadId},
-};
-use reth::{
-    api::NodeTypesWithEngine,
-    builder::{
-        components::Components, Node, NodeAdapter, NodeBuilder, NodeComponents,
-        NodeComponentsBuilder, NodeConfig, NodeHandle,
-    },
-    network::PeersHandleProvider,
-};
-use reth::{
-    api::{FullNodeComponents, FullNodeTypesAdapter, NodeTypesWithDBAdapter},
-    builder::rpc::RethRpcAddOns,
-};
-use reth_consensus::Consensus;
+use reth::transaction_pool::{blobstore::DiskFileBlobStore, TransactionValidationTaskExecutor};
 use reth_db::{
     test_utils::{tempdir_path, TempDatabase},
     DatabaseEnv,
 };
 use reth_e2e_test_utils::{
-    node::NodeTestContext, transaction::TransactionTestContext, wallet::Wallet, NodeHelperType,
+    node::NodeTestContext, transaction::TransactionTestContext, wallet::Wallet,
 };
 use reth_evm::execute::BasicBlockExecutorProvider;
 use reth_node_core::args::RpcServerArgs;
 use reth_optimism_chainspec::{OpChainSpec, BASE_MAINNET};
-use reth_optimism_evm::{OpExecutionStrategyFactory, OpExecutorProvider, OptimismEvmConfig};
-use reth_optimism_node::{
-    engine::OptimismEngineValidator, node::OptimismAddOns, OptimismPayloadBuilderAttributes,
-};
-use reth_primitives::{EthereumHardforks, Hardfork, PooledTransactionsElement, Withdrawals};
+use reth_optimism_evm::{OpExecutionStrategyFactory, OptimismEvmConfig};
+use reth_optimism_node::OptimismPayloadBuilderAttributes;
+use reth_primitives::{PooledTransactionsElement, Withdrawals};
 use reth_provider::providers::BlockchainProvider;
 use revm_primitives::{Address, Bytes, FixedBytes, TxKind, B256, U256};
 use semaphore::{
@@ -89,29 +71,11 @@ pub struct WorldChainBuilderTestContext {
     pub pbh_wallets: Vec<PrivateKeySigner>,
     pub tree: LazyPoseidonTree,
     pub tasks: TaskManager,
+    pub node: Adapter,
     pub identities: HashMap<Address, usize>,
 }
-type HelperType<N> = NodeTestContext<
-    NodeAdapter<
-        FullNodeTypesAdapter<
-            NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>,
-            BlockchainProvider<NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>>,
-        >,
-        <<N as Node<
-            FullNodeTypesAdapter<
-                NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>,
-                BlockchainProvider<NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>>,
-            >,
-        >>::ComponentsBuilder as NodeComponentsBuilder<
-            FullNodeTypesAdapter<
-                NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>,
-                BlockchainProvider<NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>>,
-            >,
-        >>::Components,
-    >,
-    WorldChainAddOns<N>,
->;
-type LongType = NodeTestContext<
+
+type Adapter = NodeTestContext<
     NodeAdapter<
         FullNodeTypesAdapter<
             NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
@@ -146,7 +110,7 @@ type LongType = NodeTestContext<
             Arc<(dyn reth_consensus::Consensus + 'static)>,
         >,
     >,
-    OptimismAddOns<
+    WorldChainAddOns<
         NodeAdapter<
             FullNodeTypesAdapter<
                 NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
@@ -154,7 +118,7 @@ type LongType = NodeTestContext<
                     NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
                 >,
             >,
-            reth::builder::components::Components<
+            Components<
                 FullNodeTypesAdapter<
                     NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
                     BlockchainProvider<
@@ -185,47 +149,7 @@ type LongType = NodeTestContext<
 >;
 
 impl WorldChainBuilderTestContext {
-    pub async fn setup<N>() -> eyre::Result<(Self, HelperType<N>)>
-    where
-        N: reth::builder::Node<
-                reth::api::FullNodeTypesAdapter<
-                    reth::api::NodeTypesWithDBAdapter<
-                        N,
-                        std::sync::Arc<reth_db::test_utils::TempDatabase<reth_db::DatabaseEnv>>,
-                    >,
-                    reth_provider::providers::BlockchainProvider<
-                        reth::api::NodeTypesWithDBAdapter<
-                            N,
-                            std::sync::Arc<reth_db::test_utils::TempDatabase<reth_db::DatabaseEnv>>,
-                        >,
-                    >,
-                >,
-            > + FullNodeComponents,
-        <N as NodeTypes>::ChainSpec: EthereumHardforks,
-        WorldChainAddOns<N>: RethRpcAddOns<
-            NodeAdapter<
-                FullNodeTypesAdapter<
-                    NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>,
-                    BlockchainProvider<NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>>,
-                >,
-                <<N as reth::builder::Node<
-                    FullNodeTypesAdapter<
-                        NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>,
-                        BlockchainProvider<
-                            NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>,
-                        >,
-                    >,
-                >>::ComponentsBuilder as NodeComponentsBuilder<
-                    FullNodeTypesAdapter<
-                        NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>,
-                        BlockchainProvider<
-                            NodeTypesWithDBAdapter<N, Arc<TempDatabase<DatabaseEnv>>>,
-                        >,
-                    >,
-                >>::Components,
-            >,
-        >,
-    {
+    pub async fn setup() -> eyre::Result<Self> {
         let wallets = Wallet::new(20).with_chain_id(DEV_CHAIN_ID).gen();
         let mut tree = LazyPoseidonTree::new(30, Field::from(0)).derived();
         let mut identities = HashMap::new();
@@ -271,15 +195,13 @@ impl WorldChainBuilderTestContext {
             .launch()
             .await?;
         let test_ctx = NodeTestContext::new(node, optimism_payload_attributes).await?;
-        Ok((
-            Self {
-                pbh_wallets: wallets,
-                tree,
-                tasks,
-                identities,
-            },
-            test_ctx,
-        ))
+        Ok(Self {
+            pbh_wallets: wallets,
+            tree,
+            tasks,
+            node: test_ctx,
+            identities,
+        })
     }
 
     pub async fn raw_pbh_tx_bytes(
@@ -352,119 +274,110 @@ impl WorldChainBuilderTestContext {
     }
 }
 
-// #[tokio::test]
-// #[serial]
-// async fn test_can_build_pbh_payload() -> eyre::Result<()> {
-//     tokio::time::sleep(Duration::from_secs(1)).await;
-//     let mut ctx = WorldChainBuilderTestContext::setup().await?;
-//     let mut pbh_tx_hashes = vec![];
-//     for signer in ctx.pbh_wallets.iter() {
-//         let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
-//         let pbh_hash = ctx.node.rpc.inject_tx(raw_tx.clone()).await?;
-//         pbh_tx_hashes.push(pbh_hash);
-//     }
+#[tokio::test]
+#[serial]
+async fn test_can_build_pbh_payload() -> eyre::Result<()> {
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let mut ctx = WorldChainBuilderTestContext::setup().await?;
+    let mut pbh_tx_hashes = vec![];
+    for signer in ctx.pbh_wallets.iter() {
+        let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
+        let pbh_hash = ctx.node.rpc.inject_tx(raw_tx.clone()).await?;
+        pbh_tx_hashes.push(pbh_hash);
+    }
 
-//     let (payload, _) = ctx
-//         .node
-//         .advance_block(vec![], optimism_payload_attributes)
-//         .await?;
+    let (payload, _) = ctx.node.advance_block().await?;
 
-//     assert_eq!(payload.block().body.transactions.len(), pbh_tx_hashes.len());
-//     let block_hash = payload.block().hash();
-//     let block_number = payload.block().number;
+    assert_eq!(payload.block().body.transactions.len(), pbh_tx_hashes.len());
+    let block_hash = payload.block().hash();
+    let block_number = payload.block().number;
 
-//     let tip = pbh_tx_hashes[0];
-//     ctx.node
-//         .assert_new_block(tip, block_hash, block_number)
-//         .await?;
+    let tip = pbh_tx_hashes[0];
+    ctx.node
+        .assert_new_block(tip, block_hash, block_number)
+        .await?;
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[tokio::test]
-// #[serial]
-// async fn test_transaction_pool_ordering() -> eyre::Result<()> {
-//     tokio::time::sleep(Duration::from_secs(1)).await;
-//     let mut ctx = WorldChainBuilderTestContext::setup().await?;
-//     let non_pbh_tx = tx(ctx.node.inner.chain_spec().chain.id(), None, 0);
-//     let wallet = ctx.pbh_wallets[0].clone();
-//     let signer = EthereumWallet::from(wallet);
-//     let signed = <TransactionRequest as TransactionBuilder<Ethereum>>::build(non_pbh_tx, &signer)
-//         .await
-//         .unwrap();
-//     let non_pbh_hash = ctx.node.rpc.inject_tx(signed.encoded_2718().into()).await?;
-//     let mut pbh_tx_hashes = vec![];
-//     for signer in ctx.pbh_wallets.iter().skip(1) {
-//         let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
-//         let pbh_hash = ctx.node.rpc.inject_tx(raw_tx.clone()).await?;
-//         pbh_tx_hashes.push(pbh_hash);
-//     }
+#[tokio::test]
+#[serial]
+async fn test_transaction_pool_ordering() -> eyre::Result<()> {
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let mut ctx = WorldChainBuilderTestContext::setup().await?;
+    let non_pbh_tx = tx(ctx.node.inner.chain_spec().chain.id(), None, 0);
+    let wallet = ctx.pbh_wallets[0].clone();
+    let signer = EthereumWallet::from(wallet);
+    let signed = <TransactionRequest as TransactionBuilder<Ethereum>>::build(non_pbh_tx, &signer)
+        .await
+        .unwrap();
+    let non_pbh_hash = ctx.node.rpc.inject_tx(signed.encoded_2718().into()).await?;
+    let mut pbh_tx_hashes = vec![];
+    for signer in ctx.pbh_wallets.iter().skip(1) {
+        let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
+        let pbh_hash = ctx.node.rpc.inject_tx(raw_tx.clone()).await?;
+        pbh_tx_hashes.push(pbh_hash);
+    }
 
-//     let (payload, _) = ctx
-//         .node
-//         .advance_block(vec![], optimism_payload_attributes)
-//         .await?;
+    let (payload, _) = ctx.node.advance_block().await?;
 
-//     assert_eq!(
-//         payload.block().body.transactions.len(),
-//         pbh_tx_hashes.len() + 1
-//     );
-//     // Assert the non-pbh transaction is included in the block last
-//     assert_eq!(
-//         payload.block().body.transactions.last().unwrap().hash(),
-//         non_pbh_hash
-//     );
-//     let block_hash = payload.block().hash();
-//     let block_number = payload.block().number;
+    assert_eq!(
+        payload.block().body.transactions.len(),
+        pbh_tx_hashes.len() + 1
+    );
+    // Assert the non-pbh transaction is included in the block last
+    assert_eq!(
+        payload.block().body.transactions.last().unwrap().hash(),
+        non_pbh_hash
+    );
+    let block_hash = payload.block().hash();
+    let block_number = payload.block().number;
 
-//     let tip = pbh_tx_hashes[0];
-//     ctx.node
-//         .assert_new_block(tip, block_hash, block_number)
-//         .await?;
+    let tip = pbh_tx_hashes[0];
+    ctx.node
+        .assert_new_block(tip, block_hash, block_number)
+        .await?;
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[tokio::test]
-// #[serial]
-// async fn test_invalidate_dup_tx_and_nullifier() -> eyre::Result<()> {
-//     tokio::time::sleep(Duration::from_secs(1)).await;
-//     let ctx = WorldChainBuilderTestContext::setup().await?;
-//     let signer = ctx.pbh_wallets[0].clone();
-//     let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
-//     ctx.node.rpc.inject_tx(raw_tx.clone()).await?;
-//     let dup_pbh_hash_res = ctx.node.rpc.inject_tx(raw_tx.clone()).await;
-//     assert!(dup_pbh_hash_res.is_err());
-//     Ok(())
-// }
+#[tokio::test]
+#[serial]
+async fn test_invalidate_dup_tx_and_nullifier() -> eyre::Result<()> {
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let ctx = WorldChainBuilderTestContext::setup().await?;
+    let signer = ctx.pbh_wallets[0].clone();
+    let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
+    ctx.node.rpc.inject_tx(raw_tx.clone()).await?;
+    let dup_pbh_hash_res = ctx.node.rpc.inject_tx(raw_tx.clone()).await;
+    assert!(dup_pbh_hash_res.is_err());
+    Ok(())
+}
 
-// #[tokio::test]
-// #[serial]
-// async fn test_dup_pbh_nonce() -> eyre::Result<()> {
-//     tokio::time::sleep(Duration::from_secs(1)).await;
-//     let mut ctx = WorldChainBuilderTestContext::setup().await?;
-//     let signer = ctx.pbh_wallets[0].clone();
+#[tokio::test]
+#[serial]
+async fn test_dup_pbh_nonce() -> eyre::Result<()> {
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let mut ctx = WorldChainBuilderTestContext::setup().await?;
+    let signer = ctx.pbh_wallets[0].clone();
 
-//     let raw_tx_0 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
-//     ctx.node.rpc.inject_tx(raw_tx_0.clone()).await?;
-//     let raw_tx_1 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 1).await;
+    let raw_tx_0 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
+    ctx.node.rpc.inject_tx(raw_tx_0.clone()).await?;
+    let raw_tx_1 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 1).await;
 
-//     // Now that the nullifier has successfully been stored in
-//     // the `ExecutedPbhNullifierTable`, inserting a new tx with the
-//     // same pbh_nonce should fail to validate.
-//     assert!(ctx.node.rpc.inject_tx(raw_tx_1.clone()).await.is_err());
+    // Now that the nullifier has successfully been stored in
+    // the `ExecutedPbhNullifierTable`, inserting a new tx with the
+    // same pbh_nonce should fail to validate.
+    assert!(ctx.node.rpc.inject_tx(raw_tx_1.clone()).await.is_err());
 
-//     let (payload, _) = ctx
-//         .node
-//         .advance_block(vec![], optimism_payload_attributes)
-//         .await?;
+    let (payload, _) = ctx.node.advance_block().await?;
 
-//     // One transaction should be successfully validated
-//     // and included in the block.
-//     assert_eq!(payload.block().body.transactions.len(), 1);
+    // One transaction should be successfully validated
+    // and included in the block.
+    assert_eq!(payload.block().body.transactions.len(), 1);
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 /// Helper function to create a new eth payload attributes
 pub fn optimism_payload_attributes(timestamp: u64) -> OptimismPayloadBuilderAttributes {

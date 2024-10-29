@@ -15,9 +15,7 @@ use reth_optimism_node::engine::OptimismEngineValidator;
 use reth_optimism_node::node::{OpPrimitives, OptimismEngineValidatorBuilder};
 use reth_optimism_node::{
     args::RollupArgs,
-    node::{
-        OptimismAddOns, OptimismConsensusBuilder, OptimismExecutorBuilder, OptimismNetworkBuilder,
-    },
+    node::{OptimismConsensusBuilder, OptimismExecutorBuilder, OptimismNetworkBuilder},
     OptimismEngineTypes,
 };
 
