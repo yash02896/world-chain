@@ -7,9 +7,11 @@ mod block;
 mod call;
 mod pending_block;
 use alloy_primitives::U256;
+use alloy_rpc_types::TransactionInfo;
 use derive_more::derive::Deref;
 use op_alloy_network::Optimism;
-use reth::api::ConfigureEvm;
+use op_alloy_rpc_types::Transaction;
+use reth::api::{ConfigureEvm, FullNodeComponents};
 use reth::builder::EthApiBuilderCtx;
 use reth::chainspec::{EthChainSpec, EthereumHardforks};
 
@@ -18,7 +20,9 @@ use reth::rpc::api::eth::helpers::{
     AddDevSigners, EthApiSpec, EthFees, EthState, LoadBlock, LoadFee, LoadState, SpawnBlocking,
     Trace,
 };
+
 use reth::rpc::api::eth::RpcNodeCoreExt;
+use reth::rpc::compat::TransactionCompat;
 use reth::rpc::eth::{EthApiTypes, RpcNodeCore};
 use reth::rpc::server_types::eth::{EthStateCache, FeeHistoryCache, GasPriceOracle};
 use reth::tasks::{
@@ -27,7 +31,7 @@ use reth::tasks::{
 };
 use reth::transaction_pool::TransactionPool;
 use reth_optimism_rpc::{OpEthApi, OpEthApiError};
-use reth_primitives::Header;
+use reth_primitives::{Header, TransactionSignedEcRecovered};
 use reth_provider::{
     BlockNumReader, BlockReaderIdExt, CanonStateSubscriptions, ChainSpecProvider, EvmEnvProvider,
     StageCheckpointReader, StateProviderFactory,
@@ -215,6 +219,29 @@ where
     Self: LoadState<Evm: ConfigureEvm<Header = Header>>,
     N: RpcNodeCore,
 {
+}
+
+impl<N> TransactionCompat for WorldChainEthApi<N>
+where
+    N: FullNodeComponents,
+{
+    type Transaction = Transaction;
+
+    fn fill(
+        &self,
+        tx: TransactionSignedEcRecovered,
+        tx_info: TransactionInfo,
+    ) -> Self::Transaction {
+        self.inner.fill(tx, tx_info)
+    }
+
+    fn otterscan_api_truncate_input(tx: &mut Self::Transaction) {
+        OpEthApi::<N>::otterscan_api_truncate_input(tx)
+    }
+
+    fn tx_type(tx: &Self::Transaction) -> u8 {
+        OpEthApi::<N>::tx_type(tx)
+    }
 }
 
 impl<N> AddDevSigners for WorldChainEthApi<N>

@@ -12,7 +12,7 @@ use reth::rpc::eth::FullEthApiServer;
 use reth_db::DatabaseEnv;
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_node::engine::OptimismEngineValidator;
-use reth_optimism_node::node::OptimismEngineValidatorBuilder;
+use reth_optimism_node::node::{OpPrimitives, OptimismEngineValidatorBuilder};
 use reth_optimism_node::{
     args::RollupArgs,
     node::{
@@ -124,7 +124,7 @@ where
 }
 
 impl NodeTypes for WorldChainBuilder {
-    type Primitives = ();
+    type Primitives = OpPrimitives;
     type ChainSpec = OpChainSpec;
 }
 
