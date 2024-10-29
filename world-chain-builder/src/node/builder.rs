@@ -109,16 +109,17 @@ where
         OptimismConsensusBuilder,
     >;
 
-    type AddOns = OptimismAddOns<
+    type AddOns = WorldChainAddOns<
         NodeAdapter<N, <Self::ComponentsBuilder as NodeComponentsBuilder<N>>::Components>,
     >;
+
     fn components_builder(&self) -> Self::ComponentsBuilder {
         let Self { args, db } = self;
         Self::components(args.clone(), db.clone())
     }
 
     fn add_ons(&self) -> Self::AddOns {
-        OptimismAddOns::new(self.args.rollup_args.sequencer_http.clone())
+        WorldChainAddOns::new(self.args.rollup_args.sequencer_http.clone())
     }
 }
 
