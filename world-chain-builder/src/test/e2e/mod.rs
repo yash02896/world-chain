@@ -24,7 +24,7 @@ use alloy_network::{Ethereum, EthereumWallet, TransactionBuilder};
 use alloy_rpc_types::{TransactionInput, TransactionRequest};
 use alloy_signer_local::PrivateKeySigner;
 use chrono::Utc;
-use reth::{builder::{NodeAdapter, NodeBuilder, NodeConfig, NodeHandle}, transaction_pool::Pool};
+use reth::builder::{NodeAdapter, NodeBuilder, NodeConfig, NodeHandle};
 use reth::payload::{EthPayloadBuilderAttributes, PayloadId};
 use reth::tasks::TaskManager;
 use reth::transaction_pool::{blobstore::DiskFileBlobStore, TransactionValidationTaskExecutor};
@@ -63,78 +63,39 @@ use std::{
 
 pub const DEV_CHAIN_ID: u64 = 8453;
 
-type Adapter = NodeTestContext<
-    NodeAdapter<
+type NodeAdapterType = NodeAdapter<
+    FullNodeTypesAdapter<
+        NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
+        BlockchainProvider<
+            NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
+        >,
+    >,
+    Components<
         FullNodeTypesAdapter<
             NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
             BlockchainProvider<
                 NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
             >,
         >,
-        Components<
-            FullNodeTypesAdapter<
-                NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
-                BlockchainProvider<
-                    NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
-                >,
-            >,
-            reth::transaction_pool::Pool<
-                TransactionValidationTaskExecutor<
-                    WorldChainTransactionValidator<
-                        BlockchainProvider<
-                            NodeTypesWithDBAdapter<
-                                WorldChainBuilder,
-                                Arc<TempDatabase<DatabaseEnv>>,
-                            >,
-                        >,
-                        WorldChainPooledTransaction,
-                    >,
-                >,
-                WorldChainOrdering<WorldChainPooledTransaction>,
-                DiskFileBlobStore,
-            >,
-            OptimismEvmConfig,
-            BasicBlockExecutorProvider<OpExecutionStrategyFactory>,
-            Arc<(dyn reth_consensus::Consensus + 'static)>,
-        >,
-    >,
-    WorldChainAddOns<
-        NodeAdapter<
-            FullNodeTypesAdapter<
-                NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
-                BlockchainProvider<
-                    NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
-                >,
-            >,
-            Components<
-                FullNodeTypesAdapter<
-                    NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
+        reth::transaction_pool::Pool<
+            TransactionValidationTaskExecutor<
+                WorldChainTransactionValidator<
                     BlockchainProvider<
                         NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
                     >,
+                    WorldChainPooledTransaction,
                 >,
-                Pool<
-                    TransactionValidationTaskExecutor<
-                        WorldChainTransactionValidator<
-                            BlockchainProvider<
-                                NodeTypesWithDBAdapter<
-                                    WorldChainBuilder,
-                                    Arc<TempDatabase<DatabaseEnv>>,
-                                >,
-                            >,
-                            WorldChainPooledTransaction,
-                        >,
-                    >,
-                    WorldChainOrdering<WorldChainPooledTransaction>,
-                    DiskFileBlobStore,
-                >,
-                OptimismEvmConfig,
-                BasicBlockExecutorProvider<OpExecutionStrategyFactory>,
-                Arc<(dyn reth_consensus::Consensus + 'static)>,
             >,
+            WorldChainOrdering<WorldChainPooledTransaction>,
+            DiskFileBlobStore,
         >,
+        OptimismEvmConfig,
+        BasicBlockExecutorProvider<OpExecutionStrategyFactory>,
+        Arc<(dyn reth_consensus::Consensus + 'static)>,
     >,
 >;
+
+type Adapter = NodeTestContext<NodeAdapterType, WorldChainAddOns<NodeAdapterType>>;
 
 pub struct WorldChainBuilderTestContext {
     pub pbh_wallets: Vec<PrivateKeySigner>,
