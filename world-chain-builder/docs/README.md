@@ -13,7 +13,6 @@ The PBH transaction envelope consists of an EIP 2718 RLP encoded transaction env
 
 See
 - [Pbh Payload](https://github.com/worldcoin/world-chain/blob/8d60a1e79dbb3be68db075d49b3d0a8a67e45b3e/world-chain-builder/src/pbh/payload.rs#L50)
-
 - [Pooled Transaction](https://github.com/worldcoin/world-chain/blob/8d60a1e79dbb3be68db075d49b3d0a8a67e45b3e/world-chain-builder/src/primitives.rs#L14)
 
 ```rust
@@ -52,21 +51,19 @@ pub struct Proof(pub semaphore::protocol::Proof);
 Schema: `vv-mmyyyy-nn`
 
 Version Prefix: `vv`
-> Validation: Version matches current version.
+- Validation: Version matches current version.
 
 Date: `mmyyyy`
-> Validation: Month/Year matches current Month Year 
+- Validation: Month/Year matches current Month Year 
 
 PBH Nonce: `nn`: `u16`
-> Validation: PBH Nonce must be ≤ 30 by default. It is used to rate limit the amount of PBH transactions that can be sent in any given month. This value should reset at the beginning of each month monotonically increasing from 0→ `num_pbh_txs` . Any nonce > `num_pbh_txs` set on launch of the builder will be invalidated and not be inserted into the transaction pool.
+- Validation: PBH Nonce must be ≤ 30 by default. It is used to rate limit the amount of PBH transactions that can be sent in any given month. This value should reset at the beginning of each month monotonically increasing from 0→ `num_pbh_txs` . Any nonce > `num_pbh_txs` set on launch of the builder will be invalidated and not be inserted into the transaction pool.
 
 **Nullifier Hash**
-
-> Validation: Must be unique at the time of transaction validation.
+- Validation: Must be unique at the time of transaction validation.
 
 **Root**
-
-> Validation: Must be identical to the `latestRoot` in storage of the `OpWorldId` contract on L2.
+- Validation: Must be identical to the `latestRoot` in storage of the `OpWorldId` contract on L2.
 
 Additional Considerations: If a root has not yet been synchronized with l1. There is a window in which a valid proof will be seen as invalid in the transaction validator. A robust approach would be to read the root on l2, and assert it matches the root on l1 prior to sending the transaction to prevent a transaction validation error response.
 
@@ -76,6 +73,9 @@ Because a PBH transaction has a custom transaction envelope this means that a PB
 
 The `world-chain-builder` implements a custom [WorldChainEthApi](https://github.com/worldcoin/world-chain/blob/c44417727fcf510597aaf247dc1e2d8dca03a3b7/world-chain-builder/src/rpc/mod.rs#L52) that allows it to recieve PBH transaction envelopes over RPC through an `eth_sendRawTransaction` request. If a semaphore proof is attached to the transaction the [WorldChainTransactionValidator](https://github.com/worldcoin/world-chain/blob/c44417727fcf510597aaf247dc1e2d8dca03a3b7/world-chain-builder/src/pool/validator.rs#L37) will first validate the integrity of the proof, and if valid insert the transaction into the transaction pool with an associated bool indicating the pooled transaction is human verified. 
 
+The transaction pool implements a custom [ordering policy](https://github.com/worldcoin/world-chain/blob/c44417727fcf510597aaf247dc1e2d8dca03a3b7/world-chain-builder/src/pool/ordering.rs#L10) which guarantees top of block priority for verified human transactions. 
+
+A percentage of the block space is reserved for pbh transactions as defined by `verified_blockspace_capacity`. This value represents the maximum percentage of the block gas limit that will be dedicated to human verified transactions. If the amount of pbh transactions does not meet the threshold of reserved block space then non-verified transactions will fill this reserved block space. `100 - verified_blockspace_capacity` is the percentage of the block space always dedicated to non-verified transactions.
 
 ### Netowrk 
 World Chain is a [Optimistic Rollup](https://ethereum.org/en/developers/docs/scaling/optimistic-rollups/) on Ethereum. World Chain functions at the Consensus layer identically to that of Optimism, and other optimistic rollups. But differs at the execution layer in a couple ways. 
