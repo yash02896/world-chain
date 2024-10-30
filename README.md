@@ -4,7 +4,7 @@ The WorldChain Builder is a custom block builder for the OP Stack that provides 
 
 
 ## PBH Transaction Envelope
-The builder introduces a new EIP-2718 RLP encoded transaction envelope including a [Pbh Payload](https://github.com/worldcoin/world-chain/blob/8d60a1e79dbb3be68db075d49b3d0a8a67e45b3e/world-chain-builder/src/pbh/payload.rs#L50), which contains a World ID proof, proving the transaction was created by a verified user.
+The builder introduces a new EIP-2718 RLP encoded transaction envelope including a [Pbh Payload](https://github.com/worldcoin/world-chain/blob/8d60a1e79dbb3be68db075d49b3d0a8a67e45b3e/world-chain-builder/src/pbh/payload.rs#L50), which contains a World ID proof, proving the transaction was created by a verified human.
 
 ```rust
 
