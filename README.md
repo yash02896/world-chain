@@ -82,7 +82,7 @@ The **Root** represents the root of the Merkle tree for which the proof was gene
 
 
 ## Running the Devnet
-To spin up a OP Stack devnet with `rollup-boost` and the `world-chain-builder` deployed, make sure that you have [just](https://github.com/casey/just?tab=readme-ov-file) installed and simply run the following command.
+To spin up a OP Stack devnet with `rollup-boost` and the `world-chain-builder` deployed, make sure that you have [just](https://github.com/casey/just?tab=readme-ov-file) installed, and docker daemon running. Then simply run the following command.
 
 ```
 just devnet-up
