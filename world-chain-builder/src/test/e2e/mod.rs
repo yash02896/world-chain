@@ -4,9 +4,11 @@ use crate::{
         args::{ExtArgs, WorldChainBuilderArgs},
         builder::{WorldChainAddOns, WorldChainBuilder},
     },
-    pbh::date_marker::DateMarker,
-    pbh::external_nullifier::{ExternalNullifier, Prefix},
-    pbh::payload::{PbhPayload, Proof},
+    pbh::{
+        date_marker::DateMarker,
+        external_nullifier::{ExternalNullifier, Prefix},
+        payload::{PbhPayload, Proof},
+    },
     pool::{
         ordering::WorldChainOrdering,
         root::{LATEST_ROOT_SLOT, OP_WORLD_ID},
@@ -15,21 +17,21 @@ use crate::{
     },
     primitives::WorldChainPooledTransactionsElement,
 };
+use alloy_eips::eip2718::Decodable2718;
 use alloy_genesis::{Genesis, GenesisAccount};
 use alloy_network::eip2718::Encodable2718;
 use alloy_network::{Ethereum, EthereumWallet, TransactionBuilder};
 use alloy_rpc_types::{TransactionInput, TransactionRequest};
 use alloy_signer_local::PrivateKeySigner;
 use chrono::Utc;
-use reth::api::{FullNodeTypesAdapter, NodeTypesWithDBAdapter};
-use reth::builder::{components::Components, NodeAdapter, NodeBuilder, NodeConfig, NodeHandle};
-use reth::chainspec::ChainSpec;
+use reth::builder::{NodeAdapter, NodeBuilder, NodeConfig, NodeHandle};
 use reth::payload::{EthPayloadBuilderAttributes, PayloadId};
 use reth::tasks::TaskManager;
-use reth::transaction_pool::{
-    blobstore::DiskFileBlobStore, Pool, TransactionValidationTaskExecutor,
+use reth::transaction_pool::{blobstore::DiskFileBlobStore, TransactionValidationTaskExecutor};
+use reth::{
+    api::{FullNodeTypesAdapter, NodeTypesWithDBAdapter},
+    builder::components::Components,
 };
-use reth_consensus::Consensus;
 use reth_db::{
     test_utils::{tempdir_path, TempDatabase},
     DatabaseEnv,
@@ -37,10 +39,11 @@ use reth_db::{
 use reth_e2e_test_utils::{
     node::NodeTestContext, transaction::TransactionTestContext, wallet::Wallet,
 };
+use reth_evm::execute::BasicBlockExecutorProvider;
 use reth_node_core::args::RpcServerArgs;
-use reth_optimism_chainspec::{OpChainSpec, BASE_MAINNET};
-use reth_optimism_evm::{OpExecutorProvider, OptimismEvmConfig};
-use reth_optimism_node::{engine::OptimismEngineValidator, OptimismPayloadBuilderAttributes};
+use reth_optimism_chainspec::{OpChainSpec, OpChainSpecBuilder};
+use reth_optimism_evm::{OpExecutionStrategyFactory, OptimismEvmConfig};
+use reth_optimism_node::OptimismPayloadBuilderAttributes;
 use reth_primitives::{PooledTransactionsElement, Withdrawals};
 use reth_provider::providers::BlockchainProvider;
 use revm_primitives::{Address, Bytes, FixedBytes, TxKind, B256, U256};
@@ -60,7 +63,7 @@ use std::{
 
 pub const DEV_CHAIN_ID: u64 = 8453;
 
-type Adapter = NodeAdapter<
+type NodeAdapterType = NodeAdapter<
     FullNodeTypesAdapter<
         NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
         BlockchainProvider<
@@ -74,7 +77,7 @@ type Adapter = NodeAdapter<
                 NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
             >,
         >,
-        Pool<
+        reth::transaction_pool::Pool<
             TransactionValidationTaskExecutor<
                 WorldChainTransactionValidator<
                     BlockchainProvider<
@@ -87,17 +90,18 @@ type Adapter = NodeAdapter<
             DiskFileBlobStore,
         >,
         OptimismEvmConfig,
-        OpExecutorProvider,
-        Arc<dyn Consensus>,
-        OptimismEngineValidator,
+        BasicBlockExecutorProvider<OpExecutionStrategyFactory>,
+        Arc<(dyn reth_consensus::Consensus + 'static)>,
     >,
 >;
+
+type Adapter = NodeTestContext<NodeAdapterType, WorldChainAddOns<NodeAdapterType>>;
 
 pub struct WorldChainBuilderTestContext {
     pub pbh_wallets: Vec<PrivateKeySigner>,
     pub tree: LazyPoseidonTree,
-    pub node: NodeTestContext<Adapter, WorldChainAddOns>,
     pub tasks: TaskManager,
+    pub node: Adapter,
     pub identities: HashMap<Address, usize>,
 }
 
@@ -113,9 +117,7 @@ impl WorldChainBuilderTestContext {
             tree = tree.update(i, &identity.commitment());
         }
 
-        let op_chain_spec = Arc::new(OpChainSpec {
-            inner: get_chain_spec(tree.root()),
-        });
+        let op_chain_spec = Arc::new(get_chain_spec(tree.root()));
 
         let tasks = TaskManager::current();
         let exec = tasks.executor();
@@ -147,12 +149,12 @@ impl WorldChainBuilderTestContext {
             )?)
             .launch()
             .await?;
-
+        let test_ctx = NodeTestContext::new(node, optimism_payload_attributes).await?;
         Ok(Self {
             pbh_wallets: wallets,
             tree,
-            node: NodeTestContext::new(node).await?,
             tasks,
+            node: test_ctx,
             identities,
         })
     }
@@ -167,7 +169,7 @@ impl WorldChainBuilderTestContext {
         let envelope = TransactionTestContext::sign_tx(signer.clone(), tx).await;
         let raw_tx = envelope.encoded_2718();
         let mut data = raw_tx.as_ref();
-        let recovered = PooledTransactionsElement::decode_enveloped(&mut data).unwrap();
+        let recovered = PooledTransactionsElement::decode_2718(&mut data).unwrap();
         let pbh_payload = self.valid_proof(
             signer.address(),
             recovered.hash().as_slice(),
@@ -181,7 +183,7 @@ impl WorldChainBuilderTestContext {
         };
 
         let mut buff = Vec::<u8>::new();
-        world_chain_pooled_tx_element.encode_enveloped(&mut buff);
+        world_chain_pooled_tx_element.encode_2718(&mut buff);
         buff.into()
     }
 
@@ -239,10 +241,7 @@ async fn test_can_build_pbh_payload() -> eyre::Result<()> {
         pbh_tx_hashes.push(pbh_hash);
     }
 
-    let (payload, _) = ctx
-        .node
-        .advance_block(vec![], optimism_payload_attributes)
-        .await?;
+    let (payload, _) = ctx.node.advance_block().await?;
 
     assert_eq!(payload.block().body.transactions.len(), pbh_tx_hashes.len());
     let block_hash = payload.block().hash();
@@ -275,10 +274,7 @@ async fn test_transaction_pool_ordering() -> eyre::Result<()> {
         pbh_tx_hashes.push(pbh_hash);
     }
 
-    let (payload, _) = ctx
-        .node
-        .advance_block(vec![], optimism_payload_attributes)
-        .await?;
+    let (payload, _) = ctx.node.advance_block().await?;
 
     assert_eq!(
         payload.block().body.transactions.len(),
@@ -329,10 +325,7 @@ async fn test_dup_pbh_nonce() -> eyre::Result<()> {
     // same pbh_nonce should fail to validate.
     assert!(ctx.node.rpc.inject_tx(raw_tx_1.clone()).await.is_err());
 
-    let (payload, _) = ctx
-        .node
-        .advance_block(vec![], optimism_payload_attributes)
-        .await?;
+    let (payload, _) = ctx.node.advance_block().await?;
 
     // One transaction should be successfully validated
     // and included in the block.
@@ -377,10 +370,9 @@ fn tx(chain_id: u64, data: Option<Bytes>, nonce: u64) -> TransactionRequest {
 
 /// Builds an OP Mainnet chain spec with the given merkle root
 /// Populated in the OpWorldID contract.
-fn get_chain_spec(merkle_root: Field) -> ChainSpec {
+fn get_chain_spec(merkle_root: Field) -> OpChainSpec {
     let genesis: Genesis = serde_json::from_str(include_str!("assets/genesis.json")).unwrap();
-    ChainSpec::builder()
-        .chain(BASE_MAINNET.chain)
+    OpChainSpecBuilder::base_mainnet()
         .genesis(genesis.extend_accounts(vec![(
             OP_WORLD_ID,
             GenesisAccount::default().with_storage(Some(BTreeMap::from_iter(vec![(

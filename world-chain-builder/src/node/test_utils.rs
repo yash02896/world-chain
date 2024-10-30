@@ -25,13 +25,14 @@ use reth_provider::{
     providers::StaticFileProvider, AccountReader, BlockHashReader, BlockIdReader, BlockNumReader,
     BlockReader, BlockReaderIdExt, BlockSource, ChainSpecProvider, ChangeSetReader, EvmEnvProvider,
     HeaderProvider, ProviderError, ProviderResult, PruneCheckpointReader, ReceiptProvider,
-    ReceiptProviderIdExt, RequestsProvider, StateProofProvider, StateProvider, StateProviderBox,
+    ReceiptProviderIdExt, StateProofProvider, StateProvider, StateProviderBox,
     StateProviderFactory, StateRootProvider, StaticFileProviderFactory, StorageRootProvider,
     TransactionVariant, TransactionsProvider, WithdrawalsProvider,
 };
 use reth_prune_types::{PruneCheckpoint, PruneSegment};
 use reth_trie::{
-    updates::TrieUpdates, AccountProof, HashedPostState, HashedStorage, MultiProof, TrieInput,
+    updates::TrieUpdates, AccountProof, HashedPostState, HashedStorage, MultiProof, StorageProof,
+    TrieInput,
 };
 use revm::primitives::{BlockEnv, CfgEnvWithHandlerCfg};
 use std::{
@@ -361,6 +362,15 @@ impl StorageRootProvider for WorldChainNoopProvider {
     ) -> ProviderResult<B256> {
         Ok(B256::default())
     }
+
+    fn storage_proof(
+        &self,
+        _address: Address,
+        _slot: B256,
+        _hashed_storage: HashedStorage,
+    ) -> ProviderResult<StorageProof> {
+        Ok(StorageProof::default())
+    }
 }
 
 impl StateProofProvider for WorldChainNoopProvider {
@@ -520,16 +530,6 @@ impl WithdrawalsProvider for WorldChainNoopProvider {
         Ok(None)
     }
     fn latest_withdrawal(&self) -> ProviderResult<Option<Withdrawal>> {
-        Ok(None)
-    }
-}
-
-impl RequestsProvider for WorldChainNoopProvider {
-    fn requests_by_block(
-        &self,
-        _id: BlockHashOrNumber,
-        _timestamp: u64,
-    ) -> ProviderResult<Option<reth_primitives::Requests>> {
         Ok(None)
     }
 }

@@ -1,24 +1,28 @@
 use std::{path::Path, sync::Arc};
 
 use eyre::eyre::Result;
-use reth::api::{FullNodeComponents, NodeAddOns};
+use reth::api::{EngineValidator, FullNodeComponents, NodeAddOns};
+use reth::builder::rpc::{RethRpcAddOns, RpcAddOns, RpcHandle, RpcHooks};
+use reth::builder::AddOnsContext;
 use reth::builder::{
     components::ComponentsBuilder, FullNodeTypes, Node, NodeTypes, NodeTypesWithEngine,
 };
+use reth::builder::{NodeAdapter, NodeComponentsBuilder};
+use reth::rpc::eth::FullEthApiServer;
 use reth_db::DatabaseEnv;
 use reth_optimism_chainspec::OpChainSpec;
+use reth_optimism_node::engine::OptimismEngineValidator;
+use reth_optimism_node::node::{OpPrimitives, OptimismEngineValidatorBuilder};
 use reth_optimism_node::{
     args::RollupArgs,
-    node::{
-        OptimismAddOns, OptimismConsensusBuilder, OptimismEngineValidatorBuilder,
-        OptimismExecutorBuilder, OptimismNetworkBuilder,
-    },
+    node::{OptimismConsensusBuilder, OptimismExecutorBuilder, OptimismNetworkBuilder},
     OptimismEngineTypes,
 };
 
+use crate::rpc::WorldChainEthApi;
 use crate::{
     payload::builder::WorldChainPayloadServiceBuilder, pbh::db::load_world_chain_db,
-    pool::builder::WorldChainPoolBuilder, rpc::WorldChainEthApi,
+    pool::builder::WorldChainPoolBuilder,
 };
 
 use super::args::{ExtArgs, WorldChainBuilderArgs};
@@ -48,7 +52,6 @@ impl WorldChainBuilder {
         OptimismNetworkBuilder,
         OptimismExecutorBuilder,
         OptimismConsensusBuilder,
-        OptimismEngineValidatorBuilder,
     >
     where
         Node: FullNodeTypes<
@@ -86,7 +89,6 @@ impl WorldChainBuilder {
             })
             .executor(OptimismExecutorBuilder::default())
             .consensus(OptimismConsensusBuilder::default())
-            .engine_validator(OptimismEngineValidatorBuilder::default())
     }
 }
 
@@ -103,10 +105,11 @@ where
         OptimismNetworkBuilder,
         OptimismExecutorBuilder,
         OptimismConsensusBuilder,
-        OptimismEngineValidatorBuilder,
     >;
 
-    type AddOns = WorldChainAddOns;
+    type AddOns = WorldChainAddOns<
+        NodeAdapter<N, <Self::ComponentsBuilder as NodeComponentsBuilder<N>>::Components>,
+    >;
 
     fn components_builder(&self) -> Self::ComponentsBuilder {
         let Self { args, db } = self;
@@ -114,14 +117,12 @@ where
     }
 
     fn add_ons(&self) -> Self::AddOns {
-        Self::AddOns {
-            inner: OptimismAddOns::new(self.args.rollup_args.sequencer_http.clone()),
-        }
+        WorldChainAddOns::new(self.args.rollup_args.sequencer_http.clone())
     }
 }
 
 impl NodeTypes for WorldChainBuilder {
-    type Primitives = ();
+    type Primitives = OpPrimitives;
     type ChainSpec = OpChainSpec;
 }
 
@@ -129,11 +130,49 @@ impl NodeTypesWithEngine for WorldChainBuilder {
     type Engine = OptimismEngineTypes;
 }
 
-#[derive(Debug, Clone)]
-pub struct WorldChainAddOns {
-    pub inner: OptimismAddOns,
+#[derive(Debug)]
+pub struct WorldChainAddOns<N: FullNodeComponents>(
+    pub RpcAddOns<N, WorldChainEthApi<N>, OptimismEngineValidatorBuilder>,
+);
+
+impl<N: FullNodeComponents> Default for WorldChainAddOns<N> {
+    fn default() -> Self {
+        Self::new(Default::default())
+    }
 }
 
-impl<N: FullNodeComponents> NodeAddOns<N> for WorldChainAddOns {
+impl<N: FullNodeComponents> WorldChainAddOns<N> {
+    /// Create a new instance with the given `sequencer_http` URL.
+    pub fn new(sequencer_http: Option<String>) -> Self {
+        Self(RpcAddOns::new(
+            move |ctx| WorldChainEthApi::new(ctx, sequencer_http),
+            Default::default(),
+        ))
+    }
+}
+
+impl<N> NodeAddOns<N> for WorldChainAddOns<N>
+where
+    N: FullNodeComponents<Types: NodeTypes<ChainSpec = OpChainSpec>>,
+    OptimismEngineValidator: EngineValidator<<N::Types as NodeTypesWithEngine>::Engine>,
+    WorldChainEthApi<N>: FullEthApiServer,
+{
+    type Handle = RpcHandle<N, WorldChainEthApi<N>>;
+
+    async fn launch_add_ons(self, ctx: AddOnsContext<'_, N>) -> eyre::Result<Self::Handle> {
+        self.0.launch_add_ons(ctx).await
+    }
+}
+
+impl<N> RethRpcAddOns<N> for WorldChainAddOns<N>
+where
+    N: FullNodeComponents<Types: NodeTypes<ChainSpec = OpChainSpec>>,
+    OptimismEngineValidator: EngineValidator<<N::Types as NodeTypesWithEngine>::Engine>,
+    WorldChainEthApi<N>: FullEthApiServer,
+{
     type EthApi = WorldChainEthApi<N>;
+
+    fn hooks_mut(&mut self) -> &mut RpcHooks<N, Self::EthApi> {
+        self.0.hooks_mut()
+    }
 }

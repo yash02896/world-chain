@@ -1,3 +1,6 @@
+use crate::pbh::payload::PbhPayload;
+use alloy_eips::eip2718::Decodable2718;
+use alloy_eips::eip2718::Encodable2718;
 use alloy_rlp::{Decodable, Encodable};
 use reth::rpc::server_types::eth::{EthApiError, EthResult};
 use reth_primitives::transaction::TransactionConversionError;
@@ -7,8 +10,6 @@ use reth_primitives::{
 };
 use revm_primitives::Bytes;
 use tracing::warn;
-
-use crate::pbh::payload::PbhPayload;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WorldChainPooledTransactionsElement {
@@ -40,9 +41,31 @@ impl Decodable for WorldChainPooledTransactionsElement {
     }
 }
 
+/// EIP-2718 encoding/decoding
+impl Encodable2718 for WorldChainPooledTransactionsElement {
+    fn encode_2718(&self, out: &mut dyn bytes::BufMut) {
+        self.inner.encode_2718(out);
+        if let Some(pbh_paylaod) = &self.pbh_payload {
+            pbh_paylaod.encode(out);
+        }
+    }
+
+    fn type_flag(&self) -> Option<u8> {
+        None
+    }
+
+    fn encode_2718_len(&self) -> usize {
+        self.inner.encode_2718_len()
+            + self
+                .pbh_payload
+                .as_ref()
+                .map_or(0, |pbh_payload| pbh_payload.length())
+    }
+}
+
 impl WorldChainPooledTransactionsElement {
-    pub fn decode_enveloped(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        let inner = PooledTransactionsElement::decode_enveloped(buf)?;
+    pub fn decode_2718(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let inner = PooledTransactionsElement::decode_2718(buf)?;
         let pbh_payload = match PbhPayload::decode(buf) {
             Ok(res) => Some(res),
             Err(error) => {
@@ -53,14 +76,9 @@ impl WorldChainPooledTransactionsElement {
 
         Ok(Self { inner, pbh_payload })
     }
+}
 
-    pub fn encode_enveloped(&self, out: &mut dyn alloy_rlp::BufMut) {
-        self.inner.encode_enveloped(out);
-        if let Some(pbh_payload) = &self.pbh_payload {
-            pbh_payload.encode(out);
-        }
-    }
-
+impl WorldChainPooledTransactionsElement {
     pub fn try_into_ecrecovered(
         self,
     ) -> Result<WorldChainPooledTransactionsElementEcRecovered, PooledTransactionsElement> {
@@ -124,7 +142,7 @@ pub fn recover_raw_transaction(
         return Err(EthApiError::EmptyRawTransactionData);
     }
 
-    let transaction = WorldChainPooledTransactionsElement::decode_enveloped(&mut data.as_ref())
+    let transaction = WorldChainPooledTransactionsElement::decode_2718(&mut data.as_ref())
         .map_err(|_| EthApiError::FailedToDecodeSignedTransaction)?;
 
     let ecrecovered = transaction
@@ -159,7 +177,7 @@ mod tests {
 
         for hex_data in &input_too_short {
             let input_rlp = &mut &hex_data[..];
-            let res = WorldChainPooledTransactionsElement::decode(input_rlp);
+            let res = WorldChainPooledTransactionsElement::decode_2718(input_rlp);
 
             assert!(
                 res.is_err(),
@@ -169,7 +187,7 @@ mod tests {
 
             // this is a legacy tx so we can attempt the same test with decode_enveloped
             let input_rlp = &mut &hex_data[..];
-            let res = WorldChainPooledTransactionsElement::decode_enveloped(input_rlp);
+            let res = WorldChainPooledTransactionsElement::decode_2718(input_rlp);
 
             assert!(
                 res.is_err(),
@@ -184,7 +202,7 @@ mod tests {
     fn decode_eip1559_enveloped() {
         let data = hex!("02f903d382426882ba09832dc6c0848674742682ed9694714b6a4ea9b94a8a7d9fd362ed72630688c8898c80b90364492d24749189822d8512430d3f3ff7a2ede675ac08265c08e2c56ff6fdaa66dae1cdbe4a5d1d7809f3e99272d067364e597542ac0c369d69e22a6399c3e9bee5da4b07e3f3fdc34c32c3d88aa2268785f3e3f8086df0934b10ef92cfffc2e7f3d90f5e83302e31382e302d64657600000000000000000000000000000000000000000000569e75fc77c1a856f6daaf9e69d8a9566ca34aa47f9133711ce065a571af0cfd000000000000000000000000e1e210594771824dad216568b91c9cb4ceed361c00000000000000000000000000000000000000000000000000000000000546e00000000000000000000000000000000000000000000000000000000000e4e1c00000000000000000000000000000000000000000000000000000000065d6750c00000000000000000000000000000000000000000000000000000000000f288000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002cf600000000000000000000000000000000000000000000000000000000000000640000000000000000000000000000000000000000000000000000000000000000f1628e56fa6d8c50e5b984a58c0df14de31c7b857ce7ba499945b99252976a93d06dcda6776fc42167fbe71cb59f978f5ef5b12577a90b132d14d9c6efa528076f0161d7bf03643cfc5490ec5084f4a041db7f06c50bd97efa08907ba79ddcac8b890f24d12d8db31abbaaf18985d54f400449ee0559a4452afe53de5853ce090000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000028000000000000000000000000000000000000000000000000000000000000003e800000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000064ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000000000000000000000000000000000000000000c080a01428023fc54a27544abc421d5d017b9a7c5936ad501cbdecd0d9d12d04c1a033a0753104bbf1c87634d6ff3f0ffa0982710612306003eb022363b57994bdef445a");
 
-        let res = WorldChainPooledTransactionsElement::decode_enveloped(&mut &data[..]).unwrap();
+        let res = WorldChainPooledTransactionsElement::decode_2718(&mut &data[..]).unwrap();
         assert_eq!(
             res.into_transaction().to(),
             Some(address!("714b6a4ea9b94a8a7d9fd362ed72630688c8898c"))
@@ -206,7 +224,7 @@ mod tests {
         let data = &hex!("d30b02808083c5cdeb8783c5acfd9e407c565656")[..];
 
         let input_rlp = &mut &data[..];
-        let res = WorldChainPooledTransactionsElement::decode(input_rlp);
+        let res = WorldChainPooledTransactionsElement::decode_2718(input_rlp);
         println!("{:?}", res);
         assert!(matches!(res, Ok(_tx)));
         assert!(input_rlp.is_empty());
@@ -219,7 +237,7 @@ mod tests {
         assert!(input_rlp.is_empty());
 
         // we can also decode_enveloped
-        let res = WorldChainPooledTransactionsElement::decode_enveloped(&mut &data[..]);
+        let res = WorldChainPooledTransactionsElement::decode_2718(&mut &data[..]);
         assert!(matches!(res, Ok(_tx)));
     }
 }

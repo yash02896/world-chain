@@ -1,9 +1,8 @@
 use crate::rpc::WorldChainEthApi;
 use alloy_rpc_types::TransactionRequest;
 use reth::api::ConfigureEvm;
-use reth::api::{EthApiTypes, FullNodeComponents, NodeTypes};
-use reth::core::rpc::eth::helpers::{Call, EthCall, LoadState, SpawnBlocking};
-use reth_optimism_chainspec::OpChainSpec;
+use reth::rpc::api::eth::helpers::{Call, EthCall, LoadPendingBlock, LoadState, SpawnBlocking};
+use reth::rpc::eth::{EthApiTypes, RpcNodeCore};
 use reth_optimism_rpc::OpEthApi;
 use reth_primitives::{
     revm_primitives::{BlockEnv, TxEnv},
@@ -12,18 +11,17 @@ use reth_primitives::{
 
 impl<N> EthCall for WorldChainEthApi<N>
 where
-    Self: Call,
-    N: FullNodeComponents<Types: NodeTypes<ChainSpec = OpChainSpec>>,
-    Self::Error: From<<OpEthApi<N> as EthApiTypes>::Error>,
+    Self: Call + LoadPendingBlock,
+    N: RpcNodeCore,
 {
 }
 
 impl<N> Call for WorldChainEthApi<N>
 where
-    Self: LoadState + SpawnBlocking,
-    N: FullNodeComponents,
+    Self: LoadState<Evm: ConfigureEvm<Header = Header>> + SpawnBlocking,
     OpEthApi<N>: Call,
     Self::Error: From<<OpEthApi<N> as EthApiTypes>::Error>,
+    N: RpcNodeCore,
 {
     #[inline]
     fn call_gas_limit(&self) -> u64 {
@@ -33,11 +31,6 @@ where
     #[inline]
     fn max_simulate_blocks(&self) -> u64 {
         self.inner.max_simulate_blocks()
-    }
-
-    #[inline]
-    fn evm_config(&self) -> &impl ConfigureEvm<Header = Header> {
-        self.inner.evm_config()
     }
 
     fn create_txn_env(

@@ -3,12 +3,11 @@
 use crate::rpc::WorldChainEthApi;
 use alloy_primitives::{BlockNumber, B256};
 use reth::api::ConfigureEvm;
-use reth::api::{EthApiTypes, FullNodeComponents, NodeTypes};
-use reth::chainspec::EthereumHardforks;
-use reth::core::rpc::eth::helpers::{LoadPendingBlock, SpawnBlocking};
+use reth::chainspec::{EthChainSpec, EthereumHardforks};
+use reth::rpc::api::eth::helpers::{LoadPendingBlock, SpawnBlocking};
+use reth::rpc::eth::{EthApiTypes, RpcNodeCore};
 use reth::rpc::server_types::eth::PendingBlock;
 use reth::transaction_pool::TransactionPool;
-use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_rpc::OpEthApi;
 use reth_primitives::{revm_primitives::BlockEnv, Header, Receipt, SealedBlockWithSenders};
 use reth_provider::{
@@ -18,32 +17,19 @@ use reth_provider::{
 impl<N> LoadPendingBlock for WorldChainEthApi<N>
 where
     Self: SpawnBlocking,
-    N: FullNodeComponents<Types: NodeTypes<ChainSpec = OpChainSpec>>,
+    N: RpcNodeCore<
+        Provider: BlockReaderIdExt
+                      + EvmEnvProvider
+                      + ChainSpecProvider<ChainSpec: EthChainSpec + EthereumHardforks>
+                      + StateProviderFactory,
+        Pool: TransactionPool,
+        Evm: ConfigureEvm<Header = Header>,
+    >,
     Self::Error: From<<OpEthApi<N> as EthApiTypes>::Error>,
 {
     #[inline]
-    fn provider(
-        &self,
-    ) -> impl BlockReaderIdExt
-           + EvmEnvProvider
-           + ChainSpecProvider<ChainSpec: EthereumHardforks>
-           + StateProviderFactory {
-        self.inner.provider()
-    }
-
-    #[inline]
-    fn pool(&self) -> impl TransactionPool {
-        self.inner.pool()
-    }
-
-    #[inline]
     fn pending_block(&self) -> &tokio::sync::Mutex<Option<PendingBlock>> {
         self.inner.pending_block()
-    }
-
-    #[inline]
-    fn evm_config(&self) -> &impl ConfigureEvm<Header = Header> {
-        self.inner.evm_config()
     }
 
     /// Returns the locally built pending block

@@ -1,3 +1,5 @@
+use alloy_consensus::EMPTY_OMMER_ROOT_HASH;
+use alloy_eips::merge::BEACON_NONCE;
 use reth_evm::ConfigureEvm;
 use std::sync::Arc;
 
@@ -28,9 +30,8 @@ use reth_optimism_node::{
     OptimismPayloadBuilderAttributes,
 };
 use reth_optimism_payload_builder::error::OptimismPayloadBuilderError;
-use reth_primitives::constants::BEACON_NONCE;
 use reth_primitives::{proofs, BlockBody};
-use reth_primitives::{Block, Header, Receipt, TxType, EMPTY_OMMER_ROOT_HASH};
+use reth_primitives::{Block, Header, Receipt, TxType};
 use reth_provider::{
     CanonStateSubscriptions, ChainSpecProvider, ExecutionOutcome, StateProviderFactory,
 };
@@ -274,7 +275,7 @@ where
     );
 
     // apply eip-4788 pre block contract call
-    SystemCaller::new(&evm_config, chain_spec.clone())
+    SystemCaller::new(evm_config.clone(), chain_spec.clone())
         .pre_block_beacon_root_contract_call(
             &mut db,
             &initialized_cfg,
@@ -350,7 +351,7 @@ where
         let env = EnvWithHandlerCfg::new_with_cfg_env(
             initialized_cfg.clone(),
             initialized_block_env.clone(),
-            evm_config.tx_env(&sequencer_tx),
+            evm_config.tx_env(&sequencer_tx.as_signed(), sequencer_tx.signer()),
         );
 
         let mut evm = evm_config.evm_with_env(&mut db, env);
@@ -440,7 +441,7 @@ where
             let env = EnvWithHandlerCfg::new_with_cfg_env(
                 initialized_cfg.clone(),
                 initialized_block_env.clone(),
-                evm_config.tx_env(&tx),
+                evm_config.tx_env(&tx.as_signed(), tx.signer()),
             );
 
             // Configure the environment for the block.
@@ -609,18 +610,18 @@ where
         parent_beacon_block_root: attributes.payload_attributes.parent_beacon_block_root,
         blob_gas_used,
         excess_blob_gas,
-        requests_root: None,
-    };
-
-    let body = BlockBody {
-        transactions: executed_txs,
-        ommers: vec![],
-        withdrawals,
-        requests: None,
+        requests_hash: None,
     };
 
     // seal the block
-    let block = Block { header, body };
+    let block = Block {
+        header,
+        body: BlockBody {
+            transactions: executed_txs,
+            ommers: vec![],
+            withdrawals,
+        },
+    };
 
     let sealed_block = block.seal_slow();
     debug!(target: "payload_builder", ?sealed_block, "sealed built block");
