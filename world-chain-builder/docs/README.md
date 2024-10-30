@@ -4,9 +4,7 @@ This document is intended to outline at a high level the lifecycle of a PBH Tran
 
 ### Overview
 
-The `world-chain-builder` is a custom block builder integrated with [world-id](https://world.org/world-id) which implements _Priority Blockspace for Humans (PBH)_. 
-
-The builder defines a custom transaction envelope for PBH transactions while retaining backwards compatibility with standard [EIP 2718 transaction envelope](https://eips.ethereum.org/EIPS/eip-2718). This customn transaction envelope holds a [world-id](https://world.org/world-id) semaphore proof allowing the builder to verify _proof of personhood_ associated with the transaction. 
+The `world-chain-builder` is a custom block builder integrated with [world-id](https://world.org/world-id) which implements _Priority Blockspace for Humans (PBH)_.  The builder defines a custom transaction envelope for PBH transactions while retaining backwards compatibility with standard [EIP 2718 transaction envelope](https://eips.ethereum.org/EIPS/eip-2718). This customn transaction envelope holds a [world-id](https://world.org/world-id) semaphore proof allowing the builder to verify _proof of personhood_ associated with the transaction. 
 
 A detailed outline of the PBH transaction envelope can be found [here](PbhEnvelope.md). 
 
@@ -22,6 +20,6 @@ For a detailed look at the custom transaction envelope, and validation rules see
 
 
 ### Additional References
-[World Chain Network](Network.md)
+[Network Overview](Network.md)
 
 [Creating Human Verified Transactions](../crates/toolkit/README.md)

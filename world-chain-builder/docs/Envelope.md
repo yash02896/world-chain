@@ -72,12 +72,4 @@ PBH Nonce: `u16`:
 
 Additional Considerations: If a root has not yet been synchronized with l1. There is a window in which a valid proof will be seen as invalid in the transaction validator. A robust approach would be to read the root on l2, and assert it matches the root on l1 prior to sending the transaction to prevent a transaction validation error response.
 
-### **Builder API**
 
-The custom PBH transaction envelope must be sent to the builder’s public rpc through a `eth_sendRawTransaction` JSON RPC request. 
-
-Additional References:
-
-[**Building a Raw PBH Transaction Envelope from ORB Sequencer Reference**](https://github.com/worldcoin/world-chain/blob/8d60a1e79dbb3be68db075d49b3d0a8a67e45b3e/world-chain-builder/crates/toolkit/README.md)
-
-[**Sending a Raw PBH Transaction to the Builder Reference:**](ttps://github.com/worldcoin/world-chain/blob/8d60a1e79dbb3be68db075d49b3d0a8a67e45b3e/world-chain-builder/crates/assertor/src/main.rs#L119)

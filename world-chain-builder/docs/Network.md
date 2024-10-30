@@ -12,8 +12,8 @@ The `world-chain-builder` is the favored proposer in the network. Meaning if the
 
 The sequencer has two jobs:
 
-1. Validate the Block Proposed by the Builder.
-2. A fallback such that if the builder produces an invalid payload, times out, or otherwise - The chain still moves forward.
+1. Attest to the integrity of the Block Proposed by the Builder.
+2. Fallback such that if the builder produces an invalid payload, times out, or otherwise - The chain still moves forward.
 
 Two proposers on the network sequencing blocks is made possible by utilizing an [engine api](https://github.com/ethereum/execution-apis/blob/main/src/engine/common.md) proxy server multiplexing engine api calls from the consensus layer to both the _sequencer_, and the builder in parallel. We currently use [rollup-boost](https://github.com/flashbots/rollup-boost/tree/main) for this purpose.
 
