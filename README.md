@@ -36,56 +36,60 @@ pub struct PbhPayload {
 
 ```
 
-PBH Components
+## PBH Payload
 
-External Nullifier
+### External Nullifier
 
-The External Nullifier is a structured identifier used to ensure the uniqueness and proper sequencing of PBH transactions. Its format is defined as:
+The **External Nullifier** is a structured identifier used to ensure the uniqueness and proper sequencing of PBH transactions. Its format is defined as:
 
-Schema: vv-mmyyyy-nn
+### Schema
+`vv-mmyyyy-nn`
 
-Version Prefix (vv): Represents the version of the nullifier.
+- **Version Prefix (vv)**: Represents the version of the nullifier.
+  - Validation: Must match the current version.
 
-Validation: Must match the current version.
+- **Date (mmyyyy)**: Represents the month and year.
+  - Validation: Must match the current month and year.
 
-Date (mmyyyy): Represents the month and year.
+- **PBH Nonce (nn)**: A `u16` value used to rate-limit PBH transactions.
+  - Validation: 
+    - The PBH Nonce must be ≤ 30 by default.
+    - This nonce limits the number of PBH transactions each user can submit per month.
+    - It resets at the beginning of each month and increments monotonically from 0 to `num_pbh_txs`.
+    - Any nonce greater than `num_pbh_txs` will be invalidated and excluded from the transaction pool.
 
-Validation: Must match the current month and year.
+### Nullifier Hash
 
-PBH Nonce (nn): A u16 value used to rate-limit PBH transactions.
+The **Nullifier Hash** ensures that each PBH transaction is unique at the time of validation.
 
-Validation: The PBH Nonce must be ≤ 30 by default. This nonce is used to limit the number of PBH transactions each user can submit per month. It resets at the beginning of each month, incrementing monotonically from 0 to num_pbh_txs. Any nonce greater than num_pbh_txs will be invalidated and not inserted into the transaction pool.
-
-Nullifier Hash
-
-The Nullifier Hash ensures that each PBH transaction is unique at the time of validation.
-
-Validation: The nullifier hash must be unique during transaction validation to prevent duplicate transactions.
-
-Root
-
-The Root represents the root of the Merkle tree for which the proof was generated.
-
-Validation: Must match the latestRoot stored in the OpWorldId contract on L2.
-
-Additional Considerations: If the root has not yet synchronized with L1, there may be a window where a valid proof is perceived as invalid. To prevent transaction validation errors, the root should be read from L2 and asserted to match the root on L1 before submitting the transaction.
+- **Validation**: 
+  - The nullifier hash must be unique during transaction validation to prevent duplicate transactions.
 
 
-### **Builder API**
+### Root
 
-The custom PBH transaction envelope must be sent to the builder’s public rpc through a `eth_sendRawTransaction` JSON RPC request. 
+The **Root** represents the root of the Merkle tree for which the proof was generated.
 
-Additional References:
+- **Validation**: 
+  - Must match the `latestRoot` stored in the `OpWorldId` contract on L2.
 
-[**Building a Raw PBH Transaction Envelope from ORB Sequencer Reference**](https://github.com/worldcoin/world-chain/blob/8d60a1e79dbb3be68db075d49b3d0a8a67e45b3e/world-chain-builder/crates/toolkit/README.md)
-
-[**Sending a Raw PBH Transaction to the Builder Reference:**](ttps://github.com/worldcoin/world-chain/blob/8d60a1e79dbb3be68db075d49b3d0a8a67e45b3e/world-chain-builder/crates/assertor/src/main.rs#L119)
+- **Additional Considerations**: 
+  - If the root has not yet synchronized with L1, there may be a window where a valid proof is perceived as invalid.
+  - To avoid transaction validation errors, the root should be read from L2 and asserted to match the root on L1 before submitting the transaction.
 
 
 
 
 
+## Running the Devnet
+To spin up a OP Stack devnet with `rollup-boost` and the `world-chain-builder` deployed, make sure that you have [just](https://github.com/casey/just?tab=readme-ov-file) installed and simply run the following command.
 
+```
+just devnet-up
+```
 
-# Running the Devnet
+To stop the devnet and clean up all resources, run the command below.
 
+```
+just devnet-down
+```
