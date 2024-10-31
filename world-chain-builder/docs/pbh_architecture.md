@@ -2,6 +2,7 @@
 
 World Chain is an OP Stack chain, enabling priority blockspace for humans through the World Chain Builder. In order to fully understand the builder, lets quickly review how transaction inclusion works within the OP Stack. The diagram below demonstrates an abridged version of the lifecycle of a transaction on Optimistic Rollups.
 
+</br>
 
 ## Block Production on the OP Stack
 ![OP Stack Architecture](../../assets/op-stack.png)
@@ -11,6 +12,9 @@ When a user sends a transaction to a node, the pending transaction is forwarded 
 The [Engine API](https://specs.optimism.io/protocol/exec-engine.html#engine-api) defines the communication protocol between the CL and the EL and is responsible for orchestrating block production as well as advancing the unsafe/safe head of the chain. Periodically, the CL will send a request to the EL signaling for a new block to be built. After a series of API calls between the CL and EL, the EL will return a new `ExecutionPayload` containing a newly constructed block. The CL will then advance the unsafe head of the chain and peer the new block to other nodes in the network.
 
 Transaction ordering occurs in the payload builder which is responsible for building a new block in response to a fork choice update (FCU) message from the `op-node`. Note that transaction ordering within the payload builder is not enforced at the protocol level. A block builder can construct a valid block with any combination of pending transactions, in any order. Eventually though, it may be possible to enforce ordering at a protocol level through the derivation pipeline. Currently, there is an experimental spec [outlining a transaction ordering policy](https://github.com/ethereum-optimism/specs/blob/feat/tx-ordering-policy/specs/experimental/tx-ordering-policy.md#transaction-ordering-policy-1) for OP Stack chains.
+
+
+</br>
 
 ## Block Production on World Chain
 To enable PBH for verified users on World Chain, an external block builder has been developed that prioritizes transactions with a valid World ID proof (For more information on what PBH transactions are, check out the [Lifecycle of a PBH Transaction docs](./pbh_tx_lifecycle.md)). World Chain uses [rollup-boost](https://github.com/flashbots/rollup-boost), a OP stack "sidecar" service that orchestrates block production between external block builders and the OP stack sequencer.

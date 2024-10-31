@@ -4,6 +4,7 @@ The World Chain Builder is a custom block builder for the OP Stack that provides
 
 The builder introduces a new [EIP-2718 RLP encoded transaction envelope](https://eips.ethereum.org/EIPS/eip-2718) including the necessary data to verify the transaction was created by a valid World ID user. To get a deeper understanding of PBH, lets walk through the life cycle of a transaction. 
 
+</br>
 
 ## Creating a PBH transaction
 
@@ -32,8 +33,10 @@ PbhPayload = { externalNullifier, nullifierHash, root, proof }
 
 - `proof`: The semaphore proof verifying that the sender is a member of the identity set.
 
+</br>
 
-## Sending the transaction to the Builder
+
+## Sending transactions to the Builder
 
 Since the PBH tx envelope is a valid [EIP-2718 Typed Transaction Envelope](https://eips.ethereum.org/EIPS/eip-2718), it can be sent to the builder via the `eth_sendRawTransaction` endpoint, just like any other node that implements the Engine API. 
 
@@ -46,6 +49,9 @@ curl -X POST \
 
 Note that the builder is built on top of `op-reth` meaning that any valid transaction that can be sent to Optimism can also be sent to the builder. All transactions without a PBH payload attached are also forwarded to the sequencer.
 
+
+</br>
+
 ## Transaction Validation
 
 Once the World Chain Builder receives a new PBH tx envelope, it first verifies that the transaction attached is valid. Next, the PBH payload is verified, ensuring that the `externalNullifier` schema matches the expected version and that the PBH nonce does not exceed the maximum amount of transactions per period. 
@@ -53,6 +59,8 @@ Once the World Chain Builder receives a new PBH tx envelope, it first verifies t
 Following this, the nullifier hash is checked to ensure that this user has not created a proof for this PBH nonce before. Finally, the ZK proof is verified and the builder ensures that the `signal` of the proof matches the transaction hash of the tx provided.
 
 After successful validation, the transaction is inserted into the mempool.
+
+</br>
 
 ## Transaction Priority and Block Production
 
