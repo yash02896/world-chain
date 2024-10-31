@@ -44,13 +44,20 @@ curl -X POST \
      $BUILDER_ENDPOINT
 ```
 
-
+Note that the builder is built on top of `op-reth` meaning that any valid transaction that can be sent to Optimism can also be sent to the builder. All transactions without a PBH payload attached are also forwarded to the sequencer.
 
 ## Transaction Validation
-// NOTE: PBH transactions are not gossiped or forwarded to the sequencer. All normal transactions are forwarded though
 
+Once the World Chain Builder receives a new PBH tx envelope, it first verifies that the transaction attached is valid. Next, the PBH payload is verified, ensuring that the `externalNullifier` schema matches the expected version and that the PBH nonce does not exceed the maximum amount of transactions per period. 
+
+Following this, the nullifier hash is checked to ensure that this user has not created a proof for this PBH nonce before. Finally, the ZK proof is verified and the builder ensures that the `signal` of the proof matches the transaction hash of the tx provided.
+
+After successful validation, the transaction is inserted into the mempool.
 
 ## Transaction Priority and Block Production
 
-// NOTE: mention max gas % 
+When the sequencer sends a new `ForkChoiceUpdate` notifying that a new block should be produced, the builder will fetch the best transactions from the transaction pool to fill the block. The World Chain Builder tx pool implements a custom ordering policy which gives priority to transactions with a valid PBH payload. When the builder is including a PBH tx in the block, the inner transaction is unwrapped and the PBH payload is dropped. There is no additional data included in the sealed block and all World Chain blocks follow the same specification any other superchain compliant OP Stack chain. 
 
+To ensure that there is always blockspace for non-verified transactions on World Chain, the builder enforces a `verified_blockspace_capacity` which specifies the maximum amount of gas that verified txs can occupy in a single block. This capacity is specified as a percentage of the block's gas limit. 
+
+In the case where there are more verified transactions than can fit in the block, the remaining verified transactions will be included in the next block. Alternatively, when there are not enough verified transactions to fill this blockspace, non-verified transactions will be used to fill the remainder of the block. Default transaction ordering is used for all other transactions.
