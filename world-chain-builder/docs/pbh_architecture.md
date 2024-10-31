@@ -17,7 +17,10 @@ To enable PBH for verified users on World Chain, an external block builder has b
 
 ![World Chain Builder Architecture](../../assets/pbh-op-stack.png)
 
- In this design, whenever the sequencer needs a new block to be built, `op-node` will send a Fork Choice Update (FCU) notification to the sidecar, which will multiplex the FCU to the sequencer's execution client as well as any external builders. Shortly after, `op-node` will send a `getPayload` request to the sidecar, which will forward the request to all builders as well as the sequencer's execution client. Each of the payload builders will send a built block back to the sidecar, forwarding the best block back to `op-node`.
+In this design, whenever the sequencer needs a new block to be built, `op-node` will send a Fork Choice Update (FCU) notification to the sidecar, which will multiplex the FCU to the sequencer's execution client as well as the World Chain builder. Shortly after, `op-node` will send a `getPayload` request to the sidecar, which will forward the request to the builder as well as the sequencer's execution client. Each of the payload builders will send a built block back to the sidecar, which will forward the best block to the sequencer's `op-node`. The newly built block will then be published and propagated throughout the network. 
+
+Using `rollup-boost` allows for custom transaction sequencing rules without modifying either of the core Optimism Protocol clients (`op-node` and `op-geth`). Additionally, this design ensures that block production is never halted due to failures in the builder. Since the sequencer's default execution client also produces a block, `rollup-boost` will always have a block to propose to `op-node`.
+
 
 For more information on PBS within the OP stack, check out the [design docs for external block production](https://github.com/ethereum-optimism/design-docs/blob/main/protocol/external-block-production.md) as well as the [rollup-boost repo from Flashbots](https://github.com/flashbots/rollup-boost).
 
