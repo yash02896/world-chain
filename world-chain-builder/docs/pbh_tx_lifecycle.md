@@ -1,6 +1,6 @@
 # Lifecycle of a PBH Transaction
 
-The WorldChain Builder is a custom block builder for the OP Stack that provides Priority Blockspace for Humans (PBH). PBH enables verified World ID users to execute transactions with top of block priority, enabling a more frictionless user experience. This mechanism is designed to ensure that ordinary users aren’t unfairly disadvantaged by automated systems and greatly mitigates the impact of negative impacts of MEV. PBH also enables future flexibility, allowing for a separate EIP-1559-style fee market mechanism for verified transactions.
+The World Chain Builder is a custom block builder for the OP Stack that provides Priority Blockspace for Humans (PBH). PBH enables verified World ID users to execute transactions with top of block priority, enabling a more frictionless user experience. This mechanism is designed to ensure that ordinary users aren’t unfairly disadvantaged by automated systems and greatly mitigates the impact of negative impacts of MEV. PBH also enables future flexibility, allowing for a separate EIP-1559-style fee market mechanism for verified transactions.
 
 The builder introduces a new [EIP-2718 RLP encoded transaction envelope](https://eips.ethereum.org/EIPS/eip-2718) including the necessary data to verify the transaction was created by a valid World ID user. To get a deeper understanding of PBH, lets walk through the life cycle of a transaction. 
 
