@@ -7,7 +7,7 @@ The builder introduces a new [EIP-2718 RLP encoded transaction envelope](https:/
 
 ## Creating a PBH transaction
 
-The contents of the PBH tx envelope simply consists of an [Ethereum typed transaction ](https://eips.ethereum.org/EIPS/eip-2718) and optional semaphore proof ensuring that the sender is verified World ID user. In order to create a PBH transaction envelope, first generate an [Ethereum transaction](https://ethereum.org/en/developers/docs/transactions/).
+The contents of the PBH tx envelope simply consist of an [Ethereum typed transaction ](https://eips.ethereum.org/EIPS/eip-2718) and optional semaphore proof ensuring that the sender is verified World ID user. In order to create a PBH transaction envelope, first generate an [Ethereum transaction](https://ethereum.org/en/developers/docs/transactions/).
 
 Next, [create a World ID proof](), **setting the `signal` to the transaction hash of the tx you are verifying**, and set the `externalNullifier` to the following schema `vv-mmyyyy-nn` where:
 
