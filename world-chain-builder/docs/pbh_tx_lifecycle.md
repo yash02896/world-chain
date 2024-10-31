@@ -52,5 +52,9 @@ curl -X POST \
 
 ## Transaction Priority and Block Production
 
-// NOTE: mention max gas % 
+The `world-chain-builder` implements a custom [WorldChainEthApi](https://github.com/worldcoin/world-chain/blob/c44417727fcf510597aaf247dc1e2d8dca03a3b7/world-chain-builder/src/rpc/mod.rs#L52) that allows it to recieve PBH transaction envelopes over RPC through an `eth_sendRawTransaction` request. If a semaphore proof is attached to the transaction the [WorldChainTransactionValidator](https://github.com/worldcoin/world-chain/blob/c44417727fcf510597aaf247dc1e2d8dca03a3b7/world-chain-builder/src/pool/validator.rs#L37) will first validate the integrity of the proof, and if valid insert the transaction into the transaction pool with an associated bool indicating the pooled transaction is human verified. 
+
+The transaction pool implements a custom [ordering policy](https://github.com/worldcoin/world-chain/blob/c44417727fcf510597aaf247dc1e2d8dca03a3b7/world-chain-builder/src/pool/ordering.rs#L10) which guarantees top of block priority for verified human transactions. 
+
+A percentage of the block space is reserved for pbh transactions as defined by `verified_blockspace_capacity`. This value represents the maximum percentage of the block gas limit that will be dedicated to human verified transactions. If the amount of pbh transactions does not meet the threshold of reserved block space then non-verified transactions will fill this reserved block space. `100 - verified_blockspace_capacity` is the percentage of the block space always dedicated to non-verified transactions.
 
