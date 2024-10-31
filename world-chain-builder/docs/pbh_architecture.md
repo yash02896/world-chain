@@ -1,6 +1,6 @@
 # World Chain Builder Architecture 
 
-World Chain is an OP Stack chain, enabling priority blockspace for humans through the World Chain Builder. In order to fully understand  the builder, lets quickly review how transaction inclusion works within the OP Stack. The diagram below demonstrates an abridged version of the lifecycle of a transaction on OPS L2s.
+World Chain is an OP Stack chain, enabling priority blockspace for humans through the World Chain Builder. In order to fully understand the builder, lets quickly review how transaction inclusion works within the OP Stack. The diagram below demonstrates an abridged version of the lifecycle of a transaction on OPS L2s.
 
 ![World Chain Builder Architecture](../../assets/op-stack.png)
 
@@ -11,7 +11,7 @@ The [Engine API](https://specs.optimism.io/protocol/exec-engine.html#engine-api)
 Transaction ordering occurs in the payload builder which is responsible for building a new block in response to a fork choice update (FCU) message from the `op-node`. Note that transaction ordering within the payload builder is not enforced at the protocol level. A block builder can construct a valid block with any combination of pending transactions, in any order. Eventually though, it may be possible to enforce ordering at a protocol level through the derivation pipeline. Currently, there is an experimental spec [outlining a transaction ordering policy](https://github.com/ethereum-optimism/specs/blob/feat/tx-ordering-policy/specs/experimental/tx-ordering-policy.md#transaction-ordering-policy-1) for OP Stack chains.
 
 
-While a custom payload builder can be implemented directly into the sequencer's execution client, there is an [alternative approach designed by Flashbots](https://github.com/ethereum-optimism/design-docs/blob/main/protocol/external-block-production.md) that uses a sidecar architecture to orchestrate external block production for OP stack chains.
+To enable external block production on World Chain, [alternative approach designed by Flashbots](https://github.com/ethereum-optimism/design-docs/blob/main/protocol/external-block-production.md) that uses a sidecar architecture to orchestrate external block production for OP stack chains. //TODO: benefits
 
 ![World Chain Builder Architecture](../../assets/pbh-op-stack.png)
 
