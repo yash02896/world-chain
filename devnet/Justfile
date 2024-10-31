@@ -13,11 +13,8 @@ devnet-down:
     kurtosis enclave rm -f world-chain
     kurtosis clean
 
-# Builds and tags the world-chain-builder, and rollup-boost images
-build: build-world-chain build-rollup-boost
-
-build-rollup-boost:
-    docker buildx build -t rollup-boost:latest -f Dockerfile.rollup-boost .
+# Builds and tags the world-chain-builder
+build: build-world-chain
 
 build-world-chain:
     docker buildx build -t world-chain-builder:latest -f ../world-chain-builder/Dockerfile ../world-chain-builder

@@ -84,7 +84,6 @@ def get_config(
 
     public_ports = {}
     cmd = [
-        "/app/rollup-boost",
         "--jwt-path=" + constants.JWT_MOUNT_PATH_ON_CONTAINER,
         "--l2-url={0}".format(L2_EXECUTION_ENGINE_ENDPOINT),
         "--builder-url={0}".format(BUILDER_EXECUTION_ENGINE_ENDPOINT),

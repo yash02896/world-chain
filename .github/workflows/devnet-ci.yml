@@ -10,8 +10,7 @@ env:
 
 jobs:
   tests:
-    runs-on:
-      labels: ubuntu-22.04-32core
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@just
@@ -22,7 +21,7 @@ jobs:
           sudo apt update
           sudo apt install kurtosis-cli
           kurtosis analytics disable
-      - name: Run Devnet
+      - name: Setup Devnet
         run: |
           just devnet-up
       - name: Build PBH Block
