@@ -4,7 +4,7 @@ The World Chain Builder is a custom block builder for the OP Stack that provides
 
 ![World Chain Builder Architecture](assets/pbh-op-stack.png)
 
-To learn more about how PBH works, check out the docs detailing [the PBH Transaction Lifecycle](world-chain-builder/docs/pbh_tx_lifecycle.md) as well as [World's blog post covering World Chain's builder architecture](https://world.org/blog/engineering/introducing-pbh-priority-blockspace-for-humans).
+To learn more about how PBH works, check out the docs detailing [the PBH transaction lifecycle](world-chain-builder/docs/pbh_tx_lifecycle.md) and [PBH builder architecture](world-chain-builder/docs/pbh_architecture.md) as well as [World's blog post covering World Chain's builder architecture](https://world.org/blog/engineering/introducing-pbh-priority-blockspace-for-humans) 
 
 
 <!-- ## Installing -->
