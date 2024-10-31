@@ -1,4 +1,4 @@
-### Netowrk 
+### Network 
 World Chain is a [Optimistic Rollup](https://ethereum.org/en/developers/docs/scaling/optimistic-rollups/) on Ethereum. World Chain functions at the Consensus layer identically to that of Optimism, and other optimistic rollups. But differs at the execution layer in a couple ways. 
 
 In a traditional Optimistic Rollup the _Sequencer_ acts as the sole participant that proposes new blocks. 
