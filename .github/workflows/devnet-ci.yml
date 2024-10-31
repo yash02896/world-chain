@@ -10,7 +10,8 @@ env:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: 
+      labels: arm64-ubuntu-22.04-8core
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@just
