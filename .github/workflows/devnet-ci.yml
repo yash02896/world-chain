@@ -10,26 +10,13 @@ env:
 
 jobs:
   tests:
-    runs-on: 
-      labels: arm64-ubuntu-22.04-8core
+    runs-on:
+      group: ubuntu-runners
+      labels: ubuntu-20.04-16core
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@just
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install Docker
-        run: |
-          sudo apt-get update
-          sudo apt-get install ca-certificates curl
-          sudo install -m 0755 -d /etc/apt/keyrings
-          sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-          sudo chmod a+r /etc/apt/keyrings/docker.asc
-          echo \
-            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-            $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-            sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo apt-get update
-          sudo groupadd docker
-          sudo usermod -aG docker $USER
+      - uses: dtolnay/rust-toolchain@stable      
       - name: Setup Kurtosis
         run: |
           echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
