@@ -15,7 +15,7 @@ DEFAULT_EL_IMAGES = {
 }
 
 DEFAULT_ENGINE_IMAGES = {
-    "rollup-boost": "rollup-boost:latest",
+    "rollup-boost": "flashbots/rollup-boost:0.1",
 }
 
 DEFAULT_CL_IMAGES = {
