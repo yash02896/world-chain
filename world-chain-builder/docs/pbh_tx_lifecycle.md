@@ -4,10 +4,11 @@ The World Chain Builder is a custom block builder for the OP Stack that provides
 
 The builder introduces a new [EIP-2718 RLP encoded transaction envelope](https://eips.ethereum.org/EIPS/eip-2718) including the necessary data to verify the transaction was created by a valid World ID user. To get a deeper understanding of PBH, lets walk through the life cycle of a transaction. 
 
+</br>
 
 ## Creating a PBH transaction
 
-The contents of the PBH tx envelope simply consists of an [Ethereum typed transaction ](https://eips.ethereum.org/EIPS/eip-2718) and optional semaphore proof ensuring that the sender is verified World ID user. In order to create a PBH transaction envelope, first generate an [Ethereum transaction](https://ethereum.org/en/developers/docs/transactions/).
+The contents of the PBH tx envelope simply consist of an [Ethereum typed transaction ](https://eips.ethereum.org/EIPS/eip-2718) and optional semaphore proof ensuring that the sender is verified World ID user. In order to create a PBH transaction envelope, first generate an [Ethereum transaction](https://ethereum.org/en/developers/docs/transactions/).
 
 Next, [create a World ID proof](), **setting the `signal` to the transaction hash of the tx you are verifying**, and set the `externalNullifier` to the following schema `vv-mmyyyy-nn` where:
 
@@ -32,8 +33,10 @@ PbhPayload = { externalNullifier, nullifierHash, root, proof }
 
 - `proof`: The semaphore proof verifying that the sender is a member of the identity set.
 
+</br>
 
-## Sending the transaction to the Builder
+
+## Sending transactions to the Builder
 
 Since the PBH tx envelope is a valid [EIP-2718 Typed Transaction Envelope](https://eips.ethereum.org/EIPS/eip-2718), it can be sent to the builder via the `eth_sendRawTransaction` endpoint, just like any other node that implements the Engine API. 
 
@@ -44,17 +47,25 @@ curl -X POST \
      $BUILDER_ENDPOINT
 ```
 
+Note that the builder is built on top of `op-reth` meaning that any valid transaction that can be sent to Optimism can also be sent to the builder. All transactions without a PBH payload attached are also forwarded to the sequencer.
 
+
+</br>
 
 ## Transaction Validation
-// NOTE: PBH transactions are not gossiped or forwarded to the sequencer. All normal transactions are forwarded though
 
+Once the World Chain Builder receives a new PBH tx envelope, it first verifies that the transaction attached is valid. Next, the PBH payload is verified, ensuring that the `externalNullifier` schema matches the expected version and that the PBH nonce does not exceed the maximum amount of transactions per period. 
+
+Following this, the nullifier hash is checked to ensure that this user has not created a proof for this PBH nonce before. Finally, the ZK proof is verified and the builder ensures that the `signal` of the proof matches the transaction hash of the tx provided.
+
+After successful validation, the transaction is inserted into the mempool.
+
+</br>
 
 ## Transaction Priority and Block Production
 
-The `world-chain-builder` implements a custom [WorldChainEthApi](https://github.com/worldcoin/world-chain/blob/c44417727fcf510597aaf247dc1e2d8dca03a3b7/world-chain-builder/src/rpc/mod.rs#L52) that allows it to recieve PBH transaction envelopes over RPC through an `eth_sendRawTransaction` request. If a semaphore proof is attached to the transaction the [WorldChainTransactionValidator](https://github.com/worldcoin/world-chain/blob/c44417727fcf510597aaf247dc1e2d8dca03a3b7/world-chain-builder/src/pool/validator.rs#L37) will first validate the integrity of the proof, and if valid insert the transaction into the transaction pool with an associated bool indicating the pooled transaction is human verified. 
+When the sequencer sends a new `ForkChoiceUpdate` notifying that a new block should be produced, the builder will fetch the best transactions from the transaction pool to fill the block. The World Chain Builder tx pool implements a custom ordering policy which gives priority to transactions with a valid PBH payload. When the builder is including a PBH tx in the block, the inner transaction is unwrapped and the PBH payload is dropped. There is no additional data included in the sealed block and all World Chain blocks follow the same specification any other superchain compliant OP Stack chain. 
 
-The transaction pool implements a custom [ordering policy](https://github.com/worldcoin/world-chain/blob/c44417727fcf510597aaf247dc1e2d8dca03a3b7/world-chain-builder/src/pool/ordering.rs#L10) which guarantees top of block priority for verified human transactions. 
+To ensure that there is always blockspace for non-verified transactions on World Chain, the builder enforces a `verified_blockspace_capacity` which specifies the maximum amount of gas that verified txs can occupy in a single block. This capacity is specified as a percentage of the block's gas limit. 
 
-A percentage of the block space is reserved for pbh transactions as defined by `verified_blockspace_capacity`. This value represents the maximum percentage of the block gas limit that will be dedicated to human verified transactions. If the amount of pbh transactions does not meet the threshold of reserved block space then non-verified transactions will fill this reserved block space. `100 - verified_blockspace_capacity` is the percentage of the block space always dedicated to non-verified transactions.
-
+In the case where there are more verified transactions than can fit in the block, the remaining verified transactions will be included in the next block. Alternatively, when there are not enough verified transactions to fill this blockspace, non-verified transactions will be used to fill the remainder of the block. Default transaction ordering is used for all other transactions.
