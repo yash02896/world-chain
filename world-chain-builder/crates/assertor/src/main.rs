@@ -35,6 +35,9 @@ pub struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "info");
+    }
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
@@ -52,10 +55,14 @@ async fn main() -> Result<()> {
         ],
     )?;
 
+    info!("Builder socket: {}", builder_socket);
+
     let sequencer_socket = run_command(
         "kurtosis",
         &["port", "print", "world-chain", "wc-admin-op-geth", "rpc"],
     )?;
+
+    info!("Sequencer socket: {}", sequencer_socket);
 
     let sequencer_provider =
         Arc::new(ProviderBuilder::default().on_http(sequencer_socket.parse().unwrap()));
