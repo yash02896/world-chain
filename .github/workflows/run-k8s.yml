@@ -75,11 +75,10 @@ jobs:
 
       - name: Setup Docker Environment
         run: |
-          echo $(minikube -p minikube docker-env) >> $GITHUB_ENV
+          echo $(minikube -p docker-env) >> $GITHUB_ENV
 
       - name: Setup Devnet
         run: |
-          eval $(minikube -p docker-env)
           just devnet-up
 
       - name: Block Building
