@@ -23,6 +23,9 @@ def get_used_ports(discovery_port=DISCOVERY_PORT_NUM):
             shared_utils.TCP_PROTOCOL,
             shared_utils.HTTP_APPLICATION_PROTOCOL,
         ),
+        ENGINE_RPC_PORT_ID: shared_utils.new_port_spec(
+            RPC_PORT_ID, shared_utils.TCP_PROTOCOL
+        ),
     }
     return used_ports
 
@@ -52,9 +55,7 @@ def launch(
     )
 
     service = plan.add_service(service_name, config)
-
-    # enode = el_admin_node_info.get_enode_for_node(plan, service_name, RPC_PORT_ID)
-
+    
     http_url = "http://{0}:{1}".format(service.ip_address, RPC_PORT_NUM)
 
     return el_context.new_el_context(

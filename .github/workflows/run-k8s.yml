@@ -10,7 +10,7 @@ env:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04-32core
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@just
@@ -32,10 +32,6 @@ jobs:
         run: |
           cat ~/.kube/config > kubeconfig
           echo "kubeconfig=$(cat kubeconfig | base64 -w 0)" >> $GITHUB_OUTPUT
-
-      - name: Setup Docker Environment
-        run: |
-          eval $(minikube docker-env)
       
       - name: Configure Kubernetes Backend
         shell: bash
@@ -75,6 +71,10 @@ jobs:
           kurtosis engine status
           kurtosis enclave ls || ( kurtosis engine restart && kurtosis enclave ls )
 
+      - name: Setup Docker Environment
+        run: |
+          eval $(minikube docker-env)
+          
       - name: Setup Devnet
         run: |
           just devnet-up
