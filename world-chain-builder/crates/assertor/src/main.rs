@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
     let args = Args::parse();
-
+    info!("Starting assertor");
     // Grab the ports
     let builder_socket = run_command(
         "kurtosis",
@@ -54,13 +54,20 @@ async fn main() -> Result<()> {
             "rpc",
         ],
     )?;
-
+    let builder_socket = format!(
+        "http://{}",
+        builder_socket.split("http://").collect::<Vec<&str>>()[1]
+    );
     info!("Builder socket: {}", builder_socket);
 
     let sequencer_socket = run_command(
         "kurtosis",
         &["port", "print", "world-chain", "wc-admin-op-geth", "rpc"],
     )?;
+    let sequencer_socket = format!(
+        "http://{}",
+        sequencer_socket.split("http://").collect::<Vec<&str>>()[1]
+    );
 
     info!("Sequencer socket: {}", sequencer_socket);
 
@@ -183,5 +190,18 @@ pub fn run_command(cmd: &str, args: &[&str]) -> Result<String> {
             "Command failed: {:?}",
             String::from_utf8(output.stdout).unwrap(),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_run_command() {
+        let str: &str = "Engine running in Kubernetes cluster, to connect to the engine from outside the cluster run 'kurtosis gateway' to open a local gateway to the engine 
+        http://127.0.0.1:44091";
+
+        // Slice only the `http://*` part
+        let slice = str.split("http://").collect::<Vec<&str>>()[1];
+        println!("http://{}", slice);
     }
 }
