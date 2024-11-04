@@ -2,7 +2,7 @@
 set -e
 MNEMONIC="test test test test test test test test test test test junk"
 # This needs to be configured to the enclave (public rpc ports are non-deterministic)
-BUILDER_SOCKET="http://localhost:58495"
+BUILDER_SOCKET=""
 export IDENTITY=11ff11
 export INCLUSION_PROOF_URL="https://signup-orb-ethereum.stage-crypto.worldcoin.dev/inclusionProof"
 

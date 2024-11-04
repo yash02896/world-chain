@@ -195,12 +195,11 @@ pub fn run_command(cmd: &str, args: &[&str]) -> Result<String> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_run_command() {
+    fn test_grab_ports() {
         let str: &str = "Engine running in Kubernetes cluster, to connect to the engine from outside the cluster run 'kurtosis gateway' to open a local gateway to the engine 
         http://127.0.0.1:44091";
 
-        // Slice only the `http://*` part
-        let slice = str.split("http://").collect::<Vec<&str>>()[1];
-        println!("http://{}", slice);
+        let slice = format!("http://{}", str.split("http://").collect::<Vec<&str>>()[1]);
+        assert_eq!("http://127.0.0.1:44091", slice);
     }
 }
