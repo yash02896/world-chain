@@ -2,6 +2,8 @@ name: Kubernetes CI
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -74,7 +76,7 @@ jobs:
       - name: Setup Docker Environment
         run: |
           eval $(minikube docker-env)
-          
+
       - name: Setup Devnet
         run: |
           just devnet-up
