@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@just
-      - uses: dtolnay/rust-toolchain@stable  
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Setup Kurtosis
         run: |
@@ -32,7 +32,7 @@ jobs:
         run: |
           cat ~/.kube/config > kubeconfig
           echo "kubeconfig=$(cat kubeconfig | base64 -w 0)" >> $GITHUB_OUTPUT
-      
+
       - name: Configure Kubernetes Backend
         shell: bash
         run: |
@@ -70,26 +70,24 @@ jobs:
         run: |
           kurtosis engine status
           kurtosis enclave ls || ( kurtosis engine restart && kurtosis enclave ls )
-      
+
       - name: Setup Docker Environment
         run: |
           echo $(minikube -p minikube docker-env) >> $GITHUB_ENV
-          
+
       - name: Setup Devnet
         run: |
           eval $(minikube -p docker-env)
           just devnet-up
-        
+
       - name: Block Building
         run: |
           just assertor -b
-        
+
       - name: Fallback
         run: |
           just assertor -f
-      
+
       - name: Devnet Down
         run: |
           just devnet-down
-        
-  
