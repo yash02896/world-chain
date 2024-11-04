@@ -16,6 +16,16 @@ WS_PORT_NUM = 8546
 DISCOVERY_PORT_NUM = 30303
 RPC_PORT_ID = "rpc"
 
+def get_used_ports(discovery_port=DISCOVERY_PORT_NUM):
+    used_ports = {
+        RPC_PORT_ID: shared_utils.new_port_spec(
+            RPC_PORT_NUM,
+            shared_utils.TCP_PROTOCOL,
+            shared_utils.HTTP_APPLICATION_PROTOCOL,
+        ),
+    }
+    return used_ports
+
 
 def launch(
     plan,
@@ -82,6 +92,8 @@ def get_config(
         builder_context.engine_rpc_port_num,
     )
 
+    used_ports = get_used_ports(DISCOVERY_PORT_NUM)
+
     public_ports = {}
     cmd = [
         "--jwt-path=" + constants.JWT_MOUNT_PATH_ON_CONTAINER,
@@ -98,7 +110,7 @@ def get_config(
 
     return ServiceConfig(
         image=image,
-        ports={},
+        ports=used_ports,
         public_ports=public_ports,
         cmd=cmd,
         files=files,
