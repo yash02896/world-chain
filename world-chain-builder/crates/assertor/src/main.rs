@@ -43,7 +43,6 @@ async fn main() -> Result<()> {
         .init();
     let args = Args::parse();
     info!("Starting assertor");
-    // Grab the ports
     let builder_socket = run_command(
         "kurtosis",
         &[
