@@ -73,12 +73,9 @@ jobs:
           kurtosis engine status
           kurtosis enclave ls || ( kurtosis engine restart && kurtosis enclave ls )
 
-      - name: Setup Docker Environment
-        run: |
-          echo $(minikube -p docker-env) >> $GITHUB_ENV
-
       - name: Setup Devnet
         run: |
+          eval $(minikube -p minikube docker-env)
           just devnet-up
 
       - name: Block Building
