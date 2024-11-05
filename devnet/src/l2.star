@@ -1,5 +1,5 @@
 participant_network = import_module("./participant_network.star")
-blockscout = import_module("./blockscout/blockscout_launcher.star")
+blockscout = import_module("github.com/ethpandaops/optimism-package/src/blockscout/blockscout_launcher.star")
 contract_deployer = import_module("./contracts/contract_deployer.star")
 input_parser = import_module("./package_io/input_parser.star")
 static_files = import_module(

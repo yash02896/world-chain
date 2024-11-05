@@ -7,18 +7,17 @@ shared_utils = import_module(
 
 # EL
 op_geth = import_module("./el/op-geth/op_geth_launcher.star")
-op_geth_builder = import_module("./el/op-geth-builder/op_geth_builder_launcher.star")
-op_reth = import_module("./el/op-reth/op_reth_launcher.star")
+op_reth = import_module("github.com/ethpandaops/optimism-package/src/el/op-reth/op_reth_launcher.star")
 world_chain = import_module("./el/world-chain/world_chain_launcher.star")
-op_erigon = import_module("./el/op-erigon/op_erigon_launcher.star")
-op_nethermind = import_module("./el/op-nethermind/op_nethermind_launcher.star")
-op_besu = import_module("./el/op-besu/op_besu_launcher.star")
+op_erigon = import_module("github.com/ethpandaops/optimism-package/src/el/op-erigon/op_erigon_launcher.star")
+op_nethermind = import_module("github.com/ethpandaops/optimism-package/src/el/op-nethermind/op_nethermind_launcher.star")
+op_besu = import_module("github.com/ethpandaops/optimism-package/src/el/op-besu/op_besu_launcher.star")
 rollup_boost = import_module("./engine/rollup-boost/rollup_boost_launcher.star")
 
 # CL
 op_node = import_module("./cl/op-node/op_node_launcher.star")
 op_node_builder = import_module("./cl/op-node-builder/op_node_builder_launcher.star")
-hildr = import_module("./cl/hildr/hildr_launcher.star")
+hildr = import_module("github.com/ethpandaops/optimism-package/src/cl/hildr/hildr_launcher.star")
 
 
 def launch(
@@ -41,15 +40,6 @@ def launch(
                 network_params.network_id,
             ),
             "launch_method": world_chain.launch,
-        },
-        "op-geth-builder": {
-            "launcher": op_geth_builder.new_op_geth_builder_launcher(
-                el_cl_data,
-                jwt_file,
-                network_params.network,
-                network_params.network_id,
-            ),
-            "launch_method": op_geth_builder.launch,
         },
         "op-geth": {
             "launcher": op_geth.new_op_geth_launcher(
