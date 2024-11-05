@@ -78,6 +78,10 @@ jobs:
           eval $(minikube -p minikube docker-env)
           just devnet-up
 
+      - name: Setup Fixtures
+        run: |
+          just fixtures
+
       - name: Block Building
         run: |
           just assertor -b

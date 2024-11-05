@@ -28,3 +28,6 @@ fmt:
 # NOTE: The devnet needs to be running for this to work
 assertor *args='':
     @just ./world-chain-builder/assertor $@
+
+fixtures:
+    @just ./devnet/fixtures
