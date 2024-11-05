@@ -167,16 +167,6 @@ where
     // Assert the chain has progressed
     let new_block_number = sequencer_provider.get_block_number().await?;
     assert!(new_block_number > block_number);
-    // Restart the service
-    run_command(
-        "kurtosis",
-        &[
-            "service",
-            "start",
-            "world-chain",
-            "wc-admin-world-chain-builder",
-        ],
-    )?;
     Ok(())
 }
 
