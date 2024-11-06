@@ -1,8 +1,12 @@
 el_cl_client_launcher = import_module("./el_cl_launcher.star")
 participant_module = import_module("./participant.star")
 input_parser = import_module("./package_io/input_parser.star")
-op_batcher_launcher = import_module("./batcher/op-batcher/op_batcher_launcher.star")
-op_proposer_launcher = import_module("./proposer/op-proposer/op_proposer_launcher.star")
+op_batcher_launcher = import_module(
+    "github.com/ethpandaops/optimism-package/src/batcher/op-batcher/op_batcher_launcher.star@914a80895376625c8866943b517df47ce4c28170"
+)
+op_proposer_launcher = import_module(
+    "github.com/ethpandaops/optimism-package/src/proposer/op-proposer/op_proposer_launcher.star@914a80895376625c8866943b517df47ce4c28170"
+)
 
 
 def launch_participant_network(

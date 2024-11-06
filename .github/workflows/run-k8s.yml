@@ -75,7 +75,7 @@ jobs:
         run: |
           eval $(minikube -p minikube docker-env)
           just devnet-up
-
+          
       - name: Block Building
         run: |
           just assertor -b
