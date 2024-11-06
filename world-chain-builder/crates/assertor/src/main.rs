@@ -35,12 +35,14 @@ pub struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "info");
+    }
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
     let args = Args::parse();
-
-    // Grab the ports
+    info!("Starting assertor");
     let builder_socket = run_command(
         "kurtosis",
         &[
@@ -51,11 +53,22 @@ async fn main() -> Result<()> {
             "rpc",
         ],
     )?;
+    let builder_socket = format!(
+        "http://{}",
+        builder_socket.split("http://").collect::<Vec<&str>>()[1]
+    );
+    info!("Builder socket: {}", builder_socket);
 
     let sequencer_socket = run_command(
         "kurtosis",
         &["port", "print", "world-chain", "wc-admin-op-geth", "rpc"],
     )?;
+    let sequencer_socket = format!(
+        "http://{}",
+        sequencer_socket.split("http://").collect::<Vec<&str>>()[1]
+    );
+
+    info!("Sequencer socket: {}", sequencer_socket);
 
     let sequencer_provider =
         Arc::new(ProviderBuilder::default().on_http(sequencer_socket.parse().unwrap()));
@@ -154,16 +167,6 @@ where
     // Assert the chain has progressed
     let new_block_number = sequencer_provider.get_block_number().await?;
     assert!(new_block_number > block_number);
-    // Restart the service
-    run_command(
-        "kurtosis",
-        &[
-            "service",
-            "start",
-            "world-chain",
-            "wc-admin-world-chain-builder",
-        ],
-    )?;
     Ok(())
 }
 
@@ -176,5 +179,17 @@ pub fn run_command(cmd: &str, args: &[&str]) -> Result<String> {
             "Command failed: {:?}",
             String::from_utf8(output.stdout).unwrap(),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_grab_ports() {
+        let str: &str = "Engine running in Kubernetes cluster, to connect to the engine from outside the cluster run 'kurtosis gateway' to open a local gateway to the engine 
+        http://127.0.0.1:44091";
+
+        let slice = format!("http://{}", str.split("http://").collect::<Vec<&str>>()[1]);
+        assert_eq!("http://127.0.0.1:44091", slice);
     }
 }
