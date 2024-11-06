@@ -21,3 +21,6 @@ build-world-chain:
 
 fixtures:
     chmod +x fixtures.sh && ./fixtures.sh
+
+fmt: 
+    kurtosis lint --format

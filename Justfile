@@ -21,8 +21,13 @@ test:
     @just ./world-chain-builder/test
 
 # Formats the world-chain-builder
-fmt:
+fmt: rust-fmt devnet-fmt
+
+rust-fmt:
     @just ./world-chain-builder/fmt
+
+devnet-fmt:
+    @just ./devnet/fmt
 
 # Runs the block building assertions
 # NOTE: The devnet needs to be running for this to work
