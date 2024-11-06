@@ -6,9 +6,9 @@ The World project team welcomes security reports and is committed to providing p
 
 ## Vulnerability coordination
 
-Remediation of security vulnerabilities is prioritized by the project team. The project team coordinates remediation with third-party project stakeholders via [Github Security Advisories](https://help.github.com/en/github/managing-security-vulnerabilities/about-github-security-advisories). Third-party stakeholders may include the reporter of the issue, affected direct or indirect users of Tokio, and maintainers of upstream dependencies if applicable.
+Remediation of security vulnerabilities is prioritized by the project team. The project team coordinates remediation with third-party project stakeholders via [Github Security Advisories](https://help.github.com/en/github/managing-security-vulnerabilities/about-github-security-advisories). Third-party stakeholders may include the reporter of the issue, affected direct or indirect users of World, and maintainers of upstream dependencies if applicable.
 
-Downstream project maintainers and Tokio users can request participation in coordination of applicable security issues by sending your contact email address, Github username(s) and any other salient information to [TODO:](). Participation in security issue coordination processes is at the discretion of the World team.
+Downstream project maintainers and World users can request participation in coordination of applicable security issues by sending your contact email address, Github username(s) and any other salient information to [TODO:](). Participation in security issue coordination processes is at the discretion of the World team.
 
 ## Security advisories
 
