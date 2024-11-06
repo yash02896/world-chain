@@ -10,7 +10,7 @@ The builder introduces a new [EIP-2718 RLP encoded transaction envelope](https:/
 
 The contents of the PBH tx envelope simply consist of an [Ethereum typed transaction ](https://eips.ethereum.org/EIPS/eip-2718) and optional semaphore proof ensuring that the sender is verified World ID user. In order to create a PBH transaction envelope, first generate an [Ethereum transaction](https://ethereum.org/en/developers/docs/transactions/).
 
-Next, [create a World ID proof](), **setting the `signal` to the transaction hash of the tx you are verifying**, and set the `externalNullifier` to the following schema `vv-mmyyyy-nn` where:
+Next, [create a World ID proof](https://docs.world.org/world-id/further-reading/zero-knowledge-proofs), **setting the `signal` to the transaction hash of the tx you are verifying**, and set the `externalNullifier` to the following schema `vv-mmyyyy-nn` where:
 
 - **Version Prefix (vv)**: Indicates the version of the external nullifier schema This should be set to `0`.
 - **Date (mmyyyy)**: Indicates the current month and year.
@@ -38,7 +38,7 @@ PbhPayload = { externalNullifier, nullifierHash, root, proof }
 
 ## Sending transactions to the Builder
 
-Since the PBH tx envelope is a valid [EIP-2718 Typed Transaction Envelope](https://eips.ethereum.org/EIPS/eip-2718), it can be sent to the builder via the `eth_sendRawTransaction` endpoint, just like any other node that implements the Engine API. 
+Since the PBH tx envelope is a valid [EIP-2718 Typed Transaction Envelope](https://eips.ethereum.org/EIPS/eip-2718), it can be sent to the builder via the `eth_sendRawTransaction` endpoint, just like any other node that implements the [Eth API](https://ethereum.org/en/developers/docs/apis/json-rpc/).
 
 ```bash
 curl -X POST \
