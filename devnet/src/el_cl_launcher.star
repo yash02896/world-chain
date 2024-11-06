@@ -18,9 +18,7 @@ op_nethermind = import_module(
 op_besu = import_module(
     "github.com/ethpandaops/optimism-package/src/el/op-besu/op_besu_launcher.star"
 )
-op_geth = import_module(
-    "./el/op-geth/op_geth_launcher.star"
-)
+op_geth = import_module("./el/op-geth/op_geth_launcher.star")
 world_chain = import_module("./el/world-chain/world_chain_launcher.star")
 rollup_boost = import_module("./engine/rollup-boost/rollup_boost_launcher.star")
 
