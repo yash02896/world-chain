@@ -10,7 +10,7 @@ To learn more about how PBH works, check out the docs detailing the [PBH transac
 <!-- ## Installing -->
 
 ## Running the Devnet
-To spin up a OP Stack devnet with `rollup-boost` and the `world-chain-builder` deployed, make sure that you have [just](https://github.com/casey/just?tab=readme-ov-file) installed, and docker daemon running. Then simply run the following command.
+To spin up a OP Stack devnet with `rollup-boost` and the `world-chain-builder` deployed, make sure that you have [just](https://github.com/casey/just?tab=readme-ov-file), and [kurtosis-cli](https://docs.kurtosis.com/install/) installed as well as docker daemon running. Then simply run the following command.
 
 ```
 just devnet-up
