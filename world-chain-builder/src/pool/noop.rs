@@ -251,28 +251,28 @@ impl TransactionPool for NoopWorldChainTransactionPool {
         &self,
         _hashes: Vec<TxHash>,
     ) -> Vec<Arc<ValidPoolTransaction<Self::Transaction>>> {
-        vec![] //TODO: implement
+        vec![]
     }
 
     fn remove_transactions_by_sender(
         &self,
         _sender: Address,
     ) -> Vec<Arc<ValidPoolTransaction<Self::Transaction>>> {
-        vec![] //TODO: implement
+        vec![]
     }
 
     fn get_queued_transactions_by_sender(
         &self,
         _sender: Address,
     ) -> Vec<Arc<ValidPoolTransaction<Self::Transaction>>> {
-        vec![] //TODO: implement
+        vec![]
     }
 
     fn get_pending_transactions_by_sender(
         &self,
         _sender: Address,
     ) -> Vec<Arc<ValidPoolTransaction<Self::Transaction>>> {
-        vec![] //TODO: implement
+        vec![]
     }
 
     fn get_highest_consecutive_transaction_by_sender(
@@ -280,6 +280,6 @@ impl TransactionPool for NoopWorldChainTransactionPool {
         _sender: Address,
         _on_chain_nonce: u64,
     ) -> Option<Arc<ValidPoolTransaction<Self::Transaction>>> {
-        None //TODO: implement
+        None
     }
 }
