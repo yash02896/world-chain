@@ -16,6 +16,7 @@ use crate::{
         validator::WorldChainTransactionValidator,
     },
     primitives::WorldChainPooledTransactionsElement,
+    rpc::bundle::{EthTransactionsExtServer, WorldChainEthApiExt},
 };
 use alloy_eips::eip2718::Decodable2718;
 use alloy_genesis::{Genesis, GenesisAccount};
@@ -24,13 +25,16 @@ use alloy_network::{Ethereum, EthereumWallet, TransactionBuilder};
 use alloy_rpc_types::{TransactionInput, TransactionRequest};
 use alloy_signer_local::PrivateKeySigner;
 use chrono::Utc;
-use reth::builder::{NodeAdapter, NodeBuilder, NodeConfig, NodeHandle};
 use reth::payload::{EthPayloadBuilderAttributes, PayloadId};
 use reth::tasks::TaskManager;
 use reth::transaction_pool::{blobstore::DiskFileBlobStore, TransactionValidationTaskExecutor};
 use reth::{
     api::{FullNodeTypesAdapter, NodeTypesWithDBAdapter},
     builder::components::Components,
+};
+use reth::{
+    builder::{NodeAdapter, NodeBuilder, NodeConfig, NodeHandle},
+    transaction_pool::Pool,
 };
 use reth_db::{
     test_utils::{tempdir_path, TempDatabase},
@@ -77,7 +81,7 @@ type NodeAdapterType = NodeAdapter<
                 NodeTypesWithDBAdapter<WorldChainBuilder, Arc<TempDatabase<DatabaseEnv>>>,
             >,
         >,
-        reth::transaction_pool::Pool<
+        Pool<
             TransactionValidationTaskExecutor<
                 WorldChainTransactionValidator<
                     BlockchainProvider<
@@ -147,6 +151,13 @@ impl WorldChainBuilderTestContext {
                 },
                 &path,
             )?)
+            .extend_rpc_modules(move |ctx| {
+                let provider = ctx.provider().clone();
+                let pool = ctx.pool().clone();
+                let eth_api_ext = WorldChainEthApiExt::new(pool, provider);
+                ctx.modules.merge_configured(eth_api_ext.into_rpc())?;
+                Ok(())
+            })
             .launch()
             .await?;
         let test_ctx = NodeTestContext::new(node, optimism_payload_attributes).await?;
@@ -306,6 +317,14 @@ async fn test_invalidate_dup_tx_and_nullifier() -> eyre::Result<()> {
     ctx.node.rpc.inject_tx(raw_tx.clone()).await?;
     let dup_pbh_hash_res = ctx.node.rpc.inject_tx(raw_tx.clone()).await;
     assert!(dup_pbh_hash_res.is_err());
+    Ok(())
+}
+
+#[tokio::test]
+#[serial]
+async fn test_send_raw_transaction_conditional() -> eyre::Result<()> {
+    let ctx = WorldChainBuilderTestContext::setup().await?;
+    println!("{:?}", ctx.node.rpc.inner.methods());
     Ok(())
 }
 

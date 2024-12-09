@@ -4,7 +4,7 @@ use alloy_rpc_types::erc4337::{AccountStorage, ConditionalOptions};
 use jsonrpsee::{
     core::{async_trait, RpcResult},
     proc_macros::rpc,
-    types::{ErrorCode, ErrorObjectOwned},
+    types::{ErrorCode, ErrorObject, ErrorObjectOwned},
 };
 
 use reth::transaction_pool::{PoolTransaction, TransactionOrigin, TransactionPool};
@@ -84,7 +84,9 @@ where
         let latest = self
             .provider()
             .block_by_id(BlockId::latest())
-            .map_err(|_| ErrorObjectOwned::from(ErrorCode::InternalError))?
+            .map_err(|e| {
+                ErrorObject::owned(ErrorCode::InternalError.code(), e.to_string(), Some(""))
+            })?
             .ok_or(ErrorObjectOwned::from(ErrorCode::InternalError))?;
 
         if let Some(min_block) = options.block_number_min {
