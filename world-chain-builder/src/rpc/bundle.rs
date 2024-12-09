@@ -1,15 +1,15 @@
 use crate::{pool::tx::WorldChainPooledTransaction, primitives::recover_raw_transaction};
 use alloy_eips::BlockId;
+use alloy_primitives::map::HashMap;
 use alloy_rpc_types::erc4337::{AccountStorage, ConditionalOptions};
 use jsonrpsee::{
     core::{async_trait, RpcResult},
     proc_macros::rpc,
     types::{ErrorCode, ErrorObject, ErrorObjectOwned},
 };
-
 use reth::transaction_pool::{PoolTransaction, TransactionOrigin, TransactionPool};
 use reth_provider::{BlockReaderIdExt, StateProviderFactory};
-use revm_primitives::{Address, Bytes, FixedBytes, HashMap, B256};
+use revm_primitives::{map::FbBuildHasher, Address, Bytes, FixedBytes, B256};
 
 /// Trait interface for `eth_sendRawTransactionConditional`
 #[cfg_attr(not(test), rpc(server, namespace = "eth"))]
@@ -89,27 +89,29 @@ where
             })?
             .ok_or(ErrorObjectOwned::from(ErrorCode::InternalError))?;
 
+        self.validate_known_accounts(options.known_accounts, latest.header.number.into())?;
+
         if let Some(min_block) = options.block_number_min {
             if min_block > latest.number {
-                return Err(ErrorObjectOwned::from(ErrorCode::from(-32003)));
+                return Err(ErrorCode::from(-32003).into());
             }
         }
 
         if let Some(max_block) = options.block_number_max {
             if max_block <= latest.number {
-                return Err(ErrorObjectOwned::from(ErrorCode::from(-32003)));
+                return Err(ErrorCode::from(-32003).into());
             }
         }
 
         if let Some(min_timestamp) = options.timestamp_min {
             if min_timestamp > latest.timestamp {
-                return Err(ErrorObjectOwned::from(ErrorCode::from(-32003)));
+                return Err(ErrorCode::from(-32003).into());
             }
         }
 
         if let Some(max_timestamp) = options.timestamp_max {
             if max_timestamp <= latest.timestamp {
-                return Err(ErrorObjectOwned::from(ErrorCode::from(-32003)));
+                return Err(ErrorCode::from(-32003).into());
             }
         }
 
@@ -119,26 +121,31 @@ where
     /// Validates the account storage slots/storage root provided by the client
     ///
     /// Matches the current state of the account storage slots/storage root.
-    /// TODO: We need to throttle the number of accounts that can be validated at once for DOS protection.
     pub fn validate_known_accounts(
         &self,
-        known_accounts: HashMap<Address, AccountStorage>,
+        known_accounts: HashMap<Address, AccountStorage, FbBuildHasher<20>>,
+        latest: BlockId,
     ) -> RpcResult<()> {
         let state = self
             .provider()
-            .state_by_block_id(BlockId::latest())
-            .map_err(|_| ErrorObjectOwned::from(ErrorCode::InternalError))?;
+            .state_by_block_id(latest)
+            .map_err(|e| {
+                ErrorObject::owned(ErrorCode::InternalError.code(), e.to_string(), Some(""))
+            })?;
 
-        for (address, storage) in known_accounts.iter() {
+        for (address, storage) in known_accounts.into_iter() {
             match storage {
                 AccountStorage::Slots(slots) => {
-                    for (slot, value) in slots.iter() {
-                        let current = state
-                            .storage(*address, slot.clone().into())
-                            .map_err(|_| ErrorObjectOwned::from(ErrorCode::InternalError))?;
+                    for (slot, value) in slots.into_iter() {
+                        let current = state.storage(address, slot.into()).map_err(|e| {
+                            ErrorObject::owned(
+                                ErrorCode::InternalError.code(),
+                                e.to_string(),
+                                Some(""),
+                            )
+                        })?;
                         if let Some(current) = current {
-                            if FixedBytes::<32>::from_slice(&current.to_be_bytes::<32>()) != *value
-                            {
+                            if FixedBytes::<32>::from_slice(&current.to_be_bytes::<32>()) != value {
                                 return Err(ErrorCode::from(-32003).into());
                             }
                         } else {
@@ -148,8 +155,14 @@ where
                 }
                 AccountStorage::RootHash(expected) => {
                     let root = state
-                        .storage_root(*address, Default::default())
-                        .map_err(|_| ErrorObjectOwned::from(ErrorCode::InternalError))?;
+                        .storage_root(address, Default::default())
+                        .map_err(|e| {
+                            ErrorObject::owned(
+                                ErrorCode::InternalError.code(),
+                                e.to_string(),
+                                Some(""),
+                            )
+                        })?;
                     if *expected != root {
                         return Err(ErrorCode::from(-32003).into());
                     }
