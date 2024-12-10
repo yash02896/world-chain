@@ -1,0 +1,1 @@
+@world-id-contracts/=lib/world-id-contracts/src/
