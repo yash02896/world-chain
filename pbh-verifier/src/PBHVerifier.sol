@@ -14,6 +14,13 @@ contract PBHVerifier {
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
     
+    /// @notice Emitted when a verifier is updated in the lookup table.
+    ///
+    /// @param nullifierHash The nullifier hash that was used.
+    event PBH(
+        uint256 indexed nullifierHash
+    );
+    
     /**
     * User Operation struct
     * @param sender                - The sender account of this request.
@@ -45,6 +52,7 @@ contract PBHVerifier {
         uint256 groupId;
         uint256 signalHash;
         uint256 nullifierHash;
+        // uint256 externalNullifierHash;
         uint256 externalNullifierHash;
         uint256[8] proof;
     }
@@ -73,6 +81,11 @@ contract PBHVerifier {
         externalNullifier = abi
             .encodePacked(abi.encodePacked(_appId).hashToField(), _actionId)
             .hashToField();
+    }
+    
+    function getCalldataHash() public view returns (uint256) {
+        // Get the keccak256 hash of the calldata
+        return ByteHasher.hashToField(msg.data);
     }
 
     /// @param signal An arbitrary input from the user, usually the user's wallet address (check README for further details)
@@ -106,20 +119,18 @@ contract PBHVerifier {
         // Make sure to emit some kind of event afterwards!
     }
     
-	function validateUserOp(PackedUserOperation calldata userOp) external view override { 
+	function validateUserOp(uint256 root, PackedUserOperation calldata userOp) external view override { 
 		// Decode proof from signature
-		(Proof proof, ) = abi.decode(userOp.signature, (Proof, bytes));
+		(PBHPayload pbhPayload, ) = abi.decode(userOp.signature, (PBHPayload, bytes));
+		// TODO: Decide what the signal should contain
+		signal = abi.encodePacked(userOp.callData).hashToField();
 		
-			// Validate proof inputs
-			// --snip--
-			
-			// Verify proof
-	    worldIdIdentityManager.verifyProof(proof);
-	    
-	    // Bump PBH nonce
-	    pbhNonce = pbhNonces[proof.nullifierHash] + 1;
-	    require(pbhNonce <= pbhNonceLimit);
-	    pbhNonces[proof.nullifierHash] = pbhNonce;
+	    verifyAndExecute(
+	        userOp.callData,
+	        root,
+	        pbhPayload.nullifierHash,
+	        pbhPayload.proof
+	    );
 	    
         // Emit PBH event after successful verification
         // The builder will prioritize bundles where every userop
