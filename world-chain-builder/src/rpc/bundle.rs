@@ -126,12 +126,9 @@ where
         known_accounts: HashMap<Address, AccountStorage, FbBuildHasher<20>>,
         latest: BlockId,
     ) -> RpcResult<()> {
-        let state = self
-            .provider()
-            .state_by_block_id(latest)
-            .map_err(|e| {
-                ErrorObject::owned(ErrorCode::InternalError.code(), e.to_string(), Some(""))
-            })?;
+        let state = self.provider().state_by_block_id(latest).map_err(|e| {
+            ErrorObject::owned(ErrorCode::InternalError.code(), e.to_string(), Some(""))
+        })?;
 
         for (address, storage) in known_accounts.into_iter() {
             match storage {

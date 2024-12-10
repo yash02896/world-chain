@@ -12,12 +12,13 @@ use alloy_rpc_types_eth::{erc4337::ConditionalOptions, BlockNumberOrTag};
 use alloy_transport::Transport;
 use clap::Parser;
 use eyre::eyre::{eyre, Result};
+use futures::{stream, StreamExt, TryStreamExt};
 use serde::Deserialize;
 use tokio::time::sleep;
 use tracing::{debug, info};
 
 const PBH_FIXTURE: &str = include_str!("../../../../devnet/fixtures/fixture.json");
-
+const CONCURRENCY_LIMIT: usize = 50;
 #[derive(Deserialize, Clone)]
 pub struct PbhFixture {
     pub fixture: Vec<Bytes>,
@@ -127,38 +128,42 @@ where
     P: Provider<T>,
 {
     let fixture = serde_json::from_str::<PbhFixture>(PBH_FIXTURE)?;
-    let mut queue = vec![];
-    
-    // Send half with `eth_sendRawTransaction` and the other half with `eth_sendRawTransactionConditional`
-    for transaction in fixture.fixture.iter().take(fixture.fixture.len() / 2) {
-        let tx = builder_provider.send_raw_transaction(transaction).await?;
-        queue.push(tx);
-    }
-
-    for transaction in fixture.fixture.iter().skip(fixture.fixture.len() / 2) {
-        let rlp_hex = hex::encode_prefixed(transaction);
-        let tx_hash = builder_provider
-            .client()
-            .request(
-                "eth_sendRawTransactionConditional",
-                (rlp_hex, ConditionalOptions::default(),),
-            )
-            .await?;
-        queue.push(PendingTransactionBuilder::new(
-            builder_provider.root(),
-            tx_hash,
-        ));
-    }
-
-    let futs = queue.into_iter().map(|builder| async {
-        let hash = builder.tx_hash().clone();
-        let receipt = builder.get_receipt().await;
-        assert!(receipt.is_ok());
-        debug!(receipt = ?receipt.unwrap(), hash = ?hash, "Transaction Receipt Received");
-    });
-
-    futures::future::join_all(futs).await;
-
+    let num_transactions = fixture.fixture.len();
+    let half = num_transactions / 2;
+    let builder_provider_clone = builder_provider.clone();
+    stream::iter(fixture.fixture.iter().enumerate())
+        .map(Ok)
+        .try_for_each_concurrent(CONCURRENCY_LIMIT, move |(index, transaction)| {
+            let builder_provider = builder_provider_clone.clone();
+            async move {
+                let tx = if index < half {
+                    // First half, use eth_sendRawTransaction
+                    builder_provider.send_raw_transaction(transaction).await?
+                } else {
+                    // Second half, use eth_sendRawTransactionConditional
+                    let rlp_hex = hex::encode_prefixed(transaction);
+                    let tx_hash = builder_provider
+                        .client()
+                        .request(
+                            "eth_sendRawTransactionConditional",
+                            (rlp_hex, ConditionalOptions::default()),
+                        )
+                        .await?;
+                    PendingTransactionBuilder::new(builder_provider.root(), tx_hash)
+                };
+                let hash = *tx.tx_hash();
+                let receipt = tx.get_receipt().await;
+                assert!(receipt.is_ok());
+                debug!(
+                    receipt = ?receipt.unwrap(),
+                    hash = ?hash,
+                    index = index,
+                    "Transaction Receipt Received"
+                );
+                Ok::<(), eyre::Report>(())
+            }
+        })
+        .await?;
     Ok(())
 }
 
