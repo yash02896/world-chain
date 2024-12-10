@@ -119,23 +119,19 @@ contract PBHVerifier {
         // Make sure to emit some kind of event afterwards!
     }
     
-	function validateUserOp(uint256 root, PackedUserOperation calldata userOp) external view override { 
+	function validateUserOp(PackedUserOperation calldata userOp) external view { 
 		// Decode proof from signature
-		(PBHPayload pbhPayload, ) = abi.decode(userOp.signature, (PBHPayload, bytes));
-		// TODO: Decide what the signal should contain
-		signal = abi.encodePacked(userOp.callData).hashToField();
+		(PBHPayload memory pbhPayload, ) = abi.decode(userOp.signature, (PBHPayload, bytes));
 		
+		// TODO: Decide what the signal should contain
 	    verifyAndExecute(
 	        userOp.callData,
-	        root,
+	        pbhPayload.root,
 	        pbhPayload.nullifierHash,
 	        pbhPayload.proof
 	    );
 	    
-        // Emit PBH event after successful verification
-        // The builder will prioritize bundles where every userop
-        // in the bundle emits a PBH event
-        emit PBH(proof.nullifierHash, userOpHash);
+        emit PBH(pbhPayload.nullifierHash);
     }
 }
 
