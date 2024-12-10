@@ -3,8 +3,9 @@ pragma solidity ^0.8.13;
 
 import {ByteHasher} from "./helpers/ByteHasher.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
+import {BaseAccount} from "@account-abstraction/core/BaseAccount.sol";
 
-contract PBHVerifier {
+contract PBHVerifier is BaseAccount {
     using ByteHasher for bytes;
 
     ///////////////////////////////////////////////////////////////////////////////
