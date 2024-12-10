@@ -1,0 +1,3 @@
+[submodule "pbh-verifier/lib/forge-std"]
+	path = pbh-verifier/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
