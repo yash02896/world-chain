@@ -1,66 +1,7 @@
-## Foundry
+# PBH Validator
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+As mentioned previously, Stage 1 of 4337 PBH features a PBHSignatureAggregator and PBHValidator contract, allowing a user to include a World ID proof encoded in the UserOp signature. The signature aggregator will call the PBHValidator for each UserOp included in the bundle, verifying the associated proof.
 
-Foundry consists of:
+The `PBHValidator` contract will extract the proof data from the signature, validate proof inputs and verify the proof. The `signal` for the proof will consist of the `userOpHash`. Upon successful verification of the proof, the `PBHValidator` will bump the PBH nonce for the `nullifierHash` associated with the proof. The PBH nonce is used to ensure that a given World ID user does not use more than `n` transactions a month.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+If the UserOp successfully clears all of these checks, a `PBH` event will be emitted indicating to the builder that this UserOp is a valid PBH user operation. The builder will only consider a “PBH” bundle for priority inclusion if all UserOps in the bundle emit a PBH event, and `aggregator` is specified as the `PBHSignatureAggregator`.
