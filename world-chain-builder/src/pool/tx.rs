@@ -1,4 +1,5 @@
 use alloy_primitives::TxHash;
+use alloy_rpc_types::erc4337::ConditionalOptions;
 use reth::transaction_pool::{EthPoolTransaction, EthPooledTransaction, PoolTransaction};
 use reth_primitives::transaction::TryFromRecoveredTransactionError;
 use reth_primitives::{PooledTransactionsElementEcRecovered, TransactionSignedEcRecovered};
@@ -11,10 +12,11 @@ pub trait WorldChainPoolTransaction: EthPoolTransaction {
     fn pbh_payload(&self) -> Option<&PbhPayload>;
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct WorldChainPooledTransaction {
     pub inner: EthPooledTransaction,
     pub pbh_payload: Option<PbhPayload>,
+    pub conditional_options: Option<ConditionalOptions>,
 }
 
 impl EthPoolTransaction for WorldChainPooledTransaction {
@@ -58,6 +60,7 @@ impl TryFrom<TransactionSignedEcRecovered> for WorldChainPooledTransaction {
         Ok(Self {
             inner: EthPooledTransaction::try_from(tx)?,
             pbh_payload: None,
+            conditional_options: None,
         })
     }
 }
@@ -67,6 +70,7 @@ impl From<WorldChainPooledTransactionsElementEcRecovered> for WorldChainPooledTr
         Self {
             inner: EthPooledTransaction::from_pooled(tx.inner),
             pbh_payload: tx.pbh_payload,
+            conditional_options: None,
         }
     }
 }
@@ -99,6 +103,7 @@ impl PoolTransaction for WorldChainPooledTransaction {
         EthPooledTransaction::try_from_consensus(tx).map(|inner| Self {
             inner,
             pbh_payload: None,
+            conditional_options: None,
         })
     }
 

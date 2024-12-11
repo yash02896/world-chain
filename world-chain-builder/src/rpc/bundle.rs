@@ -1,6 +1,6 @@
 use crate::{pool::tx::WorldChainPooledTransaction, primitives::recover_raw_transaction};
 use alloy_eips::BlockId;
-use alloy_primitives::map::HashMap;
+use alloy_primitives::{map::HashMap, StorageKey};
 use alloy_rpc_types::erc4337::{AccountStorage, ConditionalOptions};
 use jsonrpsee::{
     core::{async_trait, RpcResult},
@@ -44,9 +44,10 @@ where
         tx: Bytes,
         options: ConditionalOptions,
     ) -> RpcResult<B256> {
-        self.validate_options(options)?;
+        self.validate_options(&options)?;
         let (recovered, _) = recover_raw_transaction(tx.clone())?;
-        let pool_transaction = WorldChainPooledTransaction::from_pooled(recovered);
+        let mut pool_transaction = WorldChainPooledTransaction::from_pooled(recovered);
+        pool_transaction.conditional_options = Some(options);
 
         // submit the transaction to the pool with a `Local` origin
         let hash = self
@@ -80,7 +81,7 @@ where
     ///
     /// reference for the implementation <https://notes.ethereum.org/@yoav/SkaX2lS9j#>
     /// See also <https://pkg.go.dev/github.com/aK0nshin/go-ethereum/arbitrum_types#ConditionalOptions>
-    pub fn validate_options(&self, options: ConditionalOptions) -> RpcResult<()> {
+    pub fn validate_options(&self, options: &ConditionalOptions) -> RpcResult<()> {
         let latest = self
             .provider()
             .block_by_id(BlockId::latest())
@@ -89,7 +90,7 @@ where
             })?
             .ok_or(ErrorObjectOwned::from(ErrorCode::InternalError))?;
 
-        self.validate_known_accounts(options.known_accounts, latest.header.number.into())?;
+        self.validate_known_accounts(&options.known_accounts, latest.header.number.into())?;
 
         if let Some(min_block) = options.block_number_min {
             if min_block > latest.number {
@@ -123,26 +124,30 @@ where
     /// Matches the current state of the account storage slots/storage root.
     pub fn validate_known_accounts(
         &self,
-        known_accounts: HashMap<Address, AccountStorage, FbBuildHasher<20>>,
+        known_accounts: &HashMap<Address, AccountStorage, FbBuildHasher<20>>,
         latest: BlockId,
     ) -> RpcResult<()> {
         let state = self.provider().state_by_block_id(latest).map_err(|e| {
             ErrorObject::owned(ErrorCode::InternalError.code(), e.to_string(), Some(""))
         })?;
 
-        for (address, storage) in known_accounts.into_iter() {
+        for (address, storage) in known_accounts.iter() {
             match storage {
                 AccountStorage::Slots(slots) => {
-                    for (slot, value) in slots.into_iter() {
-                        let current = state.storage(address, slot.into()).map_err(|e| {
-                            ErrorObject::owned(
-                                ErrorCode::InternalError.code(),
-                                e.to_string(),
-                                Some(""),
-                            )
-                        })?;
+                    for (slot, value) in slots.iter() {
+                        let current =
+                            state
+                                .storage(*address, StorageKey::from(*slot))
+                                .map_err(|e| {
+                                    ErrorObject::owned(
+                                        ErrorCode::InternalError.code(),
+                                        e.to_string(),
+                                        Some(""),
+                                    )
+                                })?;
                         if let Some(current) = current {
-                            if FixedBytes::<32>::from_slice(&current.to_be_bytes::<32>()) != value {
+                            if FixedBytes::<32>::from_slice(&current.to_be_bytes::<32>()) != *value
+                            {
                                 return Err(ErrorCode::from(-32003).into());
                             }
                         } else {
@@ -152,7 +157,7 @@ where
                 }
                 AccountStorage::RootHash(expected) => {
                     let root = state
-                        .storage_root(address, Default::default())
+                        .storage_root(*address, Default::default())
                         .map_err(|e| {
                             ErrorObject::owned(
                                 ErrorCode::InternalError.code(),
