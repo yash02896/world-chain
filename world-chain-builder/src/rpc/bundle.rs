@@ -91,7 +91,7 @@ where
     Client: BlockReaderIdExt + StateProviderFactory,
 {
     let latest = provider
-        .block_by_id(BlockId::latest())
+        .block_by_id(BlockId::pending())
         .map_err(|e| ErrorObject::owned(ErrorCode::InternalError.code(), e.to_string(), Some("")))?
         .ok_or(ErrorObjectOwned::from(ErrorCode::InternalError))?;
 
@@ -108,7 +108,7 @@ where
     }
 
     if let Some(max_block) = options.block_number_max {
-        if max_block <= latest.number {
+        if max_block < latest.number {
             return Err(ErrorCode::from(-32003).into());
         }
     }
@@ -120,7 +120,7 @@ where
     }
 
     if let Some(max_timestamp) = options.timestamp_max {
-        if max_timestamp <= latest.timestamp {
+        if max_timestamp < latest.timestamp {
             return Err(ErrorCode::from(-32003).into());
         }
     }
