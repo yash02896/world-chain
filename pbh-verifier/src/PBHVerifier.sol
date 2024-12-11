@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.20;
 
 import {ByteHasher} from "./helpers/ByteHasher.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 import {BaseAccount} from "@account-abstraction/core/BaseAccount.sol";
+import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
-contract PBHVerifier is BaseAccount {
+contract PBHVerifier {
     using ByteHasher for bytes;
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -15,12 +16,32 @@ contract PBHVerifier is BaseAccount {
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
     
+    /// @notice Thrown when the provided external nullifier year doesn't
+    /// match the current year
+    error InvalidExternalNullifierYear();
+    
+    /// @notice Thrown when the provided external nullifier month doesn't
+    /// match the current month
+    error InvalidExternalNullifierMonth();
+    
+    /// @notice Thrown when the provided external 
+    /// nullifier pbhNonce >= numPbhPerMonth
+    error InvalidPbhNonce();
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  Events                                ///
+    //////////////////////////////////////////////////////////////////////////////
+    
     /// @notice Emitted when a verifier is updated in the lookup table.
     ///
     /// @param nullifierHash The nullifier hash that was used.
     event PBH(
         uint256 indexed nullifierHash
     );
+    
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  Structs                               ///
+    //////////////////////////////////////////////////////////////////////////////
     
     /**
     * User Operation struct
@@ -50,55 +71,67 @@ contract PBHVerifier is BaseAccount {
 
     struct PBHPayload {
         uint256 root;
-        uint256 groupId;
-        uint256 signalHash;
         uint256 nullifierHash;
-        // uint256 externalNullifierHash;
-        uint256 externalNullifierHash;
+        ExternalNullifier externalNullifier;
         uint256[8] proof;
     }
+
+    /**
+    * External Nullifier struct
+    * @param pbhNonce              - A nonce between 0 and numPbhPerMonth.
+    * @param month                 - An integer representing the current month.
+    * @param year                  - An integer representing the current year.
+    */
+    struct ExternalNullifier {
+        uint8 pbhNonce;
+        uint16 month;
+        uint8 year;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  Vars                                  ///
+    //////////////////////////////////////////////////////////////////////////////
 
     /// @dev The World ID instance that will be used for verifying proofs
     IWorldIDGroups internal immutable worldId;
 
-    /// @dev The contract's external nullifier hash
-    uint256 internal immutable externalNullifier;
-
     /// @dev The World ID group ID (always 1)
     uint256 internal immutable groupId = 1;
+    
+    /// @dev Make this configurable
+    uint256 internal immutable numPbhPerMonth = 30;
 
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) internal nullifierHashes;
+    
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  Functions                             ///
+    //////////////////////////////////////////////////////////////////////////////
 
     /// @param _worldId The WorldID instance that will verify the proofs
-    /// @param _appId The World ID app ID
-    /// @param _actionId The World ID action ID
     constructor(
-        IWorldIDGroups _worldId,
-        string memory _appId,
-        string memory _actionId
+        IWorldIDGroups _worldId
     ) {
         worldId = _worldId;
-        externalNullifier = abi
-            .encodePacked(abi.encodePacked(_appId).hashToField(), _actionId)
-            .hashToField();
     }
     
-    function getCalldataHash() public view returns (uint256) {
-        // Get the keccak256 hash of the calldata
-        return ByteHasher.hashToField(msg.data);
+    function verifyExternalNullifier(ExternalNullifier memory externalNullifer) public view {
+        require(externalNullifer.year == BokkyPooBahsDateTimeLibrary.getYear(block.timestamp), InvalidExternalNullifierYear()); 
+        require(externalNullifer.month == BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp), InvalidExternalNullifierMonth()); 
+        require(externalNullifer.pbhNonce <= numPbhPerMonth, InvalidPbhNonce()); 
     }
 
     /// @param userOp A packed user operation, used to generate the signal hash
     /// @param root The root of the Merkle tree (returned by the JS widget).
     /// @param nullifierHash The nullifier hash for this proof, preventing double signaling (returned by the JS widget).
     /// @param proof The zero-knowledge proof that demonstrates the claimer is registered with World ID (returned by the JS widget).
-    function verifyProof(
+    function verifyPbhProof(
         PackedUserOperation memory userOp,
         uint256 root,
         uint256 nullifierHash,
+        ExternalNullifier memory externalNullifier,
         uint256[8] memory proof
-    ) public {
+    ) external {
         // First, we make sure this person hasn't done this before
         if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
 
@@ -109,22 +142,25 @@ contract PBHVerifier is BaseAccount {
             userOp.callData
         ).hashToField();
 
+        // Verify the external nullifier
+        verifyExternalNullifier(externalNullifier);
+
+        uint256 externalNullifierHash = abi.encode(externalNullifier).hashToField();
+
         // We now verify the provided proof is valid and the user is verified by World ID
         worldId.verifyProof(
             root,
             groupId,
             signalHash,
             nullifierHash,
-            externalNullifier,
+            externalNullifierHash,
             proof
         );
 
         // We now record the user has done this, so they can't do it again (proof of uniqueness)
         nullifierHashes[nullifierHash] = true;
 
-        // Finally, execute your logic here, for example issue a token, NFT, etc...
-        // Make sure to emit some kind of event afterwards!
-        emit PBH(pbhPayload.nullifierHash);
+        emit PBH(nullifierHash);
     }
 }
 
