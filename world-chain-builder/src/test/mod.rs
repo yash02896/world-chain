@@ -39,6 +39,7 @@ pub fn get_non_pbh_transaction() -> WorldChainPooledTransaction {
     WorldChainPooledTransaction {
         inner: eth_tx,
         pbh_payload: None,
+        conditional_options: None,
     }
 }
 
@@ -53,6 +54,7 @@ pub fn get_pbh_transaction(nonce: u16) -> WorldChainPooledTransaction {
     WorldChainPooledTransaction {
         inner: eth_tx,
         pbh_payload: Some(pbh_payload),
+        conditional_options: None,
     }
 }
 

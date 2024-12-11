@@ -1,6 +1,6 @@
 use crate::{pool::tx::WorldChainPooledTransaction, primitives::recover_raw_transaction};
 use alloy_eips::BlockId;
-use alloy_primitives::map::HashMap;
+use alloy_primitives::{map::HashMap, StorageKey};
 use alloy_rpc_types::erc4337::{AccountStorage, ConditionalOptions};
 use jsonrpsee::{
     core::{async_trait, RpcResult},
@@ -44,9 +44,11 @@ where
         tx: Bytes,
         options: ConditionalOptions,
     ) -> RpcResult<B256> {
-        self.validate_options(options)?;
+        validate_conditional_options(&options, self.provider())?;
+
         let (recovered, _) = recover_raw_transaction(tx.clone())?;
-        let pool_transaction = WorldChainPooledTransaction::from_pooled(recovered);
+        let mut pool_transaction = WorldChainPooledTransaction::from_pooled(recovered);
+        pool_transaction.conditional_options = Some(options);
 
         // submit the transaction to the pool with a `Local` origin
         let hash = self
@@ -75,97 +77,106 @@ where
     pub fn pool(&self) -> &Pool {
         &self.pool
     }
+}
 
-    /// Validates the conditional inclusion options provided by the client.
-    ///
-    /// reference for the implementation <https://notes.ethereum.org/@yoav/SkaX2lS9j#>
-    /// See also <https://pkg.go.dev/github.com/aK0nshin/go-ethereum/arbitrum_types#ConditionalOptions>
-    pub fn validate_options(&self, options: ConditionalOptions) -> RpcResult<()> {
-        let latest = self
-            .provider()
-            .block_by_id(BlockId::latest())
-            .map_err(|e| {
-                ErrorObject::owned(ErrorCode::InternalError.code(), e.to_string(), Some(""))
-            })?
-            .ok_or(ErrorObjectOwned::from(ErrorCode::InternalError))?;
+/// Validates the conditional inclusion options provided by the client.
+///
+/// reference for the implementation <https://notes.ethereum.org/@yoav/SkaX2lS9j#>
+/// See also <https://pkg.go.dev/github.com/aK0nshin/go-ethereum/arbitrum_types#ConditionalOptions>
+pub fn validate_conditional_options<Client>(
+    options: &ConditionalOptions,
+    provider: &Client,
+) -> RpcResult<()>
+where
+    Client: BlockReaderIdExt + StateProviderFactory,
+{
+    let latest = provider
+        .block_by_id(BlockId::pending())
+        .map_err(|e| ErrorObject::owned(ErrorCode::InternalError.code(), e.to_string(), Some("")))?
+        .ok_or(ErrorObjectOwned::from(ErrorCode::InternalError))?;
 
-        self.validate_known_accounts(options.known_accounts, latest.header.number.into())?;
+    validate_known_accounts(
+        &options.known_accounts,
+        latest.header.number.into(),
+        provider,
+    )?;
 
-        if let Some(min_block) = options.block_number_min {
-            if min_block > latest.number {
-                return Err(ErrorCode::from(-32003).into());
-            }
+    if let Some(min_block) = options.block_number_min {
+        if min_block > latest.number {
+            return Err(ErrorCode::from(-32003).into());
         }
-
-        if let Some(max_block) = options.block_number_max {
-            if max_block <= latest.number {
-                return Err(ErrorCode::from(-32003).into());
-            }
-        }
-
-        if let Some(min_timestamp) = options.timestamp_min {
-            if min_timestamp > latest.timestamp {
-                return Err(ErrorCode::from(-32003).into());
-            }
-        }
-
-        if let Some(max_timestamp) = options.timestamp_max {
-            if max_timestamp <= latest.timestamp {
-                return Err(ErrorCode::from(-32003).into());
-            }
-        }
-
-        Ok(())
     }
 
-    /// Validates the account storage slots/storage root provided by the client
-    ///
-    /// Matches the current state of the account storage slots/storage root.
-    pub fn validate_known_accounts(
-        &self,
-        known_accounts: HashMap<Address, AccountStorage, FbBuildHasher<20>>,
-        latest: BlockId,
-    ) -> RpcResult<()> {
-        let state = self.provider().state_by_block_id(latest).map_err(|e| {
-            ErrorObject::owned(ErrorCode::InternalError.code(), e.to_string(), Some(""))
-        })?;
+    if let Some(max_block) = options.block_number_max {
+        if max_block < latest.number {
+            return Err(ErrorCode::from(-32003).into());
+        }
+    }
 
-        for (address, storage) in known_accounts.into_iter() {
-            match storage {
-                AccountStorage::Slots(slots) => {
-                    for (slot, value) in slots.into_iter() {
-                        let current = state.storage(address, slot.into()).map_err(|e| {
-                            ErrorObject::owned(
-                                ErrorCode::InternalError.code(),
-                                e.to_string(),
-                                Some(""),
-                            )
-                        })?;
-                        if let Some(current) = current {
-                            if FixedBytes::<32>::from_slice(&current.to_be_bytes::<32>()) != value {
-                                return Err(ErrorCode::from(-32003).into());
-                            }
-                        } else {
+    if let Some(min_timestamp) = options.timestamp_min {
+        if min_timestamp > latest.timestamp {
+            return Err(ErrorCode::from(-32003).into());
+        }
+    }
+
+    if let Some(max_timestamp) = options.timestamp_max {
+        if max_timestamp < latest.timestamp {
+            return Err(ErrorCode::from(-32003).into());
+        }
+    }
+
+    Ok(())
+}
+
+/// Validates the account storage slots/storage root provided by the client
+///
+/// Matches the current state of the account storage slots/storage root.
+pub fn validate_known_accounts<Client>(
+    known_accounts: &HashMap<Address, AccountStorage, FbBuildHasher<20>>,
+    latest: BlockId,
+    provider: &Client,
+) -> RpcResult<()>
+where
+    Client: BlockReaderIdExt + StateProviderFactory,
+{
+    let state = provider.state_by_block_id(latest).map_err(|e| {
+        ErrorObject::owned(ErrorCode::InternalError.code(), e.to_string(), Some(""))
+    })?;
+
+    for (address, storage) in known_accounts.iter() {
+        match storage {
+            AccountStorage::Slots(slots) => {
+                for (slot, value) in slots.iter() {
+                    let current =
+                        state
+                            .storage(*address, StorageKey::from(*slot))
+                            .map_err(|e| {
+                                ErrorObject::owned(
+                                    ErrorCode::InternalError.code(),
+                                    e.to_string(),
+                                    Some(""),
+                                )
+                            })?;
+                    if let Some(current) = current {
+                        if FixedBytes::<32>::from_slice(&current.to_be_bytes::<32>()) != *value {
                             return Err(ErrorCode::from(-32003).into());
                         }
-                    }
-                }
-                AccountStorage::RootHash(expected) => {
-                    let root = state
-                        .storage_root(address, Default::default())
-                        .map_err(|e| {
-                            ErrorObject::owned(
-                                ErrorCode::InternalError.code(),
-                                e.to_string(),
-                                Some(""),
-                            )
-                        })?;
-                    if *expected != root {
+                    } else {
                         return Err(ErrorCode::from(-32003).into());
                     }
                 }
             }
+            AccountStorage::RootHash(expected) => {
+                let root = state
+                    .storage_root(*address, Default::default())
+                    .map_err(|e| {
+                        ErrorObject::owned(ErrorCode::InternalError.code(), e.to_string(), Some(""))
+                    })?;
+                if *expected != root {
+                    return Err(ErrorCode::from(-32003).into());
+                }
+            }
         }
-        Ok(())
     }
+    Ok(())
 }

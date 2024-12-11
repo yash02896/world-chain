@@ -33,7 +33,8 @@ use reth_optimism_payload_builder::error::OptimismPayloadBuilderError;
 use reth_primitives::{proofs, BlockBody};
 use reth_primitives::{Block, Header, Receipt, TxType};
 use reth_provider::{
-    CanonStateSubscriptions, ChainSpecProvider, ExecutionOutcome, StateProviderFactory,
+    BlockReaderIdExt, CanonStateSubscriptions, ChainSpecProvider, ExecutionOutcome,
+    StateProviderFactory,
 };
 use reth_trie::HashedPostState;
 use revm_primitives::calc_excess_blob_gas;
@@ -45,6 +46,7 @@ use tracing::{debug, trace, warn};
 
 use crate::pool::noop::NoopWorldChainTransactionPool;
 use crate::pool::tx::WorldChainPoolTransaction;
+use crate::rpc::bundle::validate_conditional_options;
 
 /// Priority blockspace for humans builder
 #[derive(Debug, Clone)]
@@ -72,7 +74,7 @@ where
 /// Implementation of the [`PayloadBuilder`] trait for [`WorldChainPayloadBuilder`].
 impl<Pool, Client, EvmConfig> PayloadBuilder<Pool, Client> for WorldChainPayloadBuilder<EvmConfig>
 where
-    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec>,
+    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
     Pool: TransactionPool<Transaction: WorldChainPoolTransaction>,
     EvmConfig: ConfigureEvm<Header = Header>,
 {
@@ -218,7 +220,7 @@ pub(crate) fn worldchain_payload<EvmConfig, Pool, Client>(
 ) -> Result<BuildOutcome<OptimismBuiltPayload>, PayloadBuilderError>
 where
     EvmConfig: ConfigureEvm<Header = Header>,
-    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec>,
+    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
     Pool: TransactionPool<Transaction: WorldChainPoolTransaction>,
 {
     let BuildArguments {
@@ -406,8 +408,17 @@ where
     }
 
     if !attributes.no_tx_pool {
+        let mut invalid_txs = vec![];
         let verified_gas_limit = (verified_blockspace_capacity as u64 * block_gas_limit) / 100;
         while let Some(pool_tx) = best_txs.next() {
+            if let Some(conditional_options) = pool_tx.transaction.conditional_options() {
+                if let Err(_) = validate_conditional_options(conditional_options, &client) {
+                    best_txs.mark_invalid(&pool_tx);
+                    invalid_txs.push(pool_tx.hash().clone());
+                    continue;
+                }
+            }
+
             // If the transaction is verified, check if it can be added within the verified gas limit
             if pool_tx.transaction.pbh_payload().is_some()
                 && cumulative_gas_used + pool_tx.gas_limit() > verified_gas_limit
@@ -502,6 +513,10 @@ where
             // append sender and transaction to the respective lists
             executed_senders.push(tx.signer());
             executed_txs.push(tx.into_signed());
+        }
+
+        if !invalid_txs.is_empty() {
+            pool.remove_transactions(invalid_txs);
         }
     }
 
@@ -995,6 +1010,7 @@ mod tests {
                 WorldChainPooledTransaction {
                     inner: pooled_tx,
                     pbh_payload,
+                    conditional_options: None,
                 }
             })
             .collect::<Vec<_>>()
