@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {ByteHasher} from "./helpers/ByteHasher.sol";
+import {PBHExternalNullifier} from "./helpers/PBHExternalNullifier.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
@@ -14,8 +15,6 @@ contract PBHVerifier {
 
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
-    
-
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Events                                ///
@@ -32,32 +31,6 @@ contract PBHVerifier {
     ///                                  Structs                               ///
     //////////////////////////////////////////////////////////////////////////////
     
-    /**
-    * User Operation struct
-    * @param sender                - The sender account of this request.
-    * @param nonce                 - Unique value the sender uses to verify it is not a replay.
-    * @param initCode              - If set, the account contract will be created by this constructor/
-    * @param callData              - The method call to execute on this account.
-    * @param accountGasLimits      - Packed gas limits for validateUserOp and gas limit passed to the callData method call.
-    * @param preVerificationGas    - Gas not calculated by the handleOps method, but added to the gas paid.
-    *                                Covers batch overhead.
-    * @param gasFees               - packed gas fields maxPriorityFeePerGas and maxFeePerGas - Same as EIP-1559 gas parameters.
-    * @param paymasterAndData      - If set, this field holds the paymaster address, verification gas limit, postOp gas limit and paymaster-specific extra data
-    *                                The paymaster will pay for the transaction instead of the sender.
-    * @param signature             - Sender-verified signature over the entire request, the EntryPoint address and the chain ID.
-    */
-    struct PackedUserOperation {
-        address sender;
-        uint256 nonce;
-        bytes initCode;
-        bytes callData;
-        bytes32 accountGasLimits;
-        uint256 preVerificationGas;
-        bytes32 gasFees;
-        bytes paymasterAndData;
-        bytes signature;
-    }
-
     struct PBHPayload {
         uint256 root;
         uint256 nullifierHash;
@@ -88,7 +61,7 @@ contract PBHVerifier {
     uint256 internal immutable groupId = 1;
     
     /// @dev Make this configurable
-    uint256 internal immutable numPbhPerMonth = 30;
+    uint8 internal immutable numPbhPerMonth;
 
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) internal nullifierHashes;
@@ -99,43 +72,26 @@ contract PBHVerifier {
 
     /// @param _worldId The WorldID instance that will verify the proofs
     constructor(
-        IWorldIDGroups _worldId
+        IWorldIDGroups _worldId,
+        uint8 _numPbhPerMonth
     ) {
         worldId = _worldId;
+        numPbhPerMonth = _numPbhPerMonth;
     }
 
-    function get(ExternalNullifier memory externalNullifer) public view {
-        require(externalNullifer.year == BokkyPooBahsDateTimeLibrary.getYear(block.timestamp), InvalidExternalNullifierYear()); 
-        require(externalNullifer.month == BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp), InvalidExternalNullifierMonth()); 
-        require(externalNullifer.pbhNonce <= numPbhPerMonth, InvalidPbhNonce()); 
-    }
-    
-    /// @param externalNullifer The external nullifer is used to ensure that each pbhNonce can be used only once per month.
-    ///        The value is encoded by bit shifting 3 uint8s corresponding to 
-    ///        * pbhNonce              - An 8 bit nonce between 0 and numPbhPerMonth.
-    ///        * month                 - An 8 bit value representing the current month.
-    ///        * year                  - A 16 bit value representing the current year.
-    ///        [0][0][0][0][0][0][0][0] [0][0][0][0][0][0][0][0] [0][0][0][0][0][0][0][0] [0][0][0][0][pbhNonce][month][yearA][yearB] 
-    function verifyExternalNullifier(uint256 externalNullifer) public view {
-        require(externalNullifer.year == BokkyPooBahsDateTimeLibrary.getYear(block.timestamp), InvalidExternalNullifierYear()); 
-        require(externalNullifer.month == BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp), InvalidExternalNullifierMonth()); 
-        require(externalNullifer.pbhNonce <= numPbhPerMonth, InvalidPbhNonce()); 
-    }
-    function encodeExternalNullifier(uint8 pbhNonce, uint8 month, uint16 year) public pure returns (uint32) {
-        require(month >= 1 && month <= 12, "Invalid month");
-        require(year <= 9999, "Invalid year");
-        return (uint32(year) << 16) | (uint32(month) << 8) | uint32(pbhNonce);
-    } 
-
-    /// @param userOp A packed user operation, used to generate the signal hash
     /// @param root The root of the Merkle tree (returned by the JS widget).
+    /// @param sender The root of the Merkle tree (returned by the JS widget).
+    /// @param nonce The root of the Merkle tree (returned by the JS widget).
+    /// @param callData The root of the Merkle tree (returned by the JS widget).
     /// @param nullifierHash The nullifier hash for this proof, preventing double signaling (returned by the JS widget).
     /// @param proof The zero-knowledge proof that demonstrates the claimer is registered with World ID (returned by the JS widget).
     function verifyPbhProof(
-        PackedUserOperation memory userOp,
         uint256 root,
+        address sender,
+        uint256 nonce,
+        bytes memory callData,
+        uint256 pbhExternalNullifier,
         uint256 nullifierHash,
-        uint256 externalNullifier,
         uint256[8] memory proof
     ) external {
         // First, we make sure this person hasn't done this before
@@ -143,15 +99,14 @@ contract PBHVerifier {
 
         // We now generate the signal hash from the sender, nonce, and calldata
         uint256 signalHash = abi.encodePacked(
-            userOp.sender,
-            userOp.nonce,
-            userOp.callData
+            sender,
+            nonce,
+            callData
         ).hashToField();
 
         // Verify the external nullifier
-        verifyExternalNullifier(externalNullifier);
-
-        uint256 externalNullifierHash = abi.encode(externalNullifier).hashToField();
+        PBHExternalNullifier.verify(pbhExternalNullifier, numPbhPerMonth);
+         
 
         // We now verify the provided proof is valid and the user is verified by World ID
         worldId.verifyProof(
@@ -159,7 +114,7 @@ contract PBHVerifier {
             groupId,
             signalHash,
             nullifierHash,
-            externalNullifierHash,
+            pbhExternalNullifier,
             proof
         );
 
