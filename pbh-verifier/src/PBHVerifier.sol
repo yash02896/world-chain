@@ -89,25 +89,31 @@ contract PBHVerifier is BaseAccount {
         return ByteHasher.hashToField(msg.data);
     }
 
-    /// @param signal An arbitrary input from the user, usually the user's wallet address (check README for further details)
+    /// @param userOp A packed user operation, used to generate the signal hash
     /// @param root The root of the Merkle tree (returned by the JS widget).
     /// @param nullifierHash The nullifier hash for this proof, preventing double signaling (returned by the JS widget).
     /// @param proof The zero-knowledge proof that demonstrates the claimer is registered with World ID (returned by the JS widget).
-    /// @dev Feel free to rename this method however you want! We've used `claim`, `verify` or `execute` in the past.
-    function verifyAndExecute(
-        address signal,
+    function verifyProof(
+        PackedUserOperation memory userOp,
         uint256 root,
         uint256 nullifierHash,
-        uint256[8] calldata proof
+        uint256[8] memory proof
     ) public {
         // First, we make sure this person hasn't done this before
         if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
+
+        // We now generate the signal hash from the sender, nonce, and calldata
+        uint256 signalHash = abi.encodePacked(
+            userOp.sender,
+            userOp.nonce,
+            userOp.callData
+        ).hashToField();
 
         // We now verify the provided proof is valid and the user is verified by World ID
         worldId.verifyProof(
             root,
             groupId,
-            abi.encodePacked(signal).hashToField(),
+            signalHash,
             nullifierHash,
             externalNullifier,
             proof
@@ -118,20 +124,6 @@ contract PBHVerifier is BaseAccount {
 
         // Finally, execute your logic here, for example issue a token, NFT, etc...
         // Make sure to emit some kind of event afterwards!
-    }
-    
-	function validateUserOp(PackedUserOperation calldata userOp) external view { 
-		// Decode proof from signature
-		(PBHPayload memory pbhPayload, ) = abi.decode(userOp.signature, (PBHPayload, bytes));
-		
-		// TODO: Decide what the signal should contain
-	    verifyAndExecute(
-	        userOp.callData,
-	        pbhPayload.root,
-	        pbhPayload.nullifierHash,
-	        pbhPayload.proof
-	    );
-	    
         emit PBH(pbhPayload.nullifierHash);
     }
 }
