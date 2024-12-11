@@ -2,12 +2,10 @@
 pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
-import "@helpers/PBHExternalNullifierLib.sol";
+import "@helpers/PBHExternalNullifier.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
 contract PBHExternalNullifierLibTest is Test {
-    using PBHExternalNulliferLib for PBHExternalNullifier;
-
     uint8 constant VALID_PBH_NONCE = 5;
     uint8 constant VALID_MONTH = 12;
     uint16 constant VALID_YEAR = 2024;
@@ -20,8 +18,8 @@ contract PBHExternalNullifierLibTest is Test {
         uint16 year = VALID_YEAR;
 
         // Act
-        PBHExternalNullifier encoded = PBHExternalNulliferLib.encode(pbhNonce, month, year);
-        (uint8 decodedNonce, uint8 decodedMonth, uint16 decodedYear) = PBHExternalNulliferLib.decode(encoded);
+        uint256 encoded = PBHExternalNullifier.encode(pbhNonce, month, year);
+        (uint8 decodedNonce, uint8 decodedMonth, uint16 decodedYear) = PBHExternalNullifier.decode(encoded);
 
         // Assert
         assertEq(decodedNonce, pbhNonce, "Decoded nonce should match the original");
@@ -32,15 +30,15 @@ contract PBHExternalNullifierLibTest is Test {
     function testEncodeInvalidMonth() public {
         uint8 invalidMonth = 13;
 
-        vm.expectRevert(PBHExternalNulliferLib.InvalidExternalNullifierMonth.selector);
-        PBHExternalNulliferLib.encode(VALID_PBH_NONCE, invalidMonth, VALID_YEAR);
+        vm.expectRevert(PBHExternalNullifier.InvalidExternalNullifierMonth.selector);
+        PBHExternalNullifier.encode(VALID_PBH_NONCE, invalidMonth, VALID_YEAR);
     }
 
     function testEncodeInvalidYear() public {
         uint16 invalidYear = 10000;
 
-        vm.expectRevert(PBHExternalNulliferLib.InvalidExternalNullifierYear.selector);
-        PBHExternalNulliferLib.encode(VALID_PBH_NONCE, VALID_MONTH, invalidYear);
+        vm.expectRevert(PBHExternalNullifier.InvalidExternalNullifierYear.selector);
+        PBHExternalNullifier.encode(VALID_PBH_NONCE, VALID_MONTH, invalidYear);
     }
 
     function testVerifyValidExternalNullifier() public {
@@ -55,10 +53,10 @@ contract PBHExternalNullifierLibTest is Test {
         );
         vm.warp(timestamp);
 
-        PBHExternalNullifier encoded = PBHExternalNulliferLib.encode(VALID_PBH_NONCE, VALID_MONTH, VALID_YEAR);
+        uint256 encoded = PBHExternalNullifier.encode(VALID_PBH_NONCE, VALID_MONTH, VALID_YEAR);
 
         // Act & Assert
-        PBHExternalNulliferLib.verify(encoded, MAX_PBH_PER_MONTH);
+        PBHExternalNullifier.verify(encoded, MAX_PBH_PER_MONTH);
     }
 
     function testVerifyInvalidYear() public {
@@ -72,10 +70,10 @@ contract PBHExternalNullifierLibTest is Test {
         );
         vm.warp(currentTimestamp);
 
-        PBHExternalNullifier encoded = PBHExternalNulliferLib.encode(VALID_PBH_NONCE, VALID_MONTH, VALID_YEAR);
+        uint256 encoded = PBHExternalNullifier.encode(VALID_PBH_NONCE, VALID_MONTH, VALID_YEAR);
 
-        vm.expectRevert(PBHExternalNulliferLib.InvalidExternalNullifierYear.selector);
-        PBHExternalNulliferLib.verify(encoded, MAX_PBH_PER_MONTH);
+        vm.expectRevert(PBHExternalNullifier.InvalidExternalNullifierYear.selector);
+        PBHExternalNullifier.verify(encoded, MAX_PBH_PER_MONTH);
     }
 
     function testVerifyInvalidMonth() public {
@@ -89,20 +87,30 @@ contract PBHExternalNullifierLibTest is Test {
         );
         vm.warp(currentTimestamp);
 
-        PBHExternalNullifier encoded = PBHExternalNulliferLib.encode(VALID_PBH_NONCE, VALID_MONTH, VALID_YEAR);
+        uint256 encoded = PBHExternalNullifier.encode(VALID_PBH_NONCE, VALID_MONTH, VALID_YEAR);
 
-        vm.expectRevert(PBHExternalNulliferLib.InvalidExternalNullifierMonth.selector);
-        PBHExternalNulliferLib.verify(encoded, MAX_PBH_PER_MONTH);
+        vm.expectRevert(PBHExternalNullifier.InvalidExternalNullifierMonth.selector);
+        PBHExternalNullifier.verify(encoded, MAX_PBH_PER_MONTH);
     }
 
     function testVerifyInvalidPbhNonce() public {
-        PBHExternalNullifier encoded = PBHExternalNulliferLib.encode(
+        uint256 timestamp = BokkyPooBahsDateTimeLibrary.timestampFromDateTime(
+            VALID_YEAR,
+            VALID_MONTH,
+            1,
+            0,
+            0,
+            0
+        );
+        vm.warp(timestamp);
+
+        uint256 encoded = PBHExternalNullifier.encode(
             MAX_PBH_PER_MONTH + 1, // Invalid nonce exceeding max
             VALID_MONTH,
             VALID_YEAR
         );
 
-        vm.expectRevert(PBHExternalNulliferLib.InvalidPbhNonce.selector);
-        PBHExternalNulliferLib.verify(encoded, MAX_PBH_PER_MONTH);
+        vm.expectRevert(PBHExternalNullifier.InvalidPbhNonce.selector);
+        PBHExternalNullifier.verify(encoded, MAX_PBH_PER_MONTH);
     }
 }
