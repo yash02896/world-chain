@@ -45,6 +45,7 @@ use tracing::{debug, trace, warn};
 
 use crate::pool::noop::NoopWorldChainTransactionPool;
 use crate::pool::tx::WorldChainPoolTransaction;
+use crate::rpc::bundle::validate_conditional_options;
 
 /// Priority blockspace for humans builder
 #[derive(Debug, Clone)]
@@ -408,6 +409,14 @@ where
     if !attributes.no_tx_pool {
         let verified_gas_limit = (verified_blockspace_capacity as u64 * block_gas_limit) / 100;
         while let Some(pool_tx) = best_txs.next() {
+            if let Some(conditional_options) = pool_tx.transaction.conditional_options() {
+                if let Err(_) = validate_conditional_options(conditional_options, provider) {
+                    // best_txs.mark_invalid(&pool_tx);
+
+                    continue;
+                }
+            }
+
             // If the transaction is verified, check if it can be added within the verified gas limit
             if pool_tx.transaction.pbh_payload().is_some()
                 && cumulative_gas_used + pool_tx.gas_limit() > verified_gas_limit
@@ -995,6 +1004,7 @@ mod tests {
                 WorldChainPooledTransaction {
                     inner: pooled_tx,
                     pbh_payload,
+                    conditional_options: None,
                 }
             })
             .collect::<Vec<_>>()

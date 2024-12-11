@@ -10,6 +10,7 @@ use crate::primitives::WorldChainPooledTransactionsElementEcRecovered;
 
 pub trait WorldChainPoolTransaction: EthPoolTransaction {
     fn pbh_payload(&self) -> Option<&PbhPayload>;
+    fn conditional_options(&self) -> Option<&ConditionalOptions>;
 }
 
 #[derive(Debug, Clone)]
@@ -44,6 +45,10 @@ impl EthPoolTransaction for WorldChainPooledTransaction {
 impl WorldChainPoolTransaction for WorldChainPooledTransaction {
     fn pbh_payload(&self) -> Option<&PbhPayload> {
         self.pbh_payload.as_ref()
+    }
+
+    fn conditional_options(&self) -> Option<&ConditionalOptions> {
+        self.conditional_options.as_ref()
     }
 }
 
