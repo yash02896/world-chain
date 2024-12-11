@@ -33,7 +33,8 @@ use reth_optimism_payload_builder::error::OptimismPayloadBuilderError;
 use reth_primitives::{proofs, BlockBody};
 use reth_primitives::{Block, Header, Receipt, TxType};
 use reth_provider::{
-    CanonStateSubscriptions, ChainSpecProvider, ExecutionOutcome, StateProviderFactory,
+    BlockReaderIdExt, CanonStateSubscriptions, ChainSpecProvider, ExecutionOutcome,
+    StateProviderFactory,
 };
 use reth_trie::HashedPostState;
 use revm_primitives::calc_excess_blob_gas;
@@ -73,7 +74,7 @@ where
 /// Implementation of the [`PayloadBuilder`] trait for [`WorldChainPayloadBuilder`].
 impl<Pool, Client, EvmConfig> PayloadBuilder<Pool, Client> for WorldChainPayloadBuilder<EvmConfig>
 where
-    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec>,
+    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
     Pool: TransactionPool<Transaction: WorldChainPoolTransaction>,
     EvmConfig: ConfigureEvm<Header = Header>,
 {
@@ -219,7 +220,7 @@ pub(crate) fn worldchain_payload<EvmConfig, Pool, Client>(
 ) -> Result<BuildOutcome<OptimismBuiltPayload>, PayloadBuilderError>
 where
     EvmConfig: ConfigureEvm<Header = Header>,
-    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec>,
+    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
     Pool: TransactionPool<Transaction: WorldChainPoolTransaction>,
 {
     let BuildArguments {
@@ -410,9 +411,8 @@ where
         let verified_gas_limit = (verified_blockspace_capacity as u64 * block_gas_limit) / 100;
         while let Some(pool_tx) = best_txs.next() {
             if let Some(conditional_options) = pool_tx.transaction.conditional_options() {
-                if let Err(_) = validate_conditional_options(conditional_options, provider) {
-                    // best_txs.mark_invalid(&pool_tx);
-
+                if let Err(_) = validate_conditional_options(conditional_options, &client) {
+                    best_txs.mark_invalid(&pool_tx);
                     continue;
                 }
             }
