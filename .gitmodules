@@ -4,12 +4,6 @@
 [submodule "pbh-verifier/lib/world-id-contracts"]
 	path = pbh-verifier/lib/world-id-contracts
 	url = https://github.com/worldcoin/world-id-contracts
-[submodule "pbh-verifier/lib/semaphore-v3"]
-	path = pbh-verifier/lib/semaphore-v3
-	url = https://github.com/worldcoin/semaphore-v3
-[submodule "pbh-verifier/lib/account-abstraction"]
-	path = pbh-verifier/lib/account-abstraction
-	url = https://github.com/eth-infinitism/account-abstraction
 [submodule "pbh-verifier/lib/BokkyPooBahsDateTimeLibrary"]
 	path = pbh-verifier/lib/BokkyPooBahsDateTimeLibrary
 	url = https://github.com/bokkypoobah/BokkyPooBahsDateTimeLibrary
