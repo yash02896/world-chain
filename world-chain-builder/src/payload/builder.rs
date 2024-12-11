@@ -408,11 +408,13 @@ where
     }
 
     if !attributes.no_tx_pool {
+        let mut invalid_txs = vec![];
         let verified_gas_limit = (verified_blockspace_capacity as u64 * block_gas_limit) / 100;
         while let Some(pool_tx) = best_txs.next() {
             if let Some(conditional_options) = pool_tx.transaction.conditional_options() {
                 if let Err(_) = validate_conditional_options(conditional_options, &client) {
                     best_txs.mark_invalid(&pool_tx);
+                    invalid_txs.push(pool_tx.hash().clone());
                     continue;
                 }
             }
@@ -511,6 +513,10 @@ where
             // append sender and transaction to the respective lists
             executed_senders.push(tx.signer());
             executed_txs.push(tx.into_signed());
+        }
+
+        if !invalid_txs.is_empty() {
+            pool.remove_transactions(invalid_txs);
         }
     }
 
