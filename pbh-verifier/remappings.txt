@@ -1,3 +1,4 @@
 @world-id-contracts/=lib/world-id-contracts/src/
 @account-abstraction/=lib/account-abstraction/contracts/
 @BokkyPooBahsDateTimeLibrary/=lib/BokkyPooBahsDateTimeLibrary/contracts/
+@helpers/=src/helpers/

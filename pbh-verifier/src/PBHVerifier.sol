@@ -15,17 +15,7 @@ contract PBHVerifier {
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
     
-    /// @notice Thrown when the provided external nullifier year doesn't
-    /// match the current year
-    error InvalidExternalNullifierYear();
-    
-    /// @notice Thrown when the provided external nullifier month doesn't
-    /// match the current month
-    error InvalidExternalNullifierMonth();
-    
-    /// @notice Thrown when the provided external 
-    /// nullifier pbhNonce >= numPbhPerMonth
-    error InvalidPbhNonce();
+
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Events                                ///
@@ -113,12 +103,29 @@ contract PBHVerifier {
     ) {
         worldId = _worldId;
     }
-    
-    function verifyExternalNullifier(ExternalNullifier memory externalNullifer) public view {
+
+    function get(ExternalNullifier memory externalNullifer) public view {
         require(externalNullifer.year == BokkyPooBahsDateTimeLibrary.getYear(block.timestamp), InvalidExternalNullifierYear()); 
         require(externalNullifer.month == BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp), InvalidExternalNullifierMonth()); 
         require(externalNullifer.pbhNonce <= numPbhPerMonth, InvalidPbhNonce()); 
     }
+    
+    /// @param externalNullifer The external nullifer is used to ensure that each pbhNonce can be used only once per month.
+    ///        The value is encoded by bit shifting 3 uint8s corresponding to 
+    ///        * pbhNonce              - An 8 bit nonce between 0 and numPbhPerMonth.
+    ///        * month                 - An 8 bit value representing the current month.
+    ///        * year                  - A 16 bit value representing the current year.
+    ///        [0][0][0][0][0][0][0][0] [0][0][0][0][0][0][0][0] [0][0][0][0][0][0][0][0] [0][0][0][0][pbhNonce][month][yearA][yearB] 
+    function verifyExternalNullifier(uint256 externalNullifer) public view {
+        require(externalNullifer.year == BokkyPooBahsDateTimeLibrary.getYear(block.timestamp), InvalidExternalNullifierYear()); 
+        require(externalNullifer.month == BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp), InvalidExternalNullifierMonth()); 
+        require(externalNullifer.pbhNonce <= numPbhPerMonth, InvalidPbhNonce()); 
+    }
+    function encodeExternalNullifier(uint8 pbhNonce, uint8 month, uint16 year) public pure returns (uint32) {
+        require(month >= 1 && month <= 12, "Invalid month");
+        require(year <= 9999, "Invalid year");
+        return (uint32(year) << 16) | (uint32(month) << 8) | uint32(pbhNonce);
+    } 
 
     /// @param userOp A packed user operation, used to generate the signal hash
     /// @param root The root of the Merkle tree (returned by the JS widget).
@@ -128,7 +135,7 @@ contract PBHVerifier {
         PackedUserOperation memory userOp,
         uint256 root,
         uint256 nullifierHash,
-        ExternalNullifier memory externalNullifier,
+        uint256 externalNullifier,
         uint256[8] memory proof
     ) external {
         // First, we make sure this person hasn't done this before
