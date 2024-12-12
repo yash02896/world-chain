@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {ByteHasher} from "./helpers/ByteHasher.sol";
 import {PBHExternalNullifier} from "./helpers/PBHExternalNullifier.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
-import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDProxy.sol";
+import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDImpl.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
 /// @title PBH Verifier Implementation Version 1
