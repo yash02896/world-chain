@@ -58,6 +58,9 @@ contract PBHVerifierImplV1 is WorldIDImpl {
 
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
+    
+    /// @notice Thrown if the World ID instance is set to the zero address
+    error InvalidWorldId();
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Events                                ///
@@ -69,7 +72,11 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     event PBH(
         uint256 indexed nullifierHash
     );
-
+    
+    event PBHVerifierImplInitialized(
+        uint8 indexed numPbhPerMonth
+    );
+    
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Vars                                  ///
     //////////////////////////////////////////////////////////////////////////////
@@ -78,10 +85,10 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     uint256 internal immutable GROUP_ID = 1;
 
     /// @dev The World ID instance that will be used for verifying proofs
-    IWorldIDGroups internal immutable worldId;
+    IWorldIDGroups internal worldId;
 
     /// @dev Make this configurable
-    uint8 internal immutable numPbhPerMonth;
+    uint8 internal numPbhPerMonth;
     
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Mappings                              ///
@@ -90,18 +97,67 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) internal nullifierHashes;
     
+    
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                             INITIALIZATION                              ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Constructs the contract.
+    constructor() {
+        // When called in the constructor, this is called in the context of the implementation and
+        // not the proxy. Calling this thereby ensures that the contract cannot be spuriously
+        // initialized on its own.
+        _disableInitializers();
+    }
+
+    /// @notice Initializes the contract.
+    /// @dev Must be called exactly once.
+    /// @dev This is marked `reinitializer()` to allow for updated initialisation steps when working
+    ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
+    ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
+    ///      replaced by use of setters.
+    /// @dev This function is explicitly not virtual as it does not make sense to override even when
+    ///      upgrading. Create a separate initializer function instead.
+    ///
+    /// @param _worldId The World ID instance that will be used for verifying proofs.
+    /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
+    ///
+    /// @custom:reverts string If called more than once at the same initialisation number.
+    /// @custom:reverts InvalidWorldId if `_worldId` is set to the zero address
+    function initialize(
+        IWorldIDGroups _worldId,
+        uint8 _numPbhPerMonth
+    ) public reinitializer(1) {
+        if (address(_worldId) == address(0)) {
+            revert InvalidWorldId();
+        }
+
+        // First, ensure that all of the parent contracts are initialised.
+        __delegateInit();
+
+        worldId = _worldId;
+        numPbhPerMonth = _numPbhPerMonth;
+
+        // Say that the contract is initialized.
+        __setInitialized();
+
+        emit PBHVerifierImplInitialized(_numPbhPerMonth);
+    }
+
+    /// @notice Responsible for initialising all of the supertypes of this contract.
+    /// @dev Must be called exactly once.
+    /// @dev When adding new superclasses, ensure that any initialization that they need to perform
+    ///      is accounted for here.
+    ///
+    /// @custom:reverts string If called more than once.
+    function __delegateInit() internal virtual onlyInitializing {
+        __WorldIDImpl_init();
+    }
+    
+    
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Functions                             ///
     //////////////////////////////////////////////////////////////////////////////
-
-    /// @param _worldId The WorldID instance that will verify the proofs
-    constructor(
-        IWorldIDGroups _worldId,
-        uint8 _numPbhPerMonth
-    ) {
-        worldId = _worldId;
-        numPbhPerMonth = _numPbhPerMonth;
-    }
 
     /// @param root The root of the Merkle tree (returned by the JS widget).
     /// @param sender The root of the Merkle tree (returned by the JS widget).
