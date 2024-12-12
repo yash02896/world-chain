@@ -203,7 +203,7 @@ mod tests {
             .add_block(block.hash_slow(), block.clone());
         let block = SealedBlock {
             header: SealedHeader::new(block.header.clone(), block.header.hash_slow()),
-            body: block.body
+            body: block.body,
         };
         validator.on_new_block(&block.into());
     }
