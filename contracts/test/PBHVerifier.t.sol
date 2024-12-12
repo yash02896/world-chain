@@ -11,6 +11,5 @@ contract PBHVerifierTest is Test {
         // pbhVerifier = new PBHVerifier();
     }
 
-    function testTest() public {
-    }
+    function testTest() public {}
 }

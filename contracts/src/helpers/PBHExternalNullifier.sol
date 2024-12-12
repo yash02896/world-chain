@@ -5,7 +5,7 @@ import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
 /// @title PBHExternalNullifierLib
 /// @notice Library for encoding, decoding, and verifying PBH external nullifiers.
-///         External nullifiers are used to uniquely identify actions or events 
+///         External nullifiers are used to uniquely identify actions or events
 ///         within a specific year and month using a nonce.
 /// @dev The encoding format is as follows:
 ///      - Bits 32-255: Empty
@@ -16,12 +16,12 @@ library PBHExternalNullifier {
     /// @notice Thrown when the provided external nullifier year doesn't
     /// match the current year
     error InvalidExternalNullifierYear();
-    
+
     /// @notice Thrown when the provided external nullifier month doesn't
     /// match the current month
     error InvalidExternalNullifierMonth();
-    
-    /// @notice Thrown when the provided external 
+
+    /// @notice Thrown when the provided external
     /// nullifier pbhNonce >= numPbhPerMonth
     error InvalidPbhNonce();
 
@@ -46,7 +46,7 @@ library PBHExternalNullifier {
         month = uint8((externalNullifier >> 8) & 0xFF);
         pbhNonce = uint8(externalNullifier & 0xFF);
     }
-    
+
     /// @notice Verifies the validity of a PBHExternalNullifier by checking its components.
     /// @param externalNullifier The external nullifier to verify.
     /// @param numPbhPerMonth The maximum allowed value for the `pbhNonce` in the nullifier.
@@ -54,8 +54,8 @@ library PBHExternalNullifier {
     ///      and that the nonce does not exceed `numPbhPerMonth`.
     function verify(uint256 externalNullifier, uint8 numPbhPerMonth) public view {
         (uint8 pbhNonce, uint8 month, uint16 year) = PBHExternalNullifier.decode(externalNullifier);
-        require(year == BokkyPooBahsDateTimeLibrary.getYear(block.timestamp), InvalidExternalNullifierYear()); 
-        require(month == BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp), InvalidExternalNullifierMonth()); 
-        require(pbhNonce <= numPbhPerMonth, InvalidPbhNonce()); 
+        require(year == BokkyPooBahsDateTimeLibrary.getYear(block.timestamp), InvalidExternalNullifierYear());
+        require(month == BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp), InvalidExternalNullifierMonth());
+        require(pbhNonce <= numPbhPerMonth, InvalidPbhNonce());
     }
 }

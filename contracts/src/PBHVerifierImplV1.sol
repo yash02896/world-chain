@@ -12,7 +12,6 @@ import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 /// @notice An implementation of a batch-based identity manager for the WorldID protocol.
 /// @dev This is the implementation delegated to by a proxy.
 contract PBHVerifierImplV1 is WorldIDImpl {
-    
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -58,25 +57,21 @@ contract PBHVerifierImplV1 is WorldIDImpl {
 
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
-    
+
     /// @notice Thrown if the World ID instance is set to the zero address
     error InvalidWorldId();
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Events                                ///
     //////////////////////////////////////////////////////////////////////////////
-    
+
     /// @notice Emitted when a verifier is updated in the lookup table.
     ///
     /// @param nullifierHash The nullifier hash that was used.
-    event PBH(
-        uint256 indexed nullifierHash
-    );
-    
-    event PBHVerifierImplInitialized(
-        uint8 indexed numPbhPerMonth
-    );
-    
+    event PBH(uint256 indexed nullifierHash);
+
+    event PBHVerifierImplInitialized(uint8 indexed numPbhPerMonth);
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Vars                                  ///
     //////////////////////////////////////////////////////////////////////////////
@@ -89,15 +84,14 @@ contract PBHVerifierImplV1 is WorldIDImpl {
 
     /// @dev Make this configurable
     uint8 internal numPbhPerMonth;
-    
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Mappings                              ///
     //////////////////////////////////////////////////////////////////////////////
 
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) internal nullifierHashes;
-    
-    
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -124,10 +118,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
     /// @custom:reverts InvalidWorldId if `_worldId` is set to the zero address
-    function initialize(
-        IWorldIDGroups _worldId,
-        uint8 _numPbhPerMonth
-    ) public reinitializer(1) {
+    function initialize(IWorldIDGroups _worldId, uint8 _numPbhPerMonth) public reinitializer(1) {
         if (address(_worldId) == address(0)) {
             revert InvalidWorldId();
         }
@@ -153,7 +144,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     function __delegateInit() internal virtual onlyInitializing {
         __WorldIDImpl_init();
     }
-    
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Functions                             ///
     //////////////////////////////////////////////////////////////////////////////
@@ -177,24 +168,13 @@ contract PBHVerifierImplV1 is WorldIDImpl {
         if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
 
         // We now generate the signal hash from the sender, nonce, and calldata
-        uint256 signalHash = abi.encodePacked(
-            sender,
-            nonce,
-            callData
-        ).hashToField();
+        uint256 signalHash = abi.encodePacked(sender, nonce, callData).hashToField();
 
         // Verify the external nullifier
         PBHExternalNullifier.verify(pbhExternalNullifier, numPbhPerMonth);
-         
+
         // We now verify the provided proof is valid and the user is verified by World ID
-        worldId.verifyProof(
-            root,
-            GROUP_ID,
-            signalHash,
-            nullifierHash,
-            pbhExternalNullifier,
-            proof
-        );
+        worldId.verifyProof(root, GROUP_ID, signalHash, nullifierHash, pbhExternalNullifier, proof);
 
         // We now record the user has done this, so they can't do it again (proof of uniqueness)
         nullifierHashes[nullifierHash] = true;

@@ -43,14 +43,7 @@ contract PBHExternalNullifierLibTest is Test {
 
     function testVerifyValidExternalNullifier() public {
         // Mock the current date to match VALID_YEAR and VALID_MONTH
-        uint256 timestamp = BokkyPooBahsDateTimeLibrary.timestampFromDateTime(
-            VALID_YEAR,
-            VALID_MONTH,
-            1,
-            0,
-            0,
-            0
-        );
+        uint256 timestamp = BokkyPooBahsDateTimeLibrary.timestampFromDateTime(VALID_YEAR, VALID_MONTH, 1, 0, 0, 0);
         vm.warp(timestamp);
 
         uint256 encoded = PBHExternalNullifier.encode(VALID_PBH_NONCE, VALID_MONTH, VALID_YEAR);
@@ -94,14 +87,7 @@ contract PBHExternalNullifierLibTest is Test {
     }
 
     function testVerifyInvalidPbhNonce() public {
-        uint256 timestamp = BokkyPooBahsDateTimeLibrary.timestampFromDateTime(
-            VALID_YEAR,
-            VALID_MONTH,
-            1,
-            0,
-            0,
-            0
-        );
+        uint256 timestamp = BokkyPooBahsDateTimeLibrary.timestampFromDateTime(VALID_YEAR, VALID_MONTH, 1, 0, 0, 0);
         vm.warp(timestamp);
 
         uint256 encoded = PBHExternalNullifier.encode(
