@@ -154,7 +154,6 @@ contract PBHVerifierImplV1 is WorldIDImpl {
         __WorldIDImpl_init();
     }
     
-    
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Functions                             ///
     //////////////////////////////////////////////////////////////////////////////
@@ -173,7 +172,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
         uint256 pbhExternalNullifier,
         uint256 nullifierHash,
         uint256[8] memory proof
-    ) external {
+    ) external virtual onlyProxy onlyInitialized {
         // First, we make sure this person hasn't done this before
         if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
 
