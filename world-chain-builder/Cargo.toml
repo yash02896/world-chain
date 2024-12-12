@@ -107,12 +107,13 @@ ethers-core = { git = "https://github.com/gakonst/ethers-rs", default-features =
 alloy-primitives = "0.8"
 serde_json = "1"
 rand = "0.8"
-reth-e2e-test-utils = { git = "https://github.com/paradigmxyz/reth",  tag = "v1.1.4"}
-reth-consensus = { git = "https://github.com/paradigmxyz/reth",  tag = "v1.1.4" }
+reth-e2e-test-utils = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.4" }
+reth-consensus = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.4" }
+reth-optimism-consensus = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.4" }
 reth-node-core = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.4" }
 reth-tracing = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.4" }
-alloy-signer = { version = "0.5.4", default-features = false }
-alloy-signer-local = { version = "0.5.4", default-features = false }
+alloy-signer = { version = "0.7.3", default-features = false }
+alloy-signer-local = { version = "0.7.3", default-features = false }
 
 [features]
 jemalloc = ["tikv-jemallocator"]
