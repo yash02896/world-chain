@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use alloy_consensus::{BlockHeader, Header, Sealable, Sealed};
+use alloy_consensus::{BlockHeader, Sealable};
 use parking_lot::RwLock;
 use reth::api::Block;
 use reth_primitives::SealedBlock;
