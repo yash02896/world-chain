@@ -26,42 +26,23 @@ contract PBHVerifier {
     event PBH(
         uint256 indexed nullifierHash
     );
-    
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                                  Structs                               ///
-    //////////////////////////////////////////////////////////////////////////////
-    
-    struct PBHPayload {
-        uint256 root;
-        uint256 nullifierHash;
-        ExternalNullifier externalNullifier;
-        uint256[8] proof;
-    }
-
-    /**
-    * External Nullifier struct
-    * @param pbhNonce              - A nonce between 0 and numPbhPerMonth.
-    * @param month                 - An integer representing the current month.
-    * @param year                  - An integer representing the current year.
-    */
-    struct ExternalNullifier {
-        uint8 pbhNonce;
-        uint16 month;
-        uint8 year;
-    }
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Vars                                  ///
     //////////////////////////////////////////////////////////////////////////////
 
+    /// @dev The World ID group ID (always 1)
+    uint256 internal immutable GROUP_ID = 1;
+
     /// @dev The World ID instance that will be used for verifying proofs
     IWorldIDGroups internal immutable worldId;
 
-    /// @dev The World ID group ID (always 1)
-    uint256 internal immutable groupId = 1;
-    
     /// @dev Make this configurable
     uint8 internal immutable numPbhPerMonth;
+    
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  Mappings                              ///
+    //////////////////////////////////////////////////////////////////////////////
 
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) internal nullifierHashes;
@@ -107,11 +88,10 @@ contract PBHVerifier {
         // Verify the external nullifier
         PBHExternalNullifier.verify(pbhExternalNullifier, numPbhPerMonth);
          
-
         // We now verify the provided proof is valid and the user is verified by World ID
         worldId.verifyProof(
             root,
-            groupId,
+            GROUP_ID,
             signalHash,
             nullifierHash,
             pbhExternalNullifier,
@@ -124,4 +104,3 @@ contract PBHVerifier {
         emit PBH(nullifierHash);
     }
 }
-

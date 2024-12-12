@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.20;
 
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
@@ -7,7 +7,6 @@ import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 /// @notice Library for encoding, decoding, and verifying PBH external nullifiers.
 ///         External nullifiers are used to uniquely identify actions or events 
 ///         within a specific year and month using a nonce.
-/// @dev Utilizes `PBHExternalNullifier` as a custom type for encoded nullifiers.
 /// @dev The encoding format is as follows:
 ///      - Bits 32-255: Empty
 ///      - Bits 16-31: Year
@@ -33,7 +32,7 @@ library PBHExternalNullifier {
     /// @return The encoded PBHExternalNullifier.
     function encode(uint8 pbhNonce, uint8 month, uint16 year) internal pure returns (uint256) {
         require(month > 0 && month < 13, InvalidExternalNullifierMonth());
-        require(year <= 9999, InvalidExternalNullifierYear());
+        require(year < 10000, InvalidExternalNullifierYear());
         return (uint32(year) << 16) | (uint32(month) << 8) | uint32(pbhNonce);
     }
 
