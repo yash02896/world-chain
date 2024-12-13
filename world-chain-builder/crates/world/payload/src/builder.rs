@@ -173,6 +173,7 @@ where
                 cancel,
                 best_payload,
             },
+            verified_blockspace_capacity: self.verified_blockspace_capacity,
         };
 
         let builder = WorldChainBuilder {
@@ -256,6 +257,7 @@ where
                 cancel: Default::default(),
                 best_payload: Default::default(),
             },
+            verified_blockspace_capacity: self.verified_blockspace_capacity,
         };
 
         let state_provider = client.state_by_block_hash(ctx.parent().hash())?;
@@ -574,6 +576,7 @@ where
 #[derive(Debug)]
 pub struct WorldChainPayloadBuilderCtx<EvmConfig> {
     pub inner: OpPayloadBuilderCtx<EvmConfig>,
+    pub verified_blockspace_capacity: u8,
 }
 
 impl<EvmConfig> WorldChainPayloadBuilderCtx<EvmConfig> {
@@ -721,7 +724,8 @@ where
         &self,
         info: &mut ExecutionInfo,
         db: &mut State<DB>,
-        mut best_txs: impl PayloadTransactions<Transaction = TransactionSigned>,
+        mut best_txs: impl PayloadTransactions<Transaction = TransactionSigned>
+            + WorldChainPoolTransaction,
     ) -> Result<Option<()>, PayloadBuilderError>
     where
         DB: Database<Error = ProviderError>,
@@ -736,7 +740,25 @@ where
         );
         let mut evm = self.inner.evm_config.evm_with_env(&mut *db, env);
 
+        let mut invalid_txs = vec![];
+        let verified_gas_limit = (self.verified_blockspace_capacity as u64 * block_gas_limit) / 100;
         while let Some(tx) = best_txs.next(()) {
+            if let Some(conditional_options) = tx.transaction.conditional_options() {
+                if let Err(_) = validate_conditional_options(conditional_options, &client) {
+                    best_txs.mark_invalid(tx.signer(), tx.nonce());
+                    invalid_txs.push(tx.hash().clone());
+                    continue;
+                }
+            }
+
+            // If the transaction is verified, check if it can be added within the verified gas limit
+            if tx.transaction.pbh_payload().is_some()
+                && info.cumulative_gas_used + tx.gas_limit() > verified_gas_limit
+            {
+                best_txs.mark_invalid(tx.signer(), tx.nonce());
+                continue;
+            }
+
             // ensure we still have capacity for this transaction
             if info.cumulative_gas_used + tx.gas_limit() > block_gas_limit {
                 // we can't fit this transaction into the block, so we need to mark it as
