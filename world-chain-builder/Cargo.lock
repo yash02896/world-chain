@@ -13765,6 +13765,7 @@ dependencies = [
  "reth-trie",
  "revm",
  "revm-primitives",
+ "thiserror 1.0.69",
  "tracing",
  "world-chain-builder-pool",
  "world-chain-builder-rpc",

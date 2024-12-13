@@ -53,9 +53,9 @@ use revm_primitives::{
 };
 use std::fmt::Display;
 use std::sync::Arc;
+use thiserror::Error;
 use tracing::{debug, trace, warn};
 use world_chain_builder_pool::noop::NoopWorldChainTransactionPool;
-use world_chain_builder_pool::tx::WorldChainPooledTransaction;
 
 use world_chain_builder_pool::tx::WorldChainPoolTransaction;
 use world_chain_builder_rpc::eth::validate_conditional_options;
@@ -65,6 +65,23 @@ use world_chain_builder_rpc::eth::validate_conditional_options;
 pub struct WorldChainPayloadBuilder<EvmConfig, Tx = ()> {
     pub inner: OpPayloadBuilder<EvmConfig, Tx>,
     pub verified_blockspace_capacity: u8,
+}
+
+#[derive(Debug, Error)]
+pub enum WorldChainPoolTransactionError {
+    #[error("Conditional Validation Failed: {0}")]
+    ConditionalValidationFailed(B256),
+    #[error("EVM Error: {0}")]
+    EVMError(#[from] InvalidTransaction),
+}
+
+impl PoolTransactionError for WorldChainPoolTransactionError {
+    fn is_bad_transaction(&self) -> bool {
+        match self {
+            WorldChainPoolTransactionError::ConditionalValidationFailed(_) => true,
+            WorldChainPoolTransactionError::EVMError(_) => true, // TODO: Should we return false here?
+        }
+    }
 }
 
 impl<EvmConfig> WorldChainPayloadBuilder<EvmConfig>
@@ -384,7 +401,8 @@ where
         // 4. if mem pool transactions are requested we execute them
         if !ctx.attributes().no_tx_pool {
             //TODO: build pbh payload
-            let best_txs= pool.best_transactions_with_attributes(ctx.best_transaction_attributes());
+            let best_txs =
+                pool.best_transactions_with_attributes(ctx.best_transaction_attributes());
 
             if ctx
                 .execute_best_transactions::<_, Pool>(&mut info, state, best_txs)?
@@ -756,7 +774,14 @@ where
             let consensus_tx = tx.to_consensus();
             if let Some(conditional_options) = pooled_tx.conditional_options() {
                 if let Err(_) = validate_conditional_options(&conditional_options, &client) {
-                    best_txs.mark_invalid(consensus_tx.signer(), consensus_tx.nonce());
+                    best_txs.mark_invalid(
+                        &tx,
+                        InvalidPoolTransactionError::Other(Box::new(
+                            WorldChainPoolTransactionError::ConditionalValidationFailed(
+                                tx.hash().clone(),
+                            ),
+                        )),
+                    );
                     invalid_txs.push(tx.hash().clone());
                     continue;
                 }
@@ -775,7 +800,7 @@ where
                 // we can't fit this transaction into the block, so we need to mark it as
                 // invalid which also removes all dependent transaction from
                 // the iterator before we can continue
-                best_txs.mark_invalid(&tx, InvalidPoolTransactionError::Underpriced); // TODO: Update this error
+                best_txs.mark_invalid(&tx, InvalidPoolTransactionError::Underpriced);
                 continue;
             }
 
@@ -814,7 +839,7 @@ where
                                 // descendants
                                 trace!(target: "payload_builder", %err, ?tx, "skipping invalid transaction and its descendants");
                                 best_txs
-                                    .mark_invalid(&tx, InvalidPoolTransactionError::Underpriced);
+                                    .mark_invalid(&tx, InvalidPoolTransactionError::Other(Box::new(err.into())));
                             }
 
                             continue;
