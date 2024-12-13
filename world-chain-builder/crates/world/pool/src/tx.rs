@@ -21,14 +21,14 @@ use revm_primitives::{AccessList, Address, KzgSettings, TxKind, U256};
 use world_chain_builder_pbh::payload::PbhPayload;
 
 pub trait WorldChainPoolTransaction: EthPoolTransaction {
-    fn pbh_payload(&self) -> Option<&PbhPayload>;
+    fn valid_pbh(&self) -> bool;
     fn conditional_options(&self) -> Option<&ConditionalOptions>;
 }
 
 #[derive(Debug, Clone)]
 pub struct WorldChainPooledTransaction {
     pub inner: EthPooledTransaction,
-    pub pbh_payload: Option<PbhPayload>,
+    pub valid_pbh: bool,
     pub conditional_options: Option<ConditionalOptions>,
 }
 
@@ -60,7 +60,7 @@ impl EthPoolTransaction for WorldChainPooledTransaction {
 
         pooled.map(|inner| Self {
             inner,
-            pbh_payload: None,
+            valid_pbh: false,
             conditional_options: None,
         })
     }
@@ -87,9 +87,10 @@ impl EthPoolTransaction for WorldChainPooledTransaction {
 }
 
 impl WorldChainPoolTransaction for WorldChainPooledTransaction {
-    fn pbh_payload(&self) -> Option<&PbhPayload> {
-        self.pbh_payload.as_ref()
+    fn valid_pbh(&self) -> bool {
+        self.valid_pbh
     }
+
     fn conditional_options(&self) -> Option<&ConditionalOptions> {
         self.conditional_options.as_ref()
     }
@@ -99,7 +100,7 @@ impl From<EthPooledTransaction> for WorldChainPooledTransaction {
     fn from(tx: EthPooledTransaction) -> Self {
         Self {
             inner: tx,
-            pbh_payload: None,
+            valid_pbh: false,
             conditional_options: None,
         }
     }
@@ -111,7 +112,7 @@ impl From<PooledTransactionsElementEcRecovered> for WorldChainPooledTransaction 
         let inner = EthPooledTransaction::from(tx);
         Self {
             inner,
-            pbh_payload: None,
+            valid_pbh: false,
             conditional_options: None,
         }
     }
@@ -124,7 +125,7 @@ impl TryFrom<RecoveredTx> for WorldChainPooledTransaction {
         let inner = EthPooledTransaction::try_from(tx)?;
         Ok(Self {
             inner,
-            pbh_payload: None,
+            valid_pbh: false,
             conditional_options: None,
         })
     }

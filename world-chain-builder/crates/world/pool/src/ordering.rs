@@ -35,7 +35,7 @@ where
         let effective_tip_per_gas = transaction.effective_tip_per_gas(base_fee).map(U256::from);
 
         Some(WorldChainPriority {
-            is_pbh: transaction.pbh_payload().is_some(),
+            is_pbh: transaction.valid_pbh(),
             effective_tip_per_gas,
         })
         .into()

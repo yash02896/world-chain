@@ -43,13 +43,14 @@ fn validator_setup() -> WorldChainTransactionValidator<MockEthProvider, WorldCha
         ExtendedAccount::new(transaction.nonce(), alloy_primitives::U256::MAX),
     );
     // Insert a world id root into the OpWorldId Account
-    validator.inner().client().add_account(
-        OP_WORLD_ID,
-        ExtendedAccount::new(0, alloy_primitives::U256::ZERO).extend_storage(vec![(
-            LATEST_ROOT_SLOT.into(),
-            transaction.pbh_payload.clone().unwrap().root,
-        )]),
-    );
+    // TODO: This should be set to the proof on a bundle tx
+    // validator.inner().client().add_account(
+    //     OP_WORLD_ID,
+    //     ExtendedAccount::new(0, alloy_primitives::U256::ZERO).extend_storage(vec![(
+    //         LATEST_ROOT_SLOT.into(),
+    //         transaction.pbh_payload.clone().unwrap().root,
+    //     )]),
+    // );
 
     let header = SealedHeader::default();
     let body = BlockBody::default();
@@ -89,9 +90,10 @@ fn pbh_setup() -> Setup {
 
 fn spoofed_nullifier_setup() -> Setup {
     let pool = pool_setup();
-    let mut transaction = get_pbh_transaction(0);
-    let pbh_payload = transaction.pbh_payload.as_mut().unwrap();
-    pbh_payload.nullifier_hash = Field::default();
+    let transaction = get_pbh_transaction(0);
+    // TODO:
+    // let pbh_payload = transaction.pbh_payload.as_mut().unwrap();
+    // pbh_payload.nullifier_hash = Field::default();
     Setup { pool, transaction }
 }
 
