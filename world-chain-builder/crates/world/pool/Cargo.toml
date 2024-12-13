@@ -1,0 +1,53 @@
+[package]
+name = "world-chain-builder-pool"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+world-chain-builder-pbh.workspace = true
+world-chain-builder-db.workspace = true
+
+reth.workspace = true
+reth-db.workspace = true
+reth-optimism-node.workspace = true
+reth-primitives.workspace = true
+reth-provider.workspace = true
+reth-eth-wire-types.workspace = true
+
+reth-optimism-primitives.workspace = true
+reth-optimism-chainspec.workspace = true
+
+revm-primitives.workspace = true
+
+alloy-consensus.workspace = true
+alloy-primitives.workspace = true
+alloy-rpc-types.workspace = true
+alloy-eips.workspace = true
+
+tokio.workspace = true
+semaphore.workspace = true
+chrono.workspace = true
+eyre.workspace = true
+thiserror.workspace = true
+
+tracing.workspace = true
+parking_lot.workspace = true
+
+tempfile = {workspace = true, optional = true}
+
+
+[dev-dependencies]
+ethers-core.workspace = true
+test-case.workspace = true
+tempfile.workspace = true
+
+[features]
+default = []
+test = ["dep:tempfile"]
+
+[lints]
+workspace = true
