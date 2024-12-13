@@ -163,14 +163,16 @@ where
             best_payload,
         } = args;
 
-        let ctx = OpPayloadBuilderCtx {
-            evm_config: self.inner.evm_config.clone(),
-            chain_spec: client.chain_spec(),
-            config,
-            initialized_cfg,
-            initialized_block_env,
-            cancel,
-            best_payload,
+        let ctx = WorldChainPayloadBuilderCtx {
+            inner: OpPayloadBuilderCtx {
+                evm_config: self.inner.evm_config.clone(),
+                chain_spec: client.chain_spec(),
+                config,
+                initialized_cfg,
+                initialized_block_env,
+                cancel,
+                best_payload,
+            },
         };
 
         let builder = WorldChainBuilder {
@@ -244,14 +246,16 @@ where
             extra_data: Default::default(),
         };
 
-        let ctx = OpPayloadBuilderCtx {
-            evm_config: self.inner.evm_config.clone(),
-            chain_spec: client.chain_spec(),
-            config,
-            initialized_cfg,
-            initialized_block_env,
-            cancel: Default::default(),
-            best_payload: Default::default(),
+        let ctx = WorldChainPayloadBuilderCtx {
+            inner: OpPayloadBuilderCtx {
+                evm_config: self.inner.evm_config.clone(),
+                chain_spec: client.chain_spec(),
+                config,
+                initialized_cfg,
+                initialized_block_env,
+                cancel: Default::default(),
+                best_payload: Default::default(),
+            },
         };
 
         let state_provider = client.state_by_block_hash(ctx.parent().hash())?;
