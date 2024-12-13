@@ -177,9 +177,18 @@ impl NodeTypesWithEngine for WorldChainBuilder {
 /// A basic optimism payload service builder
 #[derive(Debug, Default, Clone)]
 pub struct WorldChainPayloadBuilder<Txs = ()> {
-    // TODO: pub?
-    pub inner: OpPayloadBuilder<Txs>,
-
+    /// By default the pending block equals the latest block
+    /// to save resources and not leak txs from the tx-pool,
+    /// this flag enables computing of the pending block
+    /// from the tx-pool instead.
+    ///
+    /// If `compute_pending_block` is not enabled, the payload builder
+    /// will use the payload attributes from the latest block. Note
+    /// that this flag is not yet functional.
+    pub compute_pending_block: bool,
+    /// The type responsible for yielding the best transactions for the payload if mempool
+    /// transactions are allowed.
+    pub best_transactions: Txs,
     // TODO:
     pub verified_blockspace_capacity: u8,
 }
@@ -188,8 +197,9 @@ impl WorldChainPayloadBuilder {
     /// Create a new instance with the given `compute_pending_block` flag.
     pub const fn new(compute_pending_block: bool, verified_blockspace_capacity: u8) -> Self {
         Self {
-            inner: OpPayloadBuilder::new(compute_pending_block),
+            compute_pending_block,
             verified_blockspace_capacity,
+            best_transactions: (),
         }
     }
 }
@@ -204,14 +214,16 @@ where
         self,
         best_transactions: T,
     ) -> WorldChainPayloadBuilder<T> {
-        let WorldChainPayloadBuilder {
-            inner,
+        let Self {
+            compute_pending_block,
             verified_blockspace_capacity,
+            ..
         } = self;
 
         WorldChainPayloadBuilder {
-            inner: inner.with_transactions(best_transactions),
+            compute_pending_block,
             verified_blockspace_capacity,
+            best_transactions,
         }
     }
 
@@ -235,9 +247,13 @@ where
             + 'static,
         Evm: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
     {
-        let payload_builder = reth_optimism_payload_builder::OpPayloadBuilder::new(evm_config)
-            .with_transactions(self.inner.best_transactions)
-            .set_compute_pending_block(self.inner.compute_pending_block);
+        let payload_builder = world_chain_builder_payload::builder::WorldChainPayloadBuilder::new(
+            evm_config,
+            self.verified_blockspace_capacity,
+        )
+        .with_transactions(self.best_transactions)
+        .set_compute_pending_block(self.compute_pending_block);
+
         let conf = ctx.payload_builder_config();
 
         let payload_job_config = BasicPayloadJobGeneratorConfig::default()

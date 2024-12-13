@@ -81,7 +81,7 @@ where
     }
 }
 
-impl<EvmConfig> WorldChainPayloadBuilder<EvmConfig> {
+impl<EvmConfig, Tx> WorldChainPayloadBuilder<EvmConfig, Tx> {
     /// Sets the rollup's compute pending block configuration option.
     pub const fn set_compute_pending_block(mut self, compute_pending_block: bool) -> Self {
         self.inner.compute_pending_block = compute_pending_block;
