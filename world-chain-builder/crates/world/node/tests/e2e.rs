@@ -1,7 +1,6 @@
 //! Utilities for running world chain builder end-to-end tests.
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
-use std::time::Duration;
 
 use alloy_eips::eip2718::Decodable2718;
 use alloy_genesis::{Genesis, GenesisAccount};
@@ -36,7 +35,6 @@ use semaphore::identity::Identity;
 use semaphore::poseidon_tree::LazyPoseidonTree;
 use semaphore::protocol::{generate_nullifier_hash, generate_proof};
 use semaphore::{hash_to_field, Field};
-use serial_test::serial;
 use world_chain_builder_node::args::{ExtArgs, WorldChainBuilderArgs};
 use world_chain_builder_node::node::WorldChainBuilder;
 use world_chain_builder_pbh::date_marker::DateMarker;
@@ -110,19 +108,25 @@ impl WorldChainBuilderTestContext {
         let tasks = TaskManager::current();
         let exec = tasks.executor();
 
-        let node_config: NodeConfig<OpChainSpec> = NodeConfig::new(op_chain_spec.clone())
+        let mut node_config: NodeConfig<OpChainSpec> = NodeConfig::new(op_chain_spec.clone())
             .with_chain(op_chain_spec.clone())
-            .with_unused_ports()
             .with_rpc(
                 RpcServerArgs::default()
                     .with_unused_ports()
                     .with_http_unused_port(),
-            );
+            )
+            .with_unused_ports();
+
+        // discv5 ports seem to be clashing
+        node_config.network.discovery.disable_discovery = true;
+        node_config.network.discovery.addr = [127, 0, 0, 1].into();
+
+        // is 0.0.0.0 by default
+        node_config.network.addr = [127, 0, 0, 1].into();
+
         let path = tempdir_path();
-        let NodeHandle {
-            node,
-            node_exit_future: _,
-        } = NodeBuilder::new(node_config.clone())
+
+        let builder = NodeBuilder::new(node_config.clone())
             .testing_node(exec.clone())
             .node(WorldChainBuilder::new(
                 ExtArgs {
@@ -141,10 +145,15 @@ impl WorldChainBuilderTestContext {
                 let eth_api_ext = WorldChainEthApiExt::new(pool, provider);
                 ctx.modules.merge_configured(eth_api_ext.into_rpc())?;
                 Ok(())
-            })
-            .launch()
-            .await?;
+            });
+
+        let NodeHandle {
+            node,
+            node_exit_future: _,
+        } = builder.launch().await?;
+
         let test_ctx = NodeTestContext::new(node, optimism_payload_attributes).await?;
+
         Ok(Self {
             pbh_wallets: wallets,
             tree,
@@ -225,9 +234,9 @@ impl WorldChainBuilderTestContext {
 }
 
 #[tokio::test]
-#[serial]
+// #[serial]
 async fn test_can_build_pbh_payload() -> eyre::Result<()> {
-    tokio::time::sleep(Duration::from_secs(1)).await;
+    // tokio::time::sleep(Duration::from_secs(1)).await;
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
     let mut pbh_tx_hashes = vec![];
     for signer in ctx.pbh_wallets.iter() {
@@ -251,9 +260,9 @@ async fn test_can_build_pbh_payload() -> eyre::Result<()> {
 }
 
 #[tokio::test]
-#[serial]
+// #[serial]
 async fn test_transaction_pool_ordering() -> eyre::Result<()> {
-    tokio::time::sleep(Duration::from_secs(1)).await;
+    // tokio::time::sleep(Duration::from_secs(1)).await;
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
     let non_pbh_tx = tx(ctx.node.inner.chain_spec().chain.id(), None, 0);
     let wallet = ctx.pbh_wallets[0].clone();
@@ -292,9 +301,9 @@ async fn test_transaction_pool_ordering() -> eyre::Result<()> {
 }
 
 #[tokio::test]
-#[serial]
+// #[serial]
 async fn test_invalidate_dup_tx_and_nullifier() -> eyre::Result<()> {
-    tokio::time::sleep(Duration::from_secs(1)).await;
+    // tokio::time::sleep(Duration::from_secs(1)).await;
     let ctx = WorldChainBuilderTestContext::setup().await?;
     let signer = ctx.pbh_wallets[0].clone();
     let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
@@ -305,9 +314,9 @@ async fn test_invalidate_dup_tx_and_nullifier() -> eyre::Result<()> {
 }
 
 #[tokio::test]
-#[serial]
+// #[serial]
 async fn test_dup_pbh_nonce() -> eyre::Result<()> {
-    tokio::time::sleep(Duration::from_secs(1)).await;
+    // tokio::time::sleep(Duration::from_secs(1)).await;
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
     let signer = ctx.pbh_wallets[0].clone();
 
