@@ -50,9 +50,9 @@ use revm_primitives::{
 use std::fmt::Display;
 use std::sync::Arc;
 use tracing::{debug, trace, warn};
+use world_chain_builder_pool::noop::NoopWorldChainTransactionPool;
 use world_chain_builder_pool::tx::WorldChainPooledTransaction;
 
-use world_chain_builder_pool::noop::NoopWorldChainTransactionPool;
 use world_chain_builder_pool::tx::WorldChainPoolTransaction;
 use world_chain_builder_rpc::eth::validate_conditional_options;
 
@@ -270,7 +270,7 @@ where
             .build();
 
         let builder = WorldChainBuilder {
-            pool: NoopTransactionPool::default(),
+            pool: NoopWorldChainTransactionPool::default(),
             best: (),
         };
         builder.witness(&mut state, &ctx)
@@ -316,7 +316,7 @@ where
             client,
             config,
             // we use defaults here because for the empty payload we don't need to execute anything
-            pool: NoopTransactionPool::default(),
+            pool: NoopWorldChainTransactionPool::default(),
             cached_reads: Default::default(),
             cancel: Default::default(),
             best_payload: None,
