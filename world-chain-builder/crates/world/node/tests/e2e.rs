@@ -38,7 +38,7 @@ use semaphore::protocol::{generate_nullifier_hash, generate_proof};
 use semaphore::{hash_to_field, Field};
 use serial_test::serial;
 use world_chain_builder_node::args::{ExtArgs, WorldChainBuilderArgs};
-use world_chain_builder_node::builder::WorldChainBuilder;
+use world_chain_builder_node::node::WorldChainBuilder;
 use world_chain_builder_pbh::date_marker::DateMarker;
 use world_chain_builder_pbh::external_nullifier::{ExternalNullifier, Prefix};
 use world_chain_builder_pbh::payload::{PbhPayload, Proof};
@@ -46,7 +46,7 @@ use world_chain_builder_pool::ordering::WorldChainOrdering;
 use world_chain_builder_pool::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
 use world_chain_builder_pool::tx::WorldChainPooledTransaction;
 use world_chain_builder_pool::validator::WorldChainTransactionValidator;
-use world_chain_builder_primitives::WorldChainPooledTransactionsElement;
+use world_chain_builder_primitives::transaction::WorldChainPooledTransactionsElement;
 use world_chain_builder_rpc::bundle::{EthTransactionsExtServer, WorldChainEthApiExt};
 
 pub const DEV_CHAIN_ID: u64 = 8453;
