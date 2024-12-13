@@ -32,14 +32,18 @@ use reth_optimism_payload_builder::builder::{
 use reth_optimism_payload_builder::config::OpBuilderConfig;
 use reth_optimism_payload_builder::OpPayloadAttributes;
 use reth_payload_util::PayloadTransactions;
-use reth_primitives::{proofs, BlockBody, BlockExt, SealedHeader, TransactionSigned};
+use reth_primitives::{
+    proofs, BlockBody, BlockExt, InvalidTransactionError, SealedHeader, TransactionSigned,
+};
 use reth_primitives::{Block, Header, Receipt, TxType};
 use reth_provider::{
     BlockReaderIdExt, CanonStateSubscriptions, ChainSpecProvider, ExecutionOutcome,
     HashedPostStateProvider, ProviderError, StateProofProvider, StateProviderFactory,
     StateRootProvider,
 };
+use reth_transaction_pool::error::{InvalidPoolTransactionError, PoolTransactionError};
 use reth_transaction_pool::{noop::NoopTransactionPool, pool::BestPayloadTransactions};
+use reth_transaction_pool::{BestTransactions, ValidPoolTransaction};
 use reth_trie::HashedPostState;
 use revm::Database;
 use revm_primitives::{calc_excess_blob_gas, Bytes, TxEnv, B256};
@@ -380,8 +384,8 @@ where
         // 4. if mem pool transactions are requested we execute them
         if !ctx.attributes().no_tx_pool {
             //TODO: build pbh payload
+            let best_txs= pool.best_transactions_with_attributes(ctx.best_transaction_attributes());
 
-            let best_txs = best.best_transactions(pool, ctx.best_transaction_attributes());
             if ctx
                 .execute_best_transactions::<_, Pool>(&mut info, state, best_txs)?
                 .is_some()
@@ -724,10 +728,16 @@ where
         &self,
         info: &mut ExecutionInfo,
         db: &mut State<DB>,
-        mut best_txs: impl PayloadTransactions<Transaction = WorldChainPooledTransaction>,
+        mut best_txs: Box<
+            dyn BestTransactions<
+                Item = Arc<ValidPoolTransaction<<Pool as TransactionPool>::Transaction>>,
+            >,
+        >,
     ) -> Result<Option<()>, PayloadBuilderError>
     where
         DB: Database<Error = ProviderError>,
+        Pool:
+            TransactionPool<Transaction: WorldChainPoolTransaction<Consensus = TransactionSigned>>,
     {
         let block_gas_limit = self.block_gas_limit();
         let base_fee = self.base_fee();
@@ -741,18 +751,22 @@ where
 
         let mut invalid_txs = vec![];
         let verified_gas_limit = (self.verified_blockspace_capacity as u64 * block_gas_limit) / 100;
-        while let Some(tx) = best_txs.next(()) {
-            if let Some(conditional_options) = tx.conditional_options {
+        while let Some(tx) = best_txs.next() {
+            let pooled_tx = tx.transaction;
+            let consensus_tx = tx.to_consensus();
+            if let Some(conditional_options) = pooled_tx.conditional_options() {
                 if let Err(_) = validate_conditional_options(&conditional_options, &client) {
-                    best_txs.mark_invalid(tx.signer(), tx.nonce());
+                    best_txs.mark_invalid(consensus_tx.signer(), consensus_tx.nonce());
                     invalid_txs.push(tx.hash().clone());
                     continue;
                 }
             }
 
             // If the transaction is verified, check if it can be added within the verified gas limit
-            if tx.valid_pbh && info.cumulative_gas_used + tx.gas_limit() > verified_gas_limit {
-                best_txs.mark_invalid(tx.signer(), tx.nonce());
+            if tx.transaction.valid_pbh()
+                && info.cumulative_gas_used + tx.gas_limit() > verified_gas_limit
+            {
+                best_txs.mark_invalid(&tx, InvalidPoolTransactionError::Underpriced);
                 continue;
             }
 
@@ -761,13 +775,18 @@ where
                 // we can't fit this transaction into the block, so we need to mark it as
                 // invalid which also removes all dependent transaction from
                 // the iterator before we can continue
-                best_txs.mark_invalid(tx.signer(), tx.nonce());
+                best_txs.mark_invalid(&tx, InvalidPoolTransactionError::Underpriced); // TODO: Update this error
                 continue;
             }
 
             // A sequencer's block should never contain blob or deposit transactions from the pool.
             if tx.is_eip4844() || tx.tx_type() == TxType::Deposit as u8 {
-                best_txs.mark_invalid(tx.signer(), tx.nonce());
+                best_txs.mark_invalid(
+                    &tx,
+                    InvalidPoolTransactionError::Consensus(
+                        InvalidTransactionError::TxTypeNotSupported,
+                    ),
+                );
                 continue;
             }
 
@@ -780,21 +799,22 @@ where
             *evm.tx_mut() = self
                 .inner
                 .evm_config
-                .tx_env(tx.inner.transaction().as_signed(), tx.signer());
+                .tx_env(&consensus_tx, consensus_tx.signer());
 
             let ResultAndState { result, state } = match evm.transact() {
                 Ok(res) => res,
                 Err(err) => {
                     match err {
                         EVMError::Transaction(err) => {
-                            if matches!(err, InvalidTransaction::NonceTooLow { .. }) {
+                            if matches!(err, InvalidTransaction::NonceTooLow { tx, state }) {
                                 // if the nonce is too low, we can skip this transaction
                                 trace!(target: "payload_builder", %err, ?tx, "skipping nonce too low transaction");
                             } else {
                                 // if the transaction is invalid, we can skip it and all of its
                                 // descendants
                                 trace!(target: "payload_builder", %err, ?tx, "skipping invalid transaction and its descendants");
-                                best_txs.mark_invalid(tx.signer(), tx.nonce());
+                                best_txs
+                                    .mark_invalid(&tx, InvalidPoolTransactionError::Underpriced);
                             }
 
                             continue;
@@ -818,7 +838,7 @@ where
 
             // Push transaction changeset and calculate header bloom filter for receipt.
             info.receipts.push(Some(Receipt {
-                tx_type: tx.inner.transaction().tx_type(),
+                tx_type: consensus_tx.tx_type(),
                 success: result.is_success(),
                 cumulative_gas_used: info.cumulative_gas_used,
                 logs: result.into_logs().into_iter().map(Into::into).collect(),
@@ -833,9 +853,8 @@ where
             info.total_fees += U256::from(miner_fee) * U256::from(gas_used);
 
             // append sender and transaction to the respective lists
-            info.executed_senders.push(tx.signer());
-            info.executed_transactions
-                .push(tx.inner.transaction().into_signed());
+            info.executed_senders.push(consensus_tx.signer());
+            info.executed_transactions.push(consensus_tx.into_signed());
         }
 
         Ok(None)
