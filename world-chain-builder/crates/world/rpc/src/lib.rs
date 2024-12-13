@@ -25,5 +25,5 @@ pub trait EthTransactionsExt {
 pub struct WorldChainEthApiExt<Pool, Client> {
     pool: Pool,
     client: Client,
-    sequencer_client: Option<SequencerClient>
+    sequencer_client: Option<SequencerClient>,
 }
