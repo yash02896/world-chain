@@ -1,9 +1,10 @@
 use clap::Parser;
 use reth_optimism_cli::chainspec::OpChainSpecParser;
 use reth_optimism_cli::Cli;
+use reth_optimism_rpc::SequencerClient;
 use world_chain_builder_node::args::ExtArgs;
 use world_chain_builder_node::node::WorldChainBuilder;
-use world_chain_builder_rpc::bundle::{EthTransactionsExtServer, WorldChainEthApiExt};
+use world_chain_builder_rpc::{EthTransactionsExtServer, WorldChainEthApiExt};
 
 #[cfg(all(feature = "jemalloc", unix))]
 #[global_allocator]
@@ -35,7 +36,11 @@ fn main() {
                 .extend_rpc_modules(move |ctx| {
                     let provider = ctx.provider().clone();
                     let pool = ctx.pool().clone();
-                    let eth_api_ext = WorldChainEthApiExt::new(pool, provider);
+                    let sequencer_client = builder_args.rollup_args.sequencer_http.map(SequencerClient::new);
+                    let eth_api_ext = WorldChainEthApiExt::new(pool, provider, sequencer_client);
+                    // Remove the `eth_sendRawTransaction` method from the configured modules
+                    ctx.modules.remove_method_from_configured(&"eth_sendRawTransaction");
+                    // Merge the `eth_sendRawTransaction` and `eth_sendRawTransactionConditional` RPC methods
                     ctx.modules.merge_configured(eth_api_ext.into_rpc())?;
                     Ok(())
                 })
