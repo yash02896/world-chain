@@ -45,7 +45,7 @@ use world_chain_builder_pool::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
 use world_chain_builder_pool::tx::WorldChainPooledTransaction;
 use world_chain_builder_pool::validator::WorldChainTransactionValidator;
 use world_chain_builder_primitives::transaction::WorldChainPooledTransactionsElement;
-use world_chain_builder_rpc::bundle::{EthTransactionsExtServer, WorldChainEthApiExt};
+use world_chain_builder_rpc::{EthTransactionsExtServer, WorldChainEthApiExt};
 
 pub const DEV_CHAIN_ID: u64 = 8453;
 
@@ -142,7 +142,7 @@ impl WorldChainBuilderTestContext {
             .extend_rpc_modules(move |ctx| {
                 let provider = ctx.provider().clone();
                 let pool = ctx.pool().clone();
-                let eth_api_ext = WorldChainEthApiExt::new(pool, provider);
+                let eth_api_ext = WorldChainEthApiExt::new(pool, provider, None);
                 ctx.modules.merge_configured(eth_api_ext.into_rpc())?;
                 Ok(())
             });

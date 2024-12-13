@@ -4,7 +4,6 @@ use alloy_primitives::{map::HashMap, StorageKey};
 use alloy_rpc_types::erc4337::{AccountStorage, ConditionalOptions};
 use jsonrpsee::{
     core::{async_trait, RpcResult},
-    proc_macros::rpc,
     types::{ErrorCode, ErrorObject, ErrorObjectOwned},
 };
 use reth::{
@@ -16,27 +15,7 @@ use reth_provider::{BlockReaderIdExt, StateProviderFactory};
 use revm_primitives::{map::FbBuildHasher, Address, Bytes, FixedBytes, B256};
 use world_chain_builder_pool::tx::WorldChainPooledTransaction;
 
-/// Trait interface for `eth_sendRawTransactionConditional`
-#[cfg_attr(not(test), rpc(server, namespace = "eth"))]
-#[cfg_attr(test, rpc(server, client, namespace = "eth"))]
-#[async_trait]
-pub trait EthTransactionsExt {
-    #[method(name = "sendRawTransactionConditional")]
-    async fn send_raw_transaction_conditional(
-        &self,
-        tx: Bytes,
-        options: ConditionalOptions,
-    ) -> RpcResult<B256>;
-}
-
-/// WorldChainEthApi Extension for ERC-4337 Conditionally Included
-///
-/// Bundled Transactions
-#[derive(Clone, Debug)]
-pub struct WorldChainEthApiExt<Pool, Client> {
-    pool: Pool,
-    client: Client,
-}
+use crate::{sequencer::SequencerClient, EthTransactionsExtServer, WorldChainEthApiExt};
 
 #[async_trait]
 impl<Pool, Client> EthTransactionsExtServer for WorldChainEthApiExt<Pool, Client>
@@ -54,7 +33,7 @@ where
         let recovered = recover_raw_transaction(&tx)?;
         let mut pool_transaction: WorldChainPooledTransaction =
             EthPooledTransaction::from_pooled(recovered).into();
-        pool_transaction.conditional_options = Some(options);
+        pool_transaction.conditional_options = Some(options.clone());
 
         // submit the transaction to the pool with a `Local` origin
         let hash = self
@@ -63,6 +42,33 @@ where
             .await
             .map_err(|_| ErrorObjectOwned::from(ErrorCode::InternalError))?;
 
+        if let Some(client) = self.raw_tx_forwarder().as_ref() {
+            tracing::debug!( target: "rpc::eth",  "forwarding raw conditional transaction to");
+            let _ = client.forward_raw_transaction_conditional(&tx, options).await.inspect_err(|err| {
+                        tracing::debug!(target: "rpc::eth", %err, hash=?*hash, "failed to forward raw conditional transaction");
+                    });
+        }
+        Ok(hash)
+    }
+
+    async fn send_raw_transaction(&self, tx: Bytes) -> RpcResult<B256> {
+        let recovered = recover_raw_transaction(&tx)?;
+        let pool_transaction: WorldChainPooledTransaction =
+            EthPooledTransaction::from_pooled(recovered).into();
+
+        // submit the transaction to the pool with a `Local` origin
+        let hash = self
+            .pool()
+            .add_transaction(TransactionOrigin::Local, pool_transaction)
+            .await
+            .map_err(|_| ErrorObjectOwned::from(ErrorCode::InternalError))?;
+
+        if let Some(client) = self.raw_tx_forwarder().as_ref() {
+            tracing::debug!( target: "rpc::eth",  "forwarding raw transaction to");
+            let _ = client.forward_raw_transaction(&tx).await.inspect_err(|err| {
+                        tracing::debug!(target: "rpc::eth", %err, hash=?*hash, "failed to forward raw transaction");
+                    });
+        }
         Ok(hash)
     }
 }
@@ -72,8 +78,12 @@ where
     Pool: TransactionPool<Transaction = WorldChainPooledTransaction> + Clone + 'static,
     Client: BlockReaderIdExt + StateProviderFactory + 'static,
 {
-    pub fn new(pool: Pool, client: Client) -> Self {
-        Self { pool, client }
+    pub fn new(pool: Pool, client: Client, sequencer_client: Option<SequencerClient>) -> Self {
+        Self {
+            pool,
+            client,
+            sequencer_client,
+        }
     }
 
     pub fn provider(&self) -> &Client {
@@ -82,6 +92,10 @@ where
 
     pub fn pool(&self) -> &Pool {
         &self.pool
+    }
+
+    pub fn raw_tx_forwarder(&self) -> Option<&SequencerClient> {
+        self.sequencer_client.as_ref()
     }
 }
 
