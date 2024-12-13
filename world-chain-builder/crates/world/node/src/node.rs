@@ -33,7 +33,7 @@ use reth_trie_db::MerklePatriciaTrie;
 use world_chain_builder_db::load_world_chain_db;
 use world_chain_builder_pool::builder::WorldChainPoolBuilder;
 use world_chain_builder_pool::ordering::WorldChainOrdering;
-use world_chain_builder_pool::tx::WorldChainPooledTransaction;
+use world_chain_builder_pool::tx::{WorldChainPoolTransaction, WorldChainPooledTransaction};
 use world_chain_builder_pool::validator::WorldChainTransactionValidator;
 
 use super::args::{ExtArgs, WorldChainBuilderArgs};
@@ -242,7 +242,7 @@ where
                 Primitives = OpPrimitives,
             >,
         >,
-        Pool: TransactionPool<Transaction: PoolTransaction<Consensus = TxTy<Node::Types>>>
+        Pool: TransactionPool<Transaction: WorldChainPoolTransaction<Consensus = TxTy<Node::Types>>>
             + Unpin
             + 'static,
         Evm: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
@@ -289,8 +289,9 @@ where
             Primitives = OpPrimitives,
         >,
     >,
-    Pool:
-        TransactionPool<Transaction: PoolTransaction<Consensus = TxTy<N::Types>>> + Unpin + 'static,
+    Pool: TransactionPool<Transaction: WorldChainPoolTransaction<Consensus = TxTy<N::Types>>>
+        + Unpin
+        + 'static,
     Txs: OpPayloadTransactions,
 {
     async fn spawn_payload_service(

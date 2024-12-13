@@ -2,6 +2,7 @@ use alloy_consensus::{Transaction, EMPTY_OMMER_ROOT_HASH};
 use alloy_eips::eip4895::Withdrawals;
 use alloy_eips::merge::BEACON_NONCE;
 use alloy_rpc_types_debug::ExecutionWitness;
+use jsonrpsee::core::client;
 use reth::api::PayloadBuilderError;
 use reth::builder::components::PayloadServiceBuilder;
 use reth::builder::{BuilderContext, FullNodeTypes, NodeTypesWithEngine, PayloadBuilderConfig};
@@ -169,7 +170,8 @@ where
         args: BuildArguments<Pool, Client, OpPayloadBuilderAttributes, OpBuiltPayload>,
     ) -> Result<BuildOutcome<OpBuiltPayload>, PayloadBuilderError>
     where
-        Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec>,
+        Client:
+            StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
         Pool:
             TransactionPool<Transaction: WorldChainPoolTransaction<Consensus = TransactionSigned>>,
     {
@@ -197,6 +199,7 @@ where
                 best_payload,
             },
             verified_blockspace_capacity: self.verified_blockspace_capacity,
+            client,
         };
 
         let builder = WorldChainBuilder {
@@ -204,6 +207,7 @@ where
             best: self.inner.best_transactions.clone(),
         };
 
+        let client = ctx.client();
         let state_provider = client.state_by_block_hash(ctx.parent().hash())?;
         let state = StateProviderDatabase::new(state_provider);
 
@@ -250,12 +254,13 @@ where
     /// Computes the witness for the payload.
     pub fn payload_witness<Client>(
         &self,
-        client: &Client,
+        client: Client,
         parent: SealedHeader,
         attributes: OpPayloadAttributes,
     ) -> Result<ExecutionWitness, PayloadBuilderError>
     where
-        Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec>,
+        Client:
+            StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
     {
         let attributes = OpPayloadBuilderAttributes::try_new(parent.hash(), attributes, 3)
             .map_err(PayloadBuilderError::other)?;
@@ -281,8 +286,10 @@ where
                 best_payload: Default::default(),
             },
             verified_blockspace_capacity: self.verified_blockspace_capacity,
+            client,
         };
 
+        let client = ctx.client();
         let state_provider = client.state_by_block_hash(ctx.parent().hash())?;
         let state = StateProviderDatabase::new(state_provider);
         let mut state = State::builder()
@@ -302,7 +309,7 @@ where
 impl<Pool, Client, EvmConfig, Txs> PayloadBuilder<Pool, Client>
     for WorldChainPayloadBuilder<EvmConfig, Txs>
 where
-    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec>,
+    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
     Pool: TransactionPool<Transaction: WorldChainPoolTransaction<Consensus = TransactionSigned>>,
     EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
     Txs: OpPayloadTransactions,
@@ -333,18 +340,20 @@ where
         client: &Client,
         config: PayloadConfig<Self::Attributes>,
     ) -> Result<OpBuiltPayload, PayloadBuilderError> {
-        let args = BuildArguments {
-            client,
-            config,
-            // we use defaults here because for the empty payload we don't need to execute anything
-            pool: NoopWorldChainTransactionPool::default(),
-            cached_reads: Default::default(),
-            cancel: Default::default(),
-            best_payload: None,
-        };
-        self.build_payload(args)?
-            .into_payload()
-            .ok_or_else(|| PayloadBuilderError::MissingPayload)
+        // TODO:
+        // let args = BuildArguments {
+        //     client,
+        //     config,
+        //     // we use defaults here because for the empty payload we don't need to execute anything
+        //     pool: NoopWorldChainTransactionPool::default(),
+        //     cached_reads: Default::default(),
+        //     cancel: Default::default(),
+        //     best_payload: None,
+        // };
+        // self.build_payload(args)?
+        //     .into_payload()
+        //     .ok_or_else(|| PayloadBuilderError::MissingPayload)
+        todo!()
     }
 }
 
@@ -377,14 +386,16 @@ where
     Txs: OpPayloadTransactions,
 {
     /// Executes the payload and returns the outcome.
-    pub fn execute<EvmConfig, DB>(
+    pub fn execute<EvmConfig, DB, Client>(
         self,
         state: &mut State<DB>,
-        ctx: &WorldChainPayloadBuilderCtx<EvmConfig>,
+        ctx: &WorldChainPayloadBuilderCtx<EvmConfig, Client>,
     ) -> Result<BuildOutcomeKind<ExecutedPayload>, PayloadBuilderError>
     where
         EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
         DB: Database<Error = ProviderError>,
+        Client:
+            StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
     {
         let Self { pool, best } = self;
         debug!(target: "payload_builder", id=%ctx.payload_id(), parent_header = ?ctx.parent().hash(), parent_number = ctx.parent().number, "building new payload");
@@ -436,15 +447,17 @@ where
 
     // TODO:
     /// Builds the payload on top of the state.
-    pub fn build<EvmConfig, DB, P>(
+    pub fn build<EvmConfig, DB, P, Client>(
         self,
         mut state: State<DB>,
-        ctx: WorldChainPayloadBuilderCtx<EvmConfig>,
+        ctx: WorldChainPayloadBuilderCtx<EvmConfig, Client>,
     ) -> Result<BuildOutcomeKind<OpBuiltPayload>, PayloadBuilderError>
     where
         EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
         DB: Database<Error = ProviderError> + AsRef<P>,
         P: StateRootProvider + HashedPostStateProvider,
+        Client:
+            StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
     {
         let ExecutedPayload {
             info,
@@ -568,15 +581,17 @@ where
     }
 
     /// Builds the payload and returns its [`ExecutionWitness`] based on the state after execution.
-    pub fn witness<EvmConfig, DB, P>(
+    pub fn witness<EvmConfig, DB, P, Client>(
         self,
         state: &mut State<DB>,
-        ctx: &WorldChainPayloadBuilderCtx<EvmConfig>,
+        ctx: &WorldChainPayloadBuilderCtx<EvmConfig, Client>,
     ) -> Result<ExecutionWitness, PayloadBuilderError>
     where
         EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
         DB: Database<Error = ProviderError> + AsRef<P>,
         P: StateProofProvider,
+        Client:
+            StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
     {
         let _ = self.execute(state, ctx)?;
         let ExecutionWitnessRecord {
@@ -598,15 +613,21 @@ where
 
 /// Container type that holds all necessities to build a new payload.
 #[derive(Debug)]
-pub struct WorldChainPayloadBuilderCtx<EvmConfig> {
+pub struct WorldChainPayloadBuilderCtx<EvmConfig, Client> {
     pub inner: OpPayloadBuilderCtx<EvmConfig>,
     pub verified_blockspace_capacity: u8,
+    pub client: Client,
 }
 
-impl<EvmConfig> WorldChainPayloadBuilderCtx<EvmConfig> {
+impl<EvmConfig, Client> WorldChainPayloadBuilderCtx<EvmConfig, Client> {
     /// Returns the parent block the payload will be build on.
     pub fn parent(&self) -> &SealedHeader {
         self.inner.parent()
+    }
+
+    /// Returns the state provider client.
+    pub fn client(&self) -> &Client {
+        &self.client
     }
 
     /// Returns the builder attributes.
@@ -712,9 +733,10 @@ impl<EvmConfig> WorldChainPayloadBuilderCtx<EvmConfig> {
     }
 }
 
-impl<EvmConfig> WorldChainPayloadBuilderCtx<EvmConfig>
+impl<EvmConfig, Client> WorldChainPayloadBuilderCtx<EvmConfig, Client>
 where
     EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
+    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
 {
     /// apply eip-4788 pre block contract call
     pub fn apply_pre_beacon_root_contract_call<DB>(
@@ -770,10 +792,10 @@ where
         let mut invalid_txs = vec![];
         let verified_gas_limit = (self.verified_blockspace_capacity as u64 * block_gas_limit) / 100;
         while let Some(tx) = best_txs.next() {
-            let pooled_tx = tx.transaction;
+            let pooled_tx = &tx.transaction;
             let consensus_tx = tx.to_consensus();
             if let Some(conditional_options) = pooled_tx.conditional_options() {
-                if let Err(_) = validate_conditional_options(&conditional_options, &client) {
+                if let Err(_) = validate_conditional_options(&conditional_options, &self.client) {
                     best_txs.mark_invalid(
                         &tx,
                         InvalidPoolTransactionError::Other(Box::new(
@@ -831,15 +853,19 @@ where
                 Err(err) => {
                     match err {
                         EVMError::Transaction(err) => {
-                            if matches!(err, InvalidTransaction::NonceTooLow { tx, state }) {
+                            if matches!(err, InvalidTransaction::NonceTooLow { .. }) {
                                 // if the nonce is too low, we can skip this transaction
                                 trace!(target: "payload_builder", %err, ?tx, "skipping nonce too low transaction");
                             } else {
                                 // if the transaction is invalid, we can skip it and all of its
                                 // descendants
                                 trace!(target: "payload_builder", %err, ?tx, "skipping invalid transaction and its descendants");
-                                best_txs
-                                    .mark_invalid(&tx, InvalidPoolTransactionError::Other(Box::new(err.into())));
+                                best_txs.mark_invalid(
+                                    &tx,
+                                    InvalidPoolTransactionError::Other(Box::new(
+                                        WorldChainPoolTransactionError::from(err),
+                                    )),
+                                );
                             }
 
                             continue;
