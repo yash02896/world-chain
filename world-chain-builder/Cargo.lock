@@ -13839,10 +13839,12 @@ dependencies = [
  "alloy-primitives",
  "alloy-rpc-types",
  "jsonrpsee",
+ "reqwest 0.12.9",
  "reth",
  "reth-optimism-rpc",
  "reth-provider",
  "revm-primitives",
+ "serde_json",
  "tracing",
  "world-chain-builder-pool",
 ]

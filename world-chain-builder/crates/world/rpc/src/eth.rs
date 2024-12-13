@@ -11,12 +11,11 @@ use reth::{
     rpc::server_types::eth::utils::recover_raw_transaction,
     transaction_pool::{EthPooledTransaction, PoolTransaction, TransactionOrigin, TransactionPool},
 };
-use reth_optimism_rpc::SequencerClient;
 use reth_provider::{BlockReaderIdExt, StateProviderFactory};
 use revm_primitives::{map::FbBuildHasher, Address, Bytes, FixedBytes, B256};
 use world_chain_builder_pool::tx::WorldChainPooledTransaction;
 
-use crate::{EthTransactionsExtServer, WorldChainEthApiExt};
+use crate::{sequencer::SequencerClient, EthTransactionsExtServer, WorldChainEthApiExt};
 
 #[async_trait]
 impl<Pool, Client> EthTransactionsExtServer for WorldChainEthApiExt<Pool, Client>
@@ -34,7 +33,7 @@ where
         let recovered = recover_raw_transaction(&tx)?;
         let mut pool_transaction: WorldChainPooledTransaction =
             EthPooledTransaction::from_pooled(recovered).into();
-        pool_transaction.conditional_options = Some(options);
+        pool_transaction.conditional_options = Some(options.clone());
 
         // submit the transaction to the pool with a `Local` origin
         let hash = self
@@ -43,7 +42,12 @@ where
             .await
             .map_err(|_| ErrorObjectOwned::from(ErrorCode::InternalError))?;
 
-        self.maybe_forward_raw_transaction(tx, hash).await?;
+        if let Some(client) = self.raw_tx_forwarder().as_ref() {
+            tracing::debug!( target: "rpc::eth",  "forwarding raw conditional transaction to");
+            let _ = client.forward_raw_transaction_conditional(&tx, options).await.inspect_err(|err| {
+                        tracing::debug!(target: "rpc::eth", %err, hash=?*hash, "failed to forward raw conditional transaction");
+                    });
+        }
         Ok(hash)
     }
 
@@ -59,7 +63,12 @@ where
             .await
             .map_err(|_| ErrorObjectOwned::from(ErrorCode::InternalError))?;
 
-        self.maybe_forward_raw_transaction(tx, hash).await?;
+        if let Some(client) = self.raw_tx_forwarder().as_ref() {
+            tracing::debug!( target: "rpc::eth",  "forwarding raw transaction to");
+            let _ = client.forward_raw_transaction(&tx).await.inspect_err(|err| {
+                        tracing::debug!(target: "rpc::eth", %err, hash=?*hash, "failed to forward raw transaction");
+                    });
+        }
         Ok(hash)
     }
 }
@@ -87,16 +96,6 @@ where
 
     pub fn raw_tx_forwarder(&self) -> Option<&SequencerClient> {
         self.sequencer_client.as_ref()
-    }
-
-    async fn maybe_forward_raw_transaction(&self, tx: Bytes, hash: B256) -> RpcResult<()> {
-        if let Some(client) = self.raw_tx_forwarder().as_ref() {
-            tracing::debug!( target: "rpc::eth",  "forwarding raw transaction to");
-            let _ = client.forward_raw_transaction(&tx).await.inspect_err(|err| {
-                    tracing::debug!(target: "rpc::eth", %err, hash=?*hash, "failed to forward raw transaction");
-                });
-        }
-        Ok(())
     }
 }
 

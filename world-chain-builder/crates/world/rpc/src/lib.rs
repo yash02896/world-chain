@@ -1,8 +1,11 @@
 use alloy_primitives::{Bytes, B256};
 use alloy_rpc_types::erc4337::ConditionalOptions;
 use jsonrpsee::{core::RpcResult, proc_macros::rpc};
-use reth_optimism_rpc::SequencerClient;
+
+use crate::sequencer::SequencerClient;
+
 pub mod eth;
+pub mod sequencer;
 
 /// Trait interface for EthApi Extension
 #[cfg_attr(not(test), rpc(server, namespace = "eth"))]
