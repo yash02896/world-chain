@@ -818,7 +818,7 @@ where
 
             // Push transaction changeset and calculate header bloom filter for receipt.
             info.receipts.push(Some(Receipt {
-                tx_type: tx.tx_type(),
+                tx_type: tx.inner.transaction().tx_type(),
                 success: result.is_success(),
                 cumulative_gas_used: info.cumulative_gas_used,
                 logs: result.into_logs().into_iter().map(Into::into).collect(),
@@ -834,7 +834,8 @@ where
 
             // append sender and transaction to the respective lists
             info.executed_senders.push(tx.signer());
-            info.executed_transactions.push(tx.into_signed());
+            info.executed_transactions
+                .push(tx.inner.transaction().into_signed());
         }
 
         Ok(None)
