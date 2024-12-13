@@ -50,6 +50,7 @@ use revm_primitives::{
 use std::fmt::Display;
 use std::sync::Arc;
 use tracing::{debug, trace, warn};
+use world_chain_builder_pool::tx::WorldChainPooledTransaction;
 
 use world_chain_builder_pool::noop::NoopWorldChainTransactionPool;
 use world_chain_builder_pool::tx::WorldChainPoolTransaction;
@@ -148,7 +149,8 @@ where
     ) -> Result<BuildOutcome<OpBuiltPayload>, PayloadBuilderError>
     where
         Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec>,
-        Pool: TransactionPool<Transaction: PoolTransaction<Consensus = TransactionSigned>>,
+        Pool:
+            TransactionPool<Transaction: WorldChainPoolTransaction<Consensus = TransactionSigned>>,
     {
         let (initialized_cfg, initialized_block_env) = self
             .cfg_and_block_env(&args.config.attributes, &args.config.parent_header)
@@ -280,7 +282,7 @@ impl<Pool, Client, EvmConfig, Txs> PayloadBuilder<Pool, Client>
     for WorldChainPayloadBuilder<EvmConfig, Txs>
 where
     Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec>,
-    Pool: TransactionPool<Transaction: PoolTransaction<Consensus = TransactionSigned>>,
+    Pool: TransactionPool<Transaction: WorldChainPoolTransaction<Consensus = TransactionSigned>>,
     EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
     Txs: OpPayloadTransactions,
 {
@@ -350,7 +352,7 @@ pub struct WorldChainBuilder<Pool, Txs> {
 
 impl<Pool, Txs> WorldChainBuilder<Pool, Txs>
 where
-    Pool: TransactionPool<Transaction: PoolTransaction<Consensus = TransactionSigned>>,
+    Pool: TransactionPool<Transaction: WorldChainPoolTransaction<Consensus = TransactionSigned>>,
     Txs: OpPayloadTransactions,
 {
     /// Executes the payload and returns the outcome.
@@ -724,8 +726,7 @@ where
         &self,
         info: &mut ExecutionInfo,
         db: &mut State<DB>,
-        mut best_txs: impl PayloadTransactions<Transaction = TransactionSigned>
-            + WorldChainPoolTransaction,
+        mut best_txs: impl PayloadTransactions<Transaction = TransactionSigned>,
     ) -> Result<Option<()>, PayloadBuilderError>
     where
         DB: Database<Error = ProviderError>,
