@@ -79,6 +79,7 @@ reth-optimism-consensus = { git = "https://github.com/paradigmxyz/reth", tag = "
     "optimism",
 ] }
 reth-optimism-chainspec = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.4" }
+reth_payload_util = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.4" }
 reth-optimism-payload-builder = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.4" }
 reth-optimism-forks = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.4" }
 reth-optimism-primitives = { git = "https://github.com/paradigmxyz/reth", tag = "v1.1.4" }

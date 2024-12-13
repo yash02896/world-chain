@@ -1,4 +1,4 @@
-use alloy_consensus::EMPTY_OMMER_ROOT_HASH;
+use alloy_consensus::{Transaction, EMPTY_OMMER_ROOT_HASH};
 use alloy_eips::eip4895::Withdrawals;
 use alloy_eips::merge::BEACON_NONCE;
 use alloy_rpc_types_debug::ExecutionWitness;
@@ -27,10 +27,11 @@ use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_consensus::calculate_receipt_root_no_memo_optimism;
 use reth_optimism_node::{OpBuiltPayload, OpPayloadBuilder, OpPayloadBuilderAttributes};
 use reth_optimism_payload_builder::builder::{
-    ExecutedPayload, OpBuilder, OpPayloadBuilderCtx, OpPayloadTransactions,
+    ExecutedPayload, ExecutionInfo, OpBuilder, OpPayloadBuilderCtx, OpPayloadTransactions,
 };
 use reth_optimism_payload_builder::config::OpBuilderConfig;
 use reth_optimism_payload_builder::OpPayloadAttributes;
+use reth_payload_util::PayloadTransactions;
 use reth_primitives::{proofs, BlockBody, BlockExt, SealedHeader, TransactionSigned};
 use reth_primitives::{Block, Header, Receipt, TxType};
 use reth_provider::{
@@ -41,7 +42,7 @@ use reth_provider::{
 use reth_transaction_pool::{noop::NoopTransactionPool, pool::BestPayloadTransactions};
 use reth_trie::HashedPostState;
 use revm::Database;
-use revm_primitives::{calc_excess_blob_gas, Bytes, B256};
+use revm_primitives::{calc_excess_blob_gas, Bytes, TxEnv, B256};
 use revm_primitives::{
     BlockEnv, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, InvalidTransaction,
     ResultAndState, U256,
@@ -350,7 +351,7 @@ where
     pub fn execute<EvmConfig, DB>(
         self,
         state: &mut State<DB>,
-        ctx: &OpPayloadBuilderCtx<EvmConfig>,
+        ctx: &WorldChainPayloadBuilderCtx<EvmConfig>,
     ) -> Result<BuildOutcomeKind<ExecutedPayload>, PayloadBuilderError>
     where
         EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
@@ -408,7 +409,7 @@ where
     pub fn build<EvmConfig, DB, P>(
         self,
         mut state: State<DB>,
-        ctx: OpPayloadBuilderCtx<EvmConfig>,
+        ctx: WorldChainPayloadBuilderCtx<EvmConfig>,
     ) -> Result<BuildOutcomeKind<OpBuiltPayload>, PayloadBuilderError>
     where
         EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
@@ -435,7 +436,7 @@ where
             .generic_receipts_root_slow(block_number, |receipts| {
                 calculate_receipt_root_no_memo_optimism(
                     receipts,
-                    &ctx.chain_spec,
+                    &ctx.inner.chain_spec,
                     ctx.attributes().timestamp(),
                 )
             })
@@ -471,7 +472,7 @@ where
         let header = Header {
             parent_hash: ctx.parent().hash(),
             ommers_hash: EMPTY_OMMER_ROOT_HASH,
-            beneficiary: ctx.initialized_block_env.coinbase,
+            beneficiary: ctx.inner.initialized_block_env.coinbase,
             state_root,
             transactions_root,
             receipts_root,
@@ -521,8 +522,8 @@ where
             ctx.payload_id(),
             sealed_block,
             info.total_fees,
-            ctx.chain_spec.clone(),
-            ctx.config.attributes,
+            ctx.inner.chain_spec.clone(),
+            ctx.inner.config.attributes,
             Some(executed),
         );
 
@@ -540,7 +541,7 @@ where
     pub fn witness<EvmConfig, DB, P>(
         self,
         state: &mut State<DB>,
-        ctx: &OpPayloadBuilderCtx<EvmConfig>,
+        ctx: &WorldChainPayloadBuilderCtx<EvmConfig>,
     ) -> Result<ExecutionWitness, PayloadBuilderError>
     where
         EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
@@ -680,245 +681,136 @@ impl<EvmConfig> WorldChainPayloadBuilderCtx<EvmConfig> {
     }
 }
 
-// impl<EvmConfig> WorldChainPayloadBuilderCtx<EvmConfig>
-// where
-//     EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
-// {
-//     /// apply eip-4788 pre block contract call
-//     pub fn apply_pre_beacon_root_contract_call<DB>(
-//         &self,
-//         db: &mut DB,
-//     ) -> Result<(), PayloadBuilderError>
-//     where
-//         DB: Database + DatabaseCommit,
-//         DB::Error: Display,
-//     {
-//         SystemCaller::new(self.evm_config.clone(), self.chain_spec.clone())
-//             .pre_block_beacon_root_contract_call(
-//                 db,
-//                 &self.initialized_cfg,
-//                 &self.initialized_block_env,
-//                 self.attributes()
-//                     .payload_attributes
-//                     .parent_beacon_block_root,
-//             )
-//             .map_err(|err| {
-//                 warn!(target: "payload_builder",
-//                     parent_header=%self.parent().hash(),
-//                     %err,
-//                     "failed to apply beacon root contract call for payload"
-//                 );
-//                 PayloadBuilderError::Internal(err.into())
-//             })?;
+impl<EvmConfig> WorldChainPayloadBuilderCtx<EvmConfig>
+where
+    EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
+{
+    /// apply eip-4788 pre block contract call
+    pub fn apply_pre_beacon_root_contract_call<DB>(
+        &self,
+        db: &mut DB,
+    ) -> Result<(), PayloadBuilderError>
+    where
+        DB: Database + DatabaseCommit,
+        DB::Error: Display,
+    {
+        self.inner.apply_pre_beacon_root_contract_call(db)
+    }
 
-//         Ok(())
-//     }
+    /// Executes all sequencer transactions that are included in the payload attributes.
+    pub fn execute_sequencer_transactions<DB>(
+        &self,
+        db: &mut State<DB>,
+    ) -> Result<ExecutionInfo, PayloadBuilderError>
+    where
+        DB: Database<Error = ProviderError>,
+    {
+        self.inner.execute_sequencer_transactions(db)
+    }
 
-//     /// Executes all sequencer transactions that are included in the payload attributes.
-//     pub fn execute_sequencer_transactions<DB>(
-//         &self,
-//         db: &mut State<DB>,
-//     ) -> Result<ExecutionInfo, PayloadBuilderError>
-//     where
-//         DB: Database<Error = ProviderError>,
-//     {
-//         let mut info = ExecutionInfo::with_capacity(self.attributes().transactions.len());
+    /// Executes the given best transactions and updates the execution info.
+    ///
+    /// Returns `Ok(Some(())` if the job was cancelled.
 
-//         let env = EnvWithHandlerCfg::new_with_cfg_env(
-//             self.initialized_cfg.clone(),
-//             self.initialized_block_env.clone(),
-//             TxEnv::default(),
-//         );
-//         let mut evm = self.evm_config.evm_with_env(&mut *db, env);
+    // TODO: PBH
+    pub fn execute_best_transactions<DB, Pool>(
+        &self,
+        info: &mut ExecutionInfo,
+        db: &mut State<DB>,
+        mut best_txs: impl PayloadTransactions<Transaction = TransactionSigned>,
+    ) -> Result<Option<()>, PayloadBuilderError>
+    where
+        DB: Database<Error = ProviderError>,
+    {
+        let block_gas_limit = self.block_gas_limit();
+        let base_fee = self.base_fee();
 
-//         for sequencer_tx in &self.attributes().transactions {
-//             // A sequencer's block should never contain blob transactions.
-//             if sequencer_tx.value().is_eip4844() {
-//                 return Err(PayloadBuilderError::other(
-//                     OpPayloadBuilderError::BlobTransactionRejected,
-//                 ));
-//             }
+        let env = EnvWithHandlerCfg::new_with_cfg_env(
+            self.inner.initialized_cfg.clone(),
+            self.inner.initialized_block_env.clone(),
+            TxEnv::default(),
+        );
+        let mut evm = self.inner.evm_config.evm_with_env(&mut *db, env);
 
-//             // Convert the transaction to a [RecoveredTx]. This is
-//             // purely for the purposes of utilizing the `evm_config.tx_env`` function.
-//             // Deposit transactions do not have signatures, so if the tx is a deposit, this
-//             // will just pull in its `from` address.
-//             let sequencer_tx = sequencer_tx
-//                 .value()
-//                 .clone()
-//                 .try_into_ecrecovered()
-//                 .map_err(|_| {
-//                     PayloadBuilderError::other(OpPayloadBuilderError::TransactionEcRecoverFailed)
-//                 })?;
+        while let Some(tx) = best_txs.next(()) {
+            // ensure we still have capacity for this transaction
+            if info.cumulative_gas_used + tx.gas_limit() > block_gas_limit {
+                // we can't fit this transaction into the block, so we need to mark it as
+                // invalid which also removes all dependent transaction from
+                // the iterator before we can continue
+                best_txs.mark_invalid(tx.signer(), tx.nonce());
+                continue;
+            }
 
-//             // Cache the depositor account prior to the state transition for the deposit nonce.
-//             //
-//             // Note that this *only* needs to be done post-regolith hardfork, as deposit nonces
-//             // were not introduced in Bedrock. In addition, regular transactions don't have deposit
-//             // nonces, so we don't need to touch the DB for those.
-//             let depositor = (self.is_regolith_active() && sequencer_tx.is_deposit())
-//                 .then(|| {
-//                     evm.db_mut()
-//                         .load_cache_account(sequencer_tx.signer())
-//                         .map(|acc| acc.account_info().unwrap_or_default())
-//                 })
-//                 .transpose()
-//                 .map_err(|_| {
-//                     PayloadBuilderError::other(OpPayloadBuilderError::AccountLoadFailed(
-//                         sequencer_tx.signer(),
-//                     ))
-//                 })?;
+            // A sequencer's block should never contain blob or deposit transactions from the pool.
+            if tx.is_eip4844() || tx.tx_type() == TxType::Deposit as u8 {
+                best_txs.mark_invalid(tx.signer(), tx.nonce());
+                continue;
+            }
 
-//             *evm.tx_mut() = self
-//                 .evm_config
-//                 .tx_env(sequencer_tx.as_signed(), sequencer_tx.signer());
+            // check if the job was cancelled, if so we can exit early
+            if self.inner.cancel.is_cancelled() {
+                return Ok(Some(()));
+            }
 
-//             let ResultAndState { result, state } = match evm.transact() {
-//                 Ok(res) => res,
-//                 Err(err) => {
-//                     match err {
-//                         EVMError::Transaction(err) => {
-//                             trace!(target: "payload_builder", %err, ?sequencer_tx, "Error in sequencer transaction, skipping.");
-//                             continue;
-//                         }
-//                         err => {
-//                             // this is an error that we should treat as fatal for this attempt
-//                             return Err(PayloadBuilderError::EvmExecutionError(err));
-//                         }
-//                     }
-//                 }
-//             };
+            // Configure the environment for the tx.
+            *evm.tx_mut() = self.inner.evm_config.tx_env(tx.as_signed(), tx.signer());
 
-//             // commit changes
-//             evm.db_mut().commit(state);
+            let ResultAndState { result, state } = match evm.transact() {
+                Ok(res) => res,
+                Err(err) => {
+                    match err {
+                        EVMError::Transaction(err) => {
+                            if matches!(err, InvalidTransaction::NonceTooLow { .. }) {
+                                // if the nonce is too low, we can skip this transaction
+                                trace!(target: "payload_builder", %err, ?tx, "skipping nonce too low transaction");
+                            } else {
+                                // if the transaction is invalid, we can skip it and all of its
+                                // descendants
+                                trace!(target: "payload_builder", %err, ?tx, "skipping invalid transaction and its descendants");
+                                best_txs.mark_invalid(tx.signer(), tx.nonce());
+                            }
 
-//             let gas_used = result.gas_used();
+                            continue;
+                        }
+                        err => {
+                            // this is an error that we should treat as fatal for this attempt
+                            return Err(PayloadBuilderError::EvmExecutionError(err));
+                        }
+                    }
+                }
+            };
 
-//             // add gas used by the transaction to cumulative gas used, before creating the receipt
-//             info.cumulative_gas_used += gas_used;
+            // commit changes
+            evm.db_mut().commit(state);
 
-//             // Push transaction changeset and calculate header bloom filter for receipt.
-//             info.receipts.push(Some(Receipt {
-//                 tx_type: sequencer_tx.tx_type(),
-//                 success: result.is_success(),
-//                 cumulative_gas_used: info.cumulative_gas_used,
-//                 logs: result.into_logs().into_iter().map(Into::into).collect(),
-//                 deposit_nonce: depositor.map(|account| account.nonce),
-//                 // The deposit receipt version was introduced in Canyon to indicate an update to how
-//                 // receipt hashes should be computed when set. The state transition process
-//                 // ensures this is only set for post-Canyon deposit transactions.
-//                 deposit_receipt_version: self.is_canyon_active().then_some(1),
-//             }));
+            let gas_used = result.gas_used();
 
-//             // append sender and transaction to the respective lists
-//             info.executed_senders.push(sequencer_tx.signer());
-//             info.executed_transactions.push(sequencer_tx.into_signed());
-//         }
+            // add gas used by the transaction to cumulative gas used, before creating the
+            // receipt
+            info.cumulative_gas_used += gas_used;
 
-//         Ok(info)
-//     }
+            // Push transaction changeset and calculate header bloom filter for receipt.
+            info.receipts.push(Some(Receipt {
+                tx_type: tx.tx_type(),
+                success: result.is_success(),
+                cumulative_gas_used: info.cumulative_gas_used,
+                logs: result.into_logs().into_iter().map(Into::into).collect(),
+                deposit_nonce: None,
+                deposit_receipt_version: None,
+            }));
 
-//     /// Executes the given best transactions and updates the execution info.
-//     ///
-//     /// Returns `Ok(Some(())` if the job was cancelled.
-//     pub fn execute_best_transactions<DB, Pool>(
-//         &self,
-//         info: &mut ExecutionInfo,
-//         db: &mut State<DB>,
-//         mut best_txs: impl PayloadTransactions<Transaction = TransactionSigned>,
-//     ) -> Result<Option<()>, PayloadBuilderError>
-//     where
-//         DB: Database<Error = ProviderError>,
-//     {
-//         let block_gas_limit = self.block_gas_limit();
-//         let base_fee = self.base_fee();
+            // update add to total fees
+            let miner_fee = tx
+                .effective_tip_per_gas(base_fee)
+                .expect("fee is always valid; execution succeeded");
+            info.total_fees += U256::from(miner_fee) * U256::from(gas_used);
 
-//         let env = EnvWithHandlerCfg::new_with_cfg_env(
-//             self.initialized_cfg.clone(),
-//             self.initialized_block_env.clone(),
-//             TxEnv::default(),
-//         );
-//         let mut evm = self.evm_config.evm_with_env(&mut *db, env);
+            // append sender and transaction to the respective lists
+            info.executed_senders.push(tx.signer());
+            info.executed_transactions.push(tx.into_signed());
+        }
 
-//         while let Some(tx) = best_txs.next(()) {
-//             // ensure we still have capacity for this transaction
-//             if info.cumulative_gas_used + tx.gas_limit() > block_gas_limit {
-//                 // we can't fit this transaction into the block, so we need to mark it as
-//                 // invalid which also removes all dependent transaction from
-//                 // the iterator before we can continue
-//                 best_txs.mark_invalid(tx.signer(), tx.nonce());
-//                 continue;
-//             }
-
-//             // A sequencer's block should never contain blob or deposit transactions from the pool.
-//             if tx.is_eip4844() || tx.tx_type() == TxType::Deposit as u8 {
-//                 best_txs.mark_invalid(tx.signer(), tx.nonce());
-//                 continue;
-//             }
-
-//             // check if the job was cancelled, if so we can exit early
-//             if self.cancel.is_cancelled() {
-//                 return Ok(Some(()));
-//             }
-
-//             // Configure the environment for the tx.
-//             *evm.tx_mut() = self.evm_config.tx_env(tx.as_signed(), tx.signer());
-
-//             let ResultAndState { result, state } = match evm.transact() {
-//                 Ok(res) => res,
-//                 Err(err) => {
-//                     match err {
-//                         EVMError::Transaction(err) => {
-//                             if matches!(err, InvalidTransaction::NonceTooLow { .. }) {
-//                                 // if the nonce is too low, we can skip this transaction
-//                                 trace!(target: "payload_builder", %err, ?tx, "skipping nonce too low transaction");
-//                             } else {
-//                                 // if the transaction is invalid, we can skip it and all of its
-//                                 // descendants
-//                                 trace!(target: "payload_builder", %err, ?tx, "skipping invalid transaction and its descendants");
-//                                 best_txs.mark_invalid(tx.signer(), tx.nonce());
-//                             }
-
-//                             continue;
-//                         }
-//                         err => {
-//                             // this is an error that we should treat as fatal for this attempt
-//                             return Err(PayloadBuilderError::EvmExecutionError(err));
-//                         }
-//                     }
-//                 }
-//             };
-
-//             // commit changes
-//             evm.db_mut().commit(state);
-
-//             let gas_used = result.gas_used();
-
-//             // add gas used by the transaction to cumulative gas used, before creating the
-//             // receipt
-//             info.cumulative_gas_used += gas_used;
-
-//             // Push transaction changeset and calculate header bloom filter for receipt.
-//             info.receipts.push(Some(Receipt {
-//                 tx_type: tx.tx_type(),
-//                 success: result.is_success(),
-//                 cumulative_gas_used: info.cumulative_gas_used,
-//                 logs: result.into_logs().into_iter().map(Into::into).collect(),
-//                 deposit_nonce: None,
-//                 deposit_receipt_version: None,
-//             }));
-
-//             // update add to total fees
-//             let miner_fee = tx
-//                 .effective_tip_per_gas(base_fee)
-//                 .expect("fee is always valid; execution succeeded");
-//             info.total_fees += U256::from(miner_fee) * U256::from(gas_used);
-
-//             // append sender and transaction to the respective lists
-//             info.executed_senders.push(tx.signer());
-//             info.executed_transactions.push(tx.into_signed());
-//         }
-
-//         Ok(None)
-//     }
-// }
+        Ok(None)
+    }
+}
