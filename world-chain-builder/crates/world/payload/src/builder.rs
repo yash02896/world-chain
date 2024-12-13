@@ -720,13 +720,11 @@ where
     /// Executes the given best transactions and updates the execution info.
     ///
     /// Returns `Ok(Some(())` if the job was cancelled.
-
-    // TODO: PBH
     pub fn execute_best_transactions<DB, Pool>(
         &self,
         info: &mut ExecutionInfo,
         db: &mut State<DB>,
-        mut best_txs: impl PayloadTransactions<Transaction = TransactionSigned>,
+        mut best_txs: impl PayloadTransactions<Transaction = WorldChainPooledTransaction>,
     ) -> Result<Option<()>, PayloadBuilderError>
     where
         DB: Database<Error = ProviderError>,
@@ -744,8 +742,8 @@ where
         let mut invalid_txs = vec![];
         let verified_gas_limit = (self.verified_blockspace_capacity as u64 * block_gas_limit) / 100;
         while let Some(tx) = best_txs.next(()) {
-            if let Some(conditional_options) = tx.transaction.conditional_options() {
-                if let Err(_) = validate_conditional_options(conditional_options, &client) {
+            if let Some(conditional_options) = tx.conditional_options {
+                if let Err(_) = validate_conditional_options(&conditional_options, &client) {
                     best_txs.mark_invalid(tx.signer(), tx.nonce());
                     invalid_txs.push(tx.hash().clone());
                     continue;
@@ -753,9 +751,7 @@ where
             }
 
             // If the transaction is verified, check if it can be added within the verified gas limit
-            if tx.transaction.pbh_payload().is_some()
-                && info.cumulative_gas_used + tx.gas_limit() > verified_gas_limit
-            {
+            if tx.valid_pbh && info.cumulative_gas_used + tx.gas_limit() > verified_gas_limit {
                 best_txs.mark_invalid(tx.signer(), tx.nonce());
                 continue;
             }
@@ -781,7 +777,10 @@ where
             }
 
             // Configure the environment for the tx.
-            *evm.tx_mut() = self.inner.evm_config.tx_env(tx.as_signed(), tx.signer());
+            *evm.tx_mut() = self
+                .inner
+                .evm_config
+                .tx_env(tx.inner.transaction().as_signed(), tx.signer());
 
             let ResultAndState { result, state } = match evm.transact() {
                 Ok(res) => res,
