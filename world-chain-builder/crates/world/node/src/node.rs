@@ -4,37 +4,31 @@ use std::sync::Arc;
 use eyre::eyre::Result;
 use reth::api::{ConfigureEvm, TxTy};
 use reth::builder::components::{
-    ComponentsBuilder, ConsensusBuilder, ExecutorBuilder, NetworkBuilder, PayloadServiceBuilder,
-    PoolBuilder,
+    ComponentsBuilder, PayloadServiceBuilder,
 };
 use reth::builder::{
     BuilderContext, FullNodeTypes, Node, NodeAdapter, NodeComponentsBuilder, NodeTypes,
     NodeTypesWithEngine, PayloadBuilderConfig,
 };
 use reth::payload::{PayloadBuilderHandle, PayloadBuilderService};
-use reth::transaction_pool::blobstore::DiskFileBlobStore;
-use reth::transaction_pool::{
-    Pool, PoolTransaction, TransactionPool, TransactionValidationTaskExecutor,
-};
+use reth::transaction_pool::TransactionPool;
 use reth_basic_payload_builder::{BasicPayloadJobGenerator, BasicPayloadJobGeneratorConfig};
 use reth_db::DatabaseEnv;
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_node::args::RollupArgs;
 use reth_optimism_node::node::{
-    OpAddOns, OpConsensusBuilder, OpExecutorBuilder, OpNetworkBuilder, OpPayloadBuilder, OpStorage,
+    OpAddOns, OpConsensusBuilder, OpExecutorBuilder, OpNetworkBuilder, OpStorage,
 };
 use reth_optimism_node::{OpEngineTypes, OpEvmConfig};
 use reth_optimism_payload_builder::builder::OpPayloadTransactions;
 use reth_optimism_payload_builder::config::OpDAConfig;
 use reth_optimism_primitives::OpPrimitives;
-use reth_primitives::{Header, NodePrimitives, TransactionSigned};
+use reth_primitives::{Header, TransactionSigned};
 use reth_provider::CanonStateSubscriptions;
 use reth_trie_db::MerklePatriciaTrie;
 use world_chain_builder_db::load_world_chain_db;
 use world_chain_builder_pool::builder::WorldChainPoolBuilder;
-use world_chain_builder_pool::ordering::WorldChainOrdering;
-use world_chain_builder_pool::tx::{WorldChainPoolTransaction, WorldChainPooledTransaction};
-use world_chain_builder_pool::validator::WorldChainTransactionValidator;
+use world_chain_builder_pool::tx::WorldChainPoolTransaction;
 
 use super::args::{ExtArgs, WorldChainBuilderArgs};
 

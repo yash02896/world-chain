@@ -205,7 +205,7 @@ mod tests {
             header: SealedHeader::new(block.header.clone(), block.header.hash_slow()),
             body: block.body,
         };
-        validator.on_new_block(&block.into());
+        validator.on_new_block(&block);
     }
 
     #[test]

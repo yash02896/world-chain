@@ -166,8 +166,6 @@ where
         origin: TransactionOrigin,
         transaction: Tx,
     ) -> TransactionValidationOutcome<Tx> {
-        let validation_outcome = self.inner.validate_one(origin, transaction.clone());
-
         // TODO: Extend Validation logic for 4337 Architecture
         // if let Some(pbh_payload) = transaction.pbh_payload() {
         //     if let Err(e) = self.validate_pbh_payload(&transaction, pbh_payload) {
@@ -175,7 +173,7 @@ where
         //     }
         // };
 
-        validation_outcome
+        self.inner.validate_one(origin, transaction.clone())
     }
 
     /// Validates all given transactions.
@@ -237,7 +235,6 @@ pub mod tests {
     use test_case::test_case;
     use world_chain_builder_pbh::payload::{PbhPayload, Proof};
 
-    use super::*;
     use crate::ordering::WorldChainOrdering;
     use crate::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
     use crate::test_utils::{get_pbh_transaction, world_chain_validator};

@@ -1,57 +1,45 @@
-use alloy_consensus::{Transaction, EMPTY_OMMER_ROOT_HASH};
+use alloy_consensus::EMPTY_OMMER_ROOT_HASH;
 use alloy_eips::eip4895::Withdrawals;
 use alloy_eips::merge::BEACON_NONCE;
 use alloy_rpc_types_debug::ExecutionWitness;
-use jsonrpsee::core::client;
 use reth::api::PayloadBuilderError;
-use reth::builder::components::PayloadServiceBuilder;
-use reth::builder::{BuilderContext, FullNodeTypes, NodeTypesWithEngine, PayloadBuilderConfig};
-use reth::chainspec::EthereumHardforks;
 use reth::payload::{PayloadBuilderAttributes, PayloadId};
-use reth::payload::{PayloadBuilderHandle, PayloadBuilderService};
 use reth::revm::database::StateProviderDatabase;
 use reth::revm::db::states::bundle_state::BundleRetention;
 use reth::revm::witness::ExecutionWitnessRecord;
 use reth::revm::DatabaseCommit;
 use reth::revm::State;
-use reth::transaction_pool::{BestTransactionsAttributes, PoolTransaction, TransactionPool};
+use reth::transaction_pool::{BestTransactionsAttributes, TransactionPool};
 use reth_basic_payload_builder::{
-    commit_withdrawals, is_better_payload, BasicPayloadJobGenerator,
-    BasicPayloadJobGeneratorConfig, BuildArguments, BuildOutcome, BuildOutcomeKind,
-    MissingPayloadBehaviour, PayloadBuilder, PayloadConfig,
+    BuildArguments, BuildOutcome, BuildOutcomeKind, MissingPayloadBehaviour, PayloadBuilder,
+    PayloadConfig,
 };
 use reth_chain_state::ExecutedBlock;
-use reth_db::DatabaseEnv;
-use reth_evm::system_calls::SystemCaller;
 use reth_evm::{ConfigureEvm, NextBlockEnvAttributes};
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_consensus::calculate_receipt_root_no_memo_optimism;
 use reth_optimism_node::{OpBuiltPayload, OpPayloadBuilder, OpPayloadBuilderAttributes};
 use reth_optimism_payload_builder::builder::{
-    ExecutedPayload, ExecutionInfo, OpBuilder, OpPayloadBuilderCtx, OpPayloadTransactions,
+    ExecutedPayload, ExecutionInfo, OpPayloadBuilderCtx, OpPayloadTransactions,
 };
 use reth_optimism_payload_builder::config::OpBuilderConfig;
 use reth_optimism_payload_builder::OpPayloadAttributes;
-use reth_payload_util::PayloadTransactions;
 use reth_primitives::{
     proofs, BlockBody, BlockExt, InvalidTransactionError, SealedHeader, TransactionSigned,
 };
 use reth_primitives::{Block, Header, Receipt, TxType};
 use reth_provider::{
-    BlockReaderIdExt, CanonStateSubscriptions, ChainSpecProvider, ExecutionOutcome,
-    HashedPostStateProvider, ProviderError, StateProofProvider, StateProviderFactory,
-    StateRootProvider,
+    BlockReaderIdExt, ChainSpecProvider, ExecutionOutcome, HashedPostStateProvider, ProviderError,
+    StateProofProvider, StateProviderFactory, StateRootProvider,
 };
 use reth_transaction_pool::error::{InvalidPoolTransactionError, PoolTransactionError};
-use reth_transaction_pool::{noop::NoopTransactionPool, pool::BestPayloadTransactions};
 use reth_transaction_pool::{BestTransactions, ValidPoolTransaction};
-use reth_trie::HashedPostState;
 use revm::Database;
-use revm_primitives::{calc_excess_blob_gas, Bytes, TxEnv, B256};
 use revm_primitives::{
     BlockEnv, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, InvalidTransaction,
     ResultAndState, U256,
 };
+use revm_primitives::{Bytes, TxEnv, B256};
 use std::fmt::Display;
 use std::sync::Arc;
 use thiserror::Error;
@@ -795,16 +783,14 @@ where
             let pooled_tx = &tx.transaction;
             let consensus_tx = tx.to_consensus();
             if let Some(conditional_options) = pooled_tx.conditional_options() {
-                if let Err(_) = validate_conditional_options(&conditional_options, &self.client) {
+                if validate_conditional_options(conditional_options, &self.client).is_err() {
                     best_txs.mark_invalid(
                         &tx,
                         InvalidPoolTransactionError::Other(Box::new(
-                            WorldChainPoolTransactionError::ConditionalValidationFailed(
-                                tx.hash().clone(),
-                            ),
+                            WorldChainPoolTransactionError::ConditionalValidationFailed(*tx.hash()),
                         )),
                     );
-                    invalid_txs.push(tx.hash().clone());
+                    invalid_txs.push(*tx.hash());
                     continue;
                 }
             }

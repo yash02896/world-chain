@@ -5,10 +5,8 @@ use reth::transaction_pool::blobstore::InMemoryBlobStore;
 use reth::transaction_pool::{Pool, PoolTransaction as _, TransactionPool, TransactionValidator};
 use reth_primitives::{BlockBody, SealedBlock, SealedHeader};
 use reth_provider::test_utils::{ExtendedAccount, MockEthProvider};
-use semaphore::Field;
 use tokio::runtime::{Builder, Runtime};
 use world_chain_builder_pool::ordering::WorldChainOrdering;
-use world_chain_builder_pool::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
 use world_chain_builder_pool::test_utils::{
     get_non_pbh_transaction, get_pbh_transaction, world_chain_validator,
 };

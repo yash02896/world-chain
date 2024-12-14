@@ -11,7 +11,6 @@ use reth_db::table::{Compress, Decompress, Table};
 use reth_db::transaction::DbTxMut;
 use reth_db::TableSet;
 use reth_db::{create_db, tables, DatabaseError, TableType, TableViewer};
-use reth_db_api;
 use revm_primitives::{FixedBytes, B256};
 use semaphore::Field;
 use serde::{Deserialize, Serialize};

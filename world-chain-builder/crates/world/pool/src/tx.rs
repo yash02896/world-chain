@@ -54,7 +54,7 @@ impl EthPoolTransaction for WorldChainPooledTransaction {
         let pooled = PooledTransactionsElement::try_from_blob_transaction(tx, sidecar)
             .ok()
             .map(|tx| tx.with_signer(signer))
-            .map(|tx| EthPooledTransaction::from_pooled(tx));
+            .map(EthPooledTransaction::from_pooled);
 
         pooled.map(|inner| Self {
             inner,
@@ -129,9 +129,9 @@ impl TryFrom<RecoveredTx> for WorldChainPooledTransaction {
     }
 }
 
-impl Into<RecoveredTx> for WorldChainPooledTransaction {
-    fn into(self) -> RecoveredTx {
-        self.inner.into()
+impl From<WorldChainPooledTransaction> for RecoveredTx {
+    fn from(val: WorldChainPooledTransaction) -> Self {
+        val.inner.into()
     }
 }
 
@@ -159,7 +159,7 @@ impl PoolTransaction for WorldChainPooledTransaction {
     /// Returns hash of the transaction.
     fn hash(&self) -> &TxHash {
         let transaction = self.inner.transaction();
-        &transaction.tx_hash()
+        transaction.tx_hash()
     }
 
     /// Returns the Sender of the transaction.
@@ -184,7 +184,7 @@ impl PoolTransaction for WorldChainPooledTransaction {
     /// For EIP-4844 blob transactions: `max_fee_per_gas * gas_limit + tx_value +
     /// max_blob_fee_per_gas * blob_gas_used`.
     fn cost(&self) -> &U256 {
-        &self.inner.cost()
+        self.inner.cost()
     }
 
     /// Amount of gas that should be used in executing this transaction. This is paid up-front.
