@@ -404,7 +404,7 @@ where
                 pool.best_transactions_with_attributes(ctx.best_transaction_attributes());
 
             if ctx
-                .execute_best_transactions::<_, Pool>(&mut info, state, best_txs)?
+                .execute_best_transactions::<_, Pool>(&mut info, state, &pool, best_txs)?
                 .is_some()
             {
                 return Ok(BuildOutcomeKind::Cancelled);
@@ -756,6 +756,7 @@ where
         &self,
         info: &mut ExecutionInfo,
         db: &mut State<DB>,
+        pool: &Pool,
         mut best_txs: Box<
             dyn BestTransactions<
                 Item = Arc<ValidPoolTransaction<<Pool as TransactionPool>::Transaction>>,
@@ -892,6 +893,10 @@ where
             // append sender and transaction to the respective lists
             info.executed_senders.push(consensus_tx.signer());
             info.executed_transactions.push(consensus_tx.into_signed());
+        }
+
+        if !invalid_txs.is_empty() {
+            pool.remove_transactions(invalid_txs);
         }
 
         Ok(None)
