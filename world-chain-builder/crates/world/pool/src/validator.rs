@@ -5,12 +5,13 @@ use crate::bindings::IPBHValidator;
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_rlp::Decodable;
 use alloy_sol_types::{SolCall, SolValue};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reth::transaction_pool::{
     Pool, TransactionOrigin, TransactionValidationOutcome, TransactionValidationTaskExecutor,
     TransactionValidator,
 };
 use reth_db::cursor::DbCursorRW;
+use reth_db::mdbx::cursor::decode;
 use reth_db::transaction::{DbTx, DbTxMut};
 use reth_db::{Database, DatabaseEnv, DatabaseError};
 use reth_optimism_node::txpool::OpTransactionValidator;
@@ -204,25 +205,27 @@ where
 
     pub fn validate_pbh_bundle(&self, transaction: &Tx) -> Result<(), TransactionValidationError> {
         if let Some(calldata) = self.is_valid_eip4337_pbh_bundle(transaction) {
-            for user_op in calldata._0 {
-                user_op.userOps.par_iter().try_for_each(|op| {
-                    // TODO: Decode the PbhPayload from the signature
-                    let signal = alloy_primitives::keccak256(
-                        <(Address, U256, Bytes) as SolValue>::abi_encode_packed(&(
-                            op.sender,
-                            op.nonce,
-                            op.callData.clone(),
-                        )),
-                    );
+            for aggregated_ops in calldata._0 {
+                let mut buff = aggregated_ops.signature.as_ref();
+                let pbh_payloads = <Vec<PbhPayload>>::decode(&mut buff)
+                    .map_err(WorldChainTransactionPoolInvalid::from)
+                    .map_err(TransactionValidationError::from)?;
 
-                    let payload = parse_signature(&op.signature)
-                        .map_err(WorldChainTransactionPoolInvalid::from)
-                        .map_err(TransactionValidationError::from)?;
+                pbh_payloads.par_iter().zip(aggregated_ops.userOps).try_for_each(
+                    |(payload, op)| {
+                        let signal = alloy_primitives::keccak256(
+                            <(Address, U256, Bytes) as SolValue>::abi_encode_packed(&(
+                                op.sender,
+                                op.nonce,
+                                op.callData,
+                            )),
+                        );
 
-                    self.validate_pbh_payload(&payload, hash_to_field(signal.as_ref()))?;
+                        self.validate_pbh_payload(&payload, hash_to_field(signal.as_ref()))?;
 
-                    Ok::<(), TransactionValidationError>(())
-                })?;
+                        Ok::<(), TransactionValidationError>(())
+                    },
+                )?;
             }
 
             transaction.set_valid_pbh();
@@ -270,6 +273,9 @@ pub fn parse_signature(signature: &Bytes) -> Result<PbhPayload, alloy_rlp::Error
 
 #[cfg(test)]
 pub mod tests {
+    use crate::ordering::WorldChainOrdering;
+    use crate::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
+    use crate::test_utils::{get_pbh_4337_transaction, get_pbh_transaction, world_chain_validator};
     use chrono::{TimeZone, Utc};
     use ethers_core::types::U256;
     use reth::transaction_pool::blobstore::InMemoryBlobStore;
@@ -281,10 +287,6 @@ pub mod tests {
     use semaphore::Field;
     use test_case::test_case;
     use world_chain_builder_pbh::payload::{PbhPayload, Proof};
-
-    use crate::ordering::WorldChainOrdering;
-    use crate::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
-    use crate::test_utils::{get_pbh_transaction, world_chain_validator};
 
     #[tokio::test]
     async fn validate_pbh_transaction() {

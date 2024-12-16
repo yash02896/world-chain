@@ -17,7 +17,7 @@ reth-optimism-node.workspace = true
 reth-primitives.workspace = true
 reth-provider.workspace = true
 reth-eth-wire-types.workspace = true
-
+reth-e2e-test-utils = { workspace = true, optional = true}
 reth-optimism-primitives.workspace = true
 reth-optimism-chainspec.workspace = true
 
@@ -29,6 +29,7 @@ alloy-rpc-types.workspace = true
 alloy-eips.workspace = true
 alloy-sol-types.workspace = true
 alloy-rlp.workspace = true
+alloy-signer-local = { workspace = true, optional = true }
 
 # 3rd party
 tokio.workspace = true
@@ -48,7 +49,10 @@ test-case.workspace = true
 
 [features]
 default = []
-test = []
+test = [
+    "dep:reth-e2e-test-utils",
+    "dep:alloy-signer-local",
+]
 
 [lints]
 workspace = true
