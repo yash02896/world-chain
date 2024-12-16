@@ -68,7 +68,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     /// @param sender The sender of this particular transaction or UserOp.
     /// @param nonce Transaction/UserOp nonce.
     /// @param callData Transaction/UserOp call data.
-    /// @param pbhExternalNullifier External nullifier encodeing month, year, and a pbhNonce.
+    /// @param pbhExternalNullifier External nullifier encoding month, year, and a pbhNonce.
     /// @param nullifierHash Nullifier hash for this semaphore proof.
     /// @param proof The zero-knowledge proof that demonstrates the claimer is registered with World ID.
     event PBH(
