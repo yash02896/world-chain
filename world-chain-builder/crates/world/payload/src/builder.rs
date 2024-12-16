@@ -325,8 +325,8 @@ where
     // system txs, hence on_missing_payload we return [MissingPayloadBehaviour::AwaitInProgress].
     fn build_empty_payload(
         &self,
-        client: &Client,
-        config: PayloadConfig<Self::Attributes>,
+        _client: &Client,
+        _config: PayloadConfig<Self::Attributes>,
     ) -> Result<OpBuiltPayload, PayloadBuilderError> {
         // TODO:
         // let args = BuildArguments {

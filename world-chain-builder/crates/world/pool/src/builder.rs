@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use alloy_primitives::Address;
 use reth::builder::components::PoolBuilder;
 use reth::builder::{BuilderContext, FullNodeTypes, NodeTypes};
 use reth::transaction_pool::blobstore::DiskFileBlobStore;
@@ -10,7 +11,6 @@ use reth_optimism_node::txpool::OpTransactionValidator;
 use reth_optimism_primitives::OpPrimitives;
 use reth_provider::CanonStateSubscriptions;
 use tracing::{debug, info};
-use alloy_primitives::Address;
 
 use super::validator::WorldChainTransactionPool;
 use crate::ordering::WorldChainOrdering;
@@ -31,13 +31,19 @@ pub struct WorldChainPoolBuilder {
 }
 
 impl WorldChainPoolBuilder {
-    pub fn new(clear_nullifiers: bool, num_pbh_txs: u16, db: Arc<DatabaseEnv>, pbh_validator: Address, pbh_signature_aggregator: Address) -> Self {
+    pub fn new(
+        clear_nullifiers: bool,
+        num_pbh_txs: u16,
+        db: Arc<DatabaseEnv>,
+        pbh_validator: Address,
+        pbh_signature_aggregator: Address,
+    ) -> Self {
         Self {
             clear_nullifiers,
             num_pbh_txs,
             db,
             pbh_validator,
-            pbh_signature_aggregator
+            pbh_signature_aggregator,
         }
     }
 }

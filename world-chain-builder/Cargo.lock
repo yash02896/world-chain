@@ -13827,6 +13827,7 @@ dependencies = [
  "alloy-consensus 0.7.3",
  "alloy-eips 0.7.3",
  "alloy-primitives",
+ "alloy-rlp",
  "alloy-rpc-types",
  "alloy-sol-types",
  "bon",

@@ -104,7 +104,7 @@ impl WorldChainBuilder {
                 num_pbh_txs,
                 db.clone(),
                 pbh_validator,
-                signature_aggregator
+                signature_aggregator,
             ))
             .payload(WorldChainPayloadBuilder::new(
                 compute_pending_block,

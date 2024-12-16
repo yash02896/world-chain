@@ -1,12 +1,11 @@
 //! World Chain transaction pool types
 use std::sync::Arc;
 
-use crate::bindings::{IEntryPoint, IPBHValidator};
+use crate::bindings::IPBHValidator;
 use alloy_primitives::{Address, Bytes, U256};
-use alloy_sol_types::abi::encode_sequence;
+use alloy_rlp::Decodable;
 use alloy_sol_types::{SolCall, SolValue};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reth::transaction_pool::validate::TransactionValidatorError;
 use reth::transaction_pool::{
     Pool, TransactionOrigin, TransactionValidationOutcome, TransactionValidationTaskExecutor,
     TransactionValidator,
@@ -15,9 +14,8 @@ use reth_db::cursor::DbCursorRW;
 use reth_db::transaction::{DbTx, DbTxMut};
 use reth_db::{Database, DatabaseEnv, DatabaseError};
 use reth_optimism_node::txpool::OpTransactionValidator;
-use reth_primitives::{SealedBlock, TransactionSigned};
+use reth_primitives::{Block, SealedBlock, TransactionSigned};
 use reth_provider::{BlockReaderIdExt, StateProviderFactory};
-use revm_primitives::hex::encode_prefixed;
 use semaphore::hash_to_field;
 use semaphore::protocol::verify_proof;
 use world_chain_builder_db::{EmptyValue, ValidatedPbhTransaction};
@@ -141,8 +139,8 @@ where
 
     pub fn validate_pbh_payload(
         &self,
-        transaction: &Tx,
         payload: &PbhPayload,
+        signal: U256,
     ) -> Result<(), TransactionValidationError> {
         self.validate_root(payload)?;
         let date = chrono::Utc::now();
@@ -157,7 +155,7 @@ where
         let res = verify_proof(
             payload.root,
             payload.nullifier_hash,
-            hash_to_field(transaction.hash().as_ref()),
+            signal,
             hash_to_field(payload.external_nullifier.as_bytes()),
             &payload.proof.0,
             TREE_DEPTH,
@@ -209,7 +207,7 @@ where
             for user_op in calldata._0 {
                 user_op.userOps.par_iter().try_for_each(|op| {
                     // TODO: Decode the PbhPayload from the signature
-                    let _signal = alloy_primitives::keccak256(
+                    let signal = alloy_primitives::keccak256(
                         <(Address, U256, Bytes) as SolValue>::abi_encode_packed(&(
                             op.sender,
                             op.nonce,
@@ -217,8 +215,11 @@ where
                         )),
                     );
 
-                    let payload = parse_signature(&op.signature);
-                    self.validate_pbh_payload(transaction, &payload)?;
+                    let payload = parse_signature(&op.signature)
+                        .map_err(WorldChainTransactionPoolInvalid::from)
+                        .map_err(TransactionValidationError::from)?;
+
+                    self.validate_pbh_payload(&payload, hash_to_field(signal.as_ref()))?;
 
                     Ok::<(), TransactionValidationError>(())
                 })?;
@@ -233,7 +234,7 @@ where
 
 impl<Client, Tx> TransactionValidator for WorldChainTransactionValidator<Client, Tx>
 where
-    Client: StateProviderFactory + BlockReaderIdExt<Block = reth_primitives::Block>,
+    Client: StateProviderFactory + BlockReaderIdExt<Block = Block>,
     Tx: WorldChainPoolTransaction<Consensus = TransactionSigned>,
 {
     type Transaction = Tx;
@@ -259,9 +260,12 @@ where
     }
 }
 
-pub fn parse_signature(_signature: &Bytes) -> PbhPayload {
-    // TODO: Figure out signature scheme then implement this
-    PbhPayload::default()
+/// Parse the [`PbhPayload`] from a `UserOperation` signature
+pub fn parse_signature(signature: &Bytes) -> Result<PbhPayload, alloy_rlp::Error> {
+    // First 65 bytes are the signature
+    let signature = signature.as_ref();
+    let mut buff = &signature[65..];
+    PbhPayload::decode(&mut buff)
 }
 
 #[cfg(test)]
