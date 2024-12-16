@@ -11,7 +11,6 @@ use reth::transaction_pool::{
     TransactionValidator,
 };
 use reth_db::cursor::DbCursorRW;
-use reth_db::mdbx::cursor::decode;
 use reth_db::transaction::{DbTx, DbTxMut};
 use reth_db::{Database, DatabaseEnv, DatabaseError};
 use reth_optimism_node::txpool::OpTransactionValidator;
@@ -211,8 +210,10 @@ where
                     .map_err(WorldChainTransactionPoolInvalid::from)
                     .map_err(TransactionValidationError::from)?;
 
-                pbh_payloads.par_iter().zip(aggregated_ops.userOps).try_for_each(
-                    |(payload, op)| {
+                pbh_payloads
+                    .par_iter()
+                    .zip(aggregated_ops.userOps)
+                    .try_for_each(|(payload, op)| {
                         let signal = alloy_primitives::keccak256(
                             <(Address, U256, Bytes) as SolValue>::abi_encode_packed(&(
                                 op.sender,
@@ -224,8 +225,7 @@ where
                         self.validate_pbh_payload(&payload, hash_to_field(signal.as_ref()))?;
 
                         Ok::<(), TransactionValidationError>(())
-                    },
-                )?;
+                    })?;
             }
 
             transaction.set_valid_pbh();
@@ -326,6 +326,57 @@ pub mod tests {
         let first_insert = chrono::Utc::now() - start;
         println!("first_insert: {first_insert:?}");
 
+        assert!(res.is_ok());
+        let tx = pool.get(transaction.hash());
+        assert!(tx.is_some());
+
+        let start = chrono::Utc::now();
+        let res = pool.add_external_transaction(transaction.clone()).await;
+
+        let second_insert = chrono::Utc::now() - start;
+        println!("second_insert: {second_insert:?}");
+
+        // Check here that we're properly caching the transaction
+        assert!(first_insert > second_insert * 10);
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn validate_4337_bundle() {
+        let validator = world_chain_validator();
+        let (transaction, root) = get_pbh_4337_transaction().await;
+        validator.inner.client().add_account(
+            transaction.sender(),
+            ExtendedAccount::new(transaction.nonce(), alloy_primitives::U256::MAX),
+        );
+        // Insert a world id root into the OpWorldId Account
+        // TODO: This should be set to the root on the Payloads of a Bundle Tx
+        validator.inner.client().add_account(
+            OP_WORLD_ID,
+            ExtendedAccount::new(0, alloy_primitives::U256::ZERO)
+                .extend_storage(vec![(LATEST_ROOT_SLOT.into(), root)]),
+        );
+        let header = SealedHeader::default();
+        let body = BlockBody::default();
+        let block = SealedBlock::new(header, body);
+
+        // Propogate the block to the root validator
+        validator.on_new_head_block(&block);
+
+        let ordering = WorldChainOrdering::default();
+
+        let pool = Pool::new(
+            validator,
+            ordering,
+            InMemoryBlobStore::default(),
+            Default::default(),
+        );
+
+        let start = chrono::Utc::now();
+        let res = pool.add_external_transaction(transaction.clone()).await;
+        let first_insert = chrono::Utc::now() - start;
+        println!("first_insert: {first_insert:?}");
+        println!("res = {res:#?}");
         assert!(res.is_ok());
         let tx = pool.get(transaction.hash());
         assert!(tx.is_some());
