@@ -27,6 +27,7 @@ alloy-consensus.workspace = true
 alloy-primitives.workspace = true
 alloy-rpc-types.workspace = true
 alloy-eips.workspace = true
+alloy-sol-types.workspace = true
 
 # 3rd party
 tokio.workspace = true
@@ -36,7 +37,8 @@ eyre.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 parking_lot.workspace = true
-tempfile = {workspace = true}
+tempfile.workspace = true
+bon.workspace = true
 
 [dev-dependencies]
 ethers-core.workspace = true
