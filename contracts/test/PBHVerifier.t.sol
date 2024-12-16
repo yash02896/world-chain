@@ -5,7 +5,8 @@ import "forge-std/Test.sol";
 import "./MockWorldIDGroups.sol";
 import "../src/helpers/ByteHasher.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
-import {PBHVerifierImplV1} from "../src/PBHVerifierImplV1.sol";
+import {WorldIDTest} from "@world-id-contracts/test/WorldIDTest.sol";
+import {PBHVerifierImplV1 as PBHVerifierImpl} from "../src/PBHVerifierImplV1.sol";
 import {PBHVerifier} from "../src/PBHVerifier.sol";
 // import {WorldIDTest} from "@world-id-contracts/test/WorldIdTest.sol";
 
@@ -14,22 +15,24 @@ import {PBHVerifier} from "../src/PBHVerifier.sol";
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract PBHVerifierTest is Test {
+contract PBHVerifierTest is WorldIDTest {
     ///////////////////////////////////////////////////////////////////////////////
     ///                                TEST DATA                                ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    MockWorldIDGroups internal worldId;
+    PBHVerifier internal pbhVerifier;
+    PBHVerifierImpl internal pbhVerifierImpl;
 
-    address internal worldIdAddress;
+    address internal pbhVerifierAddress;
+    address internal pbhVerifierImplAddress;
 
-    IWorldIDGroups internal nullManager = IWorldIDGroups(nullAddress);
+    IWorldIDGroups internal nullManager = IWorldIDGroups(address(0));
     IWorldIDGroups internal thisWorldID;
 
     /// @notice Emitted when a group is enabled in the router.
     ///
     /// @param initialGroupIdentityManager The address of the identity manager to be used for the first group
-    event GroupIdentityManagerRouterImplInitialized(IWorldID initialGroupIdentityManager);
+    event GroupIdentityManagerRouterImplInitialized(IWorldIDGroups initialGroupIdentityManager);
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
@@ -38,13 +41,13 @@ contract PBHVerifierTest is Test {
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
-        thisWorldID = IWorldID(thisAddress);
-        makeNewRouter(thisWorldID);
+        thisWorldID = IWorldIDGroups(thisAddress);
+        makeNewPBHVerifier(thisWorldID);
 
         // Label the addresses for better errors.
         hevm.label(thisAddress, "Sender");
-        hevm.label(routerAddress, "Router");
-        hevm.label(routerImplAddress, "RouterImplementation");
+        hevm.label(pbhVerifierAddress, "PBHVerifier");
+        hevm.label(pbhVerifierImplAddress, "PBHVerifierImplementation");
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -55,26 +58,27 @@ contract PBHVerifierTest is Test {
     /// @dev It is constructed in the globals.
     ///
     /// @param initialGroupAddress The initial group's identity manager.
-    function makeNewRouter(IWorldID initialGroupAddress) public {
-        routerImpl = new RouterImpl();
-        routerImplAddress = address(routerImpl);
+    function makeNewPBHVerifier(IWorldIDGroups initialGroupAddress) public {
+        pbhVerifierImpl = new PBHVerifierImpl();
+        pbhVerifierImplAddress = address(pbhVerifierImpl);
 
         vm.expectEmit(true, true, true, true);
 
         emit GroupIdentityManagerRouterImplInitialized(initialGroupAddress);
 
-        bytes memory initCallData = abi.encodeCall(RouterImpl.initialize, (initialGroupAddress));
+        bytes memory initCallData = abi.encodeCall(PBHVerifierImpl.initialize, (initialGroupAddress, 30));
 
-        router = new Router(routerImplAddress, initCallData);
-        routerAddress = address(router);
+        pbhVerifier = new PBHVerifier(pbhVerifierImplAddress, initCallData);
+        pbhVerifierAddress = address(pbhVerifier);
     }
 
     /// @notice Constructs a new router without initializing the delegate.
     /// @dev It is constructed in the globals.
     function makeUninitRouter() public {
-        routerImpl = new RouterImpl();
-        routerImplAddress = address(routerImpl);
-        router = new Router(routerImplAddress, new bytes(0x0));
-        routerAddress = address(router);
+        pbhVerifierImpl = new PBHVerifierImpl();
+        pbhVerifierImplAddress = address(pbhVerifierImpl);
+        pbhVerifier = new PBHVerifier(pbhVerifierImplAddress, new bytes(0x0));
+        pbhVerifierAddress = address(pbhVerifier);
     }
 }
+

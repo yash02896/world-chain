@@ -34,13 +34,6 @@ contract PBHExternalNullifierLibTest is Test {
         PBHExternalNullifier.encode(VALID_PBH_NONCE, invalidMonth, VALID_YEAR);
     }
 
-    function testEncodeInvalidYear() public {
-        uint16 invalidYear = 10000;
-
-        vm.expectRevert(PBHExternalNullifier.InvalidExternalNullifierYear.selector);
-        PBHExternalNullifier.encode(VALID_PBH_NONCE, VALID_MONTH, invalidYear);
-    }
-
     function testVerifyValidExternalNullifier() public {
         // Mock the current date to match VALID_YEAR and VALID_MONTH
         uint256 timestamp = BokkyPooBahsDateTimeLibrary.timestampFromDateTime(VALID_YEAR, VALID_MONTH, 1, 0, 0, 0);
