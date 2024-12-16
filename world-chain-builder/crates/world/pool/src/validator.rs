@@ -160,36 +160,6 @@ where
             Err(e) => Err(TransactionValidationError::Error(e.into())),
         }
     }
-
-    pub fn validate_one(
-        &self,
-        origin: TransactionOrigin,
-        transaction: Tx,
-    ) -> TransactionValidationOutcome<Tx> {
-        // TODO: Extend Validation logic for 4337 Architecture
-        // if let Some(pbh_payload) = transaction.pbh_payload() {
-        //     if let Err(e) = self.validate_pbh_payload(&transaction, pbh_payload) {
-        //         return e.to_outcome(transaction);
-        //     }
-        // };
-
-        self.inner.validate_one(origin, transaction.clone())
-    }
-
-    /// Validates all given transactions.
-    ///
-    /// Returns all outcomes for the given transactions in the same order.
-    ///
-    /// See also [`Self::validate_one`]
-    pub fn validate_all(
-        &self,
-        transactions: Vec<(TransactionOrigin, Tx)>,
-    ) -> Vec<TransactionValidationOutcome<Tx>> {
-        transactions
-            .into_iter()
-            .map(|(origin, tx)| self.validate_one(origin, tx))
-            .collect()
-    }
 }
 
 impl<Client, Tx> TransactionValidator for WorldChainTransactionValidator<Client, Tx>
@@ -204,14 +174,14 @@ where
         origin: TransactionOrigin,
         transaction: Self::Transaction,
     ) -> TransactionValidationOutcome<Self::Transaction> {
-        self.validate_one(origin, transaction)
-    }
+        // TODO: Extend Validation logic for 4337 Architecture
+        // if let Some(pbh_payload) = transaction.pbh_payload() {
+        //     if let Err(e) = self.validate_pbh_payload(&transaction, pbh_payload) {
+        //         return e.to_outcome(transaction);
+        //     }
+        // };
 
-    async fn validate_transactions(
-        &self,
-        transactions: Vec<(TransactionOrigin, Self::Transaction)>,
-    ) -> Vec<TransactionValidationOutcome<Self::Transaction>> {
-        self.validate_all(transactions)
+        self.inner.validate_one(origin, transaction.clone())
     }
 
     fn on_new_head_block(&self, new_tip_block: &SealedBlock) {
@@ -312,7 +282,11 @@ pub mod tests {
         );
 
         let res = pool.add_external_transaction(transaction.clone()).await;
+
+        println!("res = {res:#?}");
         assert!(res.is_err());
+
+        assert!(false);
     }
 
     #[tokio::test]
