@@ -263,14 +263,6 @@ where
     }
 }
 
-/// Parse the [`PbhPayload`] from a `UserOperation` signature
-pub fn parse_signature(signature: &Bytes) -> Result<PbhPayload, alloy_rlp::Error> {
-    // First 65 bytes are the signature
-    let signature = signature.as_ref();
-    let mut buff = &signature[65..];
-    PbhPayload::decode(&mut buff)
-}
-
 #[cfg(test)]
 pub mod tests {
     use crate::ordering::WorldChainOrdering;
