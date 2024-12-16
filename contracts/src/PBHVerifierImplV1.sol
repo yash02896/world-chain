@@ -9,7 +9,7 @@ import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
 /// @title PBH Verifier Implementation Version 1
 /// @author Worldcoin
-/// @notice An implementation of a batch-based identity manager for the WorldID protocol.
+/// @notice An implementation of a priority blockspace for humans (PBH) transaction verifier.
 /// @dev This is the implementation delegated to by a proxy.
 contract PBHVerifierImplV1 is WorldIDImpl {
     ///////////////////////////////////////////////////////////////////////////////
@@ -65,12 +65,26 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     ///                                  Events                                ///
     //////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Emitted when a verifier is updated in the lookup table.
+    /// @notice Emitted once for each successful PBH verification.
     ///
-    /// @param nullifierHash The nullifier hash that was used.
-    event PBH(uint256 indexed nullifierHash);
+    /// @param root The root of the Merkle tree that this proof is valid for.
+    /// @param sender The sender of this particular transaction or UserOp.
+    /// @param nonce Transaction/UserOp nonce.
+    /// @param callData Transaction/UserOp call data.
+    /// @param pbhExternalNullifier External nullifier encodeing month, year, and a pbhNonce.
+    /// @param nullifierHash Nullifier hash for this semaphore proof.
+    /// @param proof The zero-knowledge proof that demonstrates the claimer is registered with World ID.
+    event PBH(
+        uint256 indexed root,
+        address indexed sender,
+        uint256  nonce,
+        bytes callData,
+        uint256 indexed pbhExternalNullifier,
+        uint256 nullifierHash,
+        uint256[8] proof
+    );
 
-    event PBHVerifierImplInitialized(uint8 indexed numPbhPerMonth);
+    event PBHVerifierImplInitialized(IWorldIDGroups indexed worldId, uint8 indexed numPbhPerMonth);
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Vars                                  ///
@@ -113,16 +127,13 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     /// @dev This function is explicitly not virtual as it does not make sense to override even when
     ///      upgrading. Create a separate initializer function instead.
     ///
-    /// @param _worldId The World ID instance that will be used for verifying proofs.
+    /// @param _worldId The World ID instance that will be used for verifying proofs. If set to the 
+    ///        0 addess, then it will be assumed that verification will take place off chain.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
     /// @custom:reverts InvalidWorldId if `_worldId` is set to the zero address
     function initialize(IWorldIDGroups _worldId, uint8 _numPbhPerMonth) public reinitializer(1) {
-        if (address(_worldId) == address(0)) {
-            revert InvalidWorldId();
-        }
-
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
@@ -132,7 +143,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
         // Say that the contract is initialized.
         __setInitialized();
 
-        emit PBHVerifierImplInitialized(_numPbhPerMonth);
+        emit PBHVerifierImplInitialized(_worldId, _numPbhPerMonth);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -149,12 +160,13 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     ///                                  Functions                             ///
     //////////////////////////////////////////////////////////////////////////////
 
-    /// @param root The root of the Merkle tree (returned by the JS widget).
-    /// @param sender The root of the Merkle tree (returned by the JS widget).
-    /// @param nonce The root of the Merkle tree (returned by the JS widget).
-    /// @param callData The root of the Merkle tree (returned by the JS widget).
-    /// @param nullifierHash The nullifier hash for this proof, preventing double signaling (returned by the JS widget).
-    /// @param proof The zero-knowledge proof that demonstrates the claimer is registered with World ID (returned by the JS widget).
+    /// @param root The root of the Merkle tree that this proof is valid for.
+    /// @param sender The sender of this particular transaction or UserOp.
+    /// @param nonce Transaction/UserOp nonce.
+    /// @param callData Transaction/UserOp call data.
+    /// @param pbhExternalNullifier External nullifier encodeing month, year, and a pbhNonce.
+    /// @param nullifierHash Nullifier hash for this semaphore proof.
+    /// @param proof The zero-knowledge proof that demonstrates the claimer is registered with World ID.
     function verifyPbhProof(
         uint256 root,
         address sender,
@@ -164,21 +176,33 @@ contract PBHVerifierImplV1 is WorldIDImpl {
         uint256 nullifierHash,
         uint256[8] memory proof
     ) external virtual onlyProxy onlyInitialized {
-        // First, we make sure this person hasn't done this before
+        // First, we make sure this nullifier has not been used before.
         if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
-
-        // We now generate the signal hash from the sender, nonce, and calldata
-        uint256 signalHash = abi.encodePacked(sender, nonce, callData).hashToField();
 
         // Verify the external nullifier
         PBHExternalNullifier.verify(pbhExternalNullifier, numPbhPerMonth);
+        
+        // If worldId address is set, proceed with on chain verification,
+        // otherwise assume verification has been done off chain by the builder.
+        if (address(worldId) != address(0)) {
+            // We now generate the signal hash from the sender, nonce, and calldata
+            uint256 signalHash = abi.encodePacked(sender, nonce, callData).hashToField();
 
-        // We now verify the provided proof is valid and the user is verified by World ID
-        worldId.verifyProof(root, GROUP_ID, signalHash, nullifierHash, pbhExternalNullifier, proof);
+            // We now verify the provided proof is valid and the user is verified by World ID
+            worldId.verifyProof(root, GROUP_ID, signalHash, nullifierHash, pbhExternalNullifier, proof);
+        }
 
         // We now record the user has done this, so they can't do it again (proof of uniqueness)
         nullifierHashes[nullifierHash] = true;
 
-        emit PBH(nullifierHash);
+        emit PBH(
+            root,
+            sender,
+            nonce,
+            callData,
+            pbhExternalNullifier,
+            nullifierHash,
+            proof
+        );
     }
 }
