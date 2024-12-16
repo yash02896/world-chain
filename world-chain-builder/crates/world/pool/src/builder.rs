@@ -10,6 +10,7 @@ use reth_optimism_node::txpool::OpTransactionValidator;
 use reth_optimism_primitives::OpPrimitives;
 use reth_provider::CanonStateSubscriptions;
 use tracing::{debug, info};
+use alloy_primitives::Address;
 
 use super::validator::WorldChainTransactionPool;
 use crate::ordering::WorldChainOrdering;
@@ -25,6 +26,20 @@ pub struct WorldChainPoolBuilder {
     pub clear_nullifiers: bool,
     pub num_pbh_txs: u16,
     pub db: Arc<DatabaseEnv>,
+    pub pbh_validator: Address,
+    pub pbh_signature_aggregator: Address,
+}
+
+impl WorldChainPoolBuilder {
+    pub fn new(clear_nullifiers: bool, num_pbh_txs: u16, db: Arc<DatabaseEnv>, pbh_validator: Address, pbh_signature_aggregator: Address) -> Self {
+        Self {
+            clear_nullifiers,
+            num_pbh_txs,
+            db,
+            pbh_validator,
+            pbh_signature_aggregator
+        }
+    }
 }
 
 impl<Node> PoolBuilder<Node> for WorldChainPoolBuilder
@@ -59,6 +74,8 @@ where
                 root_validator,
                 self.db.clone(),
                 self.num_pbh_txs,
+                self.pbh_validator,
+                self.pbh_signature_aggregator,
             )
         });
 

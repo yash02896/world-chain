@@ -1,6 +1,12 @@
 //! World Chain transaction pool types
 use std::sync::Arc;
 
+use crate::bindings::{IEntryPoint, IPBHValidator};
+use alloy_primitives::{Address, Bytes, U256};
+use alloy_sol_types::abi::encode_sequence;
+use alloy_sol_types::{SolCall, SolValue};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use reth::transaction_pool::validate::TransactionValidatorError;
 use reth::transaction_pool::{
     Pool, TransactionOrigin, TransactionValidationOutcome, TransactionValidationTaskExecutor,
     TransactionValidator,
@@ -11,6 +17,7 @@ use reth_db::{Database, DatabaseEnv, DatabaseError};
 use reth_optimism_node::txpool::OpTransactionValidator;
 use reth_primitives::{SealedBlock, TransactionSigned};
 use reth_provider::{BlockReaderIdExt, StateProviderFactory};
+use revm_primitives::hex::encode_prefixed;
 use semaphore::hash_to_field;
 use semaphore::protocol::verify_proof;
 use world_chain_builder_db::{EmptyValue, ValidatedPbhTransaction};
@@ -42,6 +49,8 @@ where
     root_validator: WorldChainRootValidator<Client>,
     pub(crate) pbh_db: Arc<DatabaseEnv>,
     num_pbh_txs: u16,
+    pbh_validator: Address,
+    pbh_signature_aggregator: Address,
 }
 
 impl<Client, Tx> WorldChainTransactionValidator<Client, Tx>
@@ -55,12 +64,16 @@ where
         root_validator: WorldChainRootValidator<Client>,
         pbh_db: Arc<DatabaseEnv>,
         num_pbh_txs: u16,
+        pbh_validator: Address,
+        pbh_signature_aggregator: Address,
     ) -> Self {
         Self {
             inner,
             root_validator,
             pbh_db,
             num_pbh_txs,
+            pbh_validator,
+            pbh_signature_aggregator,
         }
     }
 
@@ -160,6 +173,62 @@ where
             Err(e) => Err(TransactionValidationError::Error(e.into())),
         }
     }
+
+    pub fn is_valid_eip4337_pbh_bundle(
+        &self,
+        tx: &Tx,
+    ) -> Option<IPBHValidator::handleAggregatedOpsCall> {
+        if !tx
+            .input()
+            .starts_with(&IPBHValidator::handleAggregatedOpsCall::SELECTOR)
+        {
+            return None;
+        }
+
+        // TODO: Boolean args is `validate`. Can it be `false`?
+        let Ok(decoded) = IPBHValidator::handleAggregatedOpsCall::abi_decode(tx.input(), true)
+        else {
+            return None;
+        };
+
+        let are_aggregators_valid = decoded
+            ._0
+            .iter()
+            .cloned()
+            .all(|per_aggregator| per_aggregator.aggregator == self.pbh_signature_aggregator);
+
+        if are_aggregators_valid {
+            Some(decoded)
+        } else {
+            None
+        }
+    }
+
+    pub fn validate_pbh_bundle(&self, transaction: &Tx) -> Result<(), TransactionValidationError> {
+        if let Some(calldata) = self.is_valid_eip4337_pbh_bundle(transaction) {
+            for user_op in calldata._0 {
+                user_op.userOps.par_iter().try_for_each(|op| {
+                    // TODO: Decode the PbhPayload from the signature
+                    let _signal = alloy_primitives::keccak256(
+                        <(Address, U256, Bytes) as SolValue>::abi_encode_packed(&(
+                            op.sender,
+                            op.nonce,
+                            op.callData.clone(),
+                        )),
+                    );
+
+                    let payload = parse_signature(&op.signature);
+                    self.validate_pbh_payload(transaction, &payload)?;
+
+                    Ok::<(), TransactionValidationError>(())
+                })?;
+            }
+
+            transaction.set_valid_pbh();
+        }
+
+        Ok(())
+    }
 }
 
 impl<Client, Tx> TransactionValidator for WorldChainTransactionValidator<Client, Tx>
@@ -174,12 +243,11 @@ where
         origin: TransactionOrigin,
         transaction: Self::Transaction,
     ) -> TransactionValidationOutcome<Self::Transaction> {
-        // TODO: Extend Validation logic for 4337 Architecture
-        // if let Some(pbh_payload) = transaction.pbh_payload() {
-        //     if let Err(e) = self.validate_pbh_payload(&transaction, pbh_payload) {
-        //         return e.to_outcome(transaction);
-        //     }
-        // };
+        if transaction.to().unwrap_or_default() == self.pbh_validator {
+            if let Err(e) = self.validate_pbh_bundle(&transaction) {
+                return e.to_outcome(transaction);
+            }
+        };
 
         self.inner.validate_one(origin, transaction.clone())
     }
@@ -189,6 +257,11 @@ where
         // TODO: Handle reorgs
         self.root_validator.on_new_block(new_tip_block);
     }
+}
+
+pub fn parse_signature(_signature: &Bytes) -> PbhPayload {
+    // TODO: Figure out signature scheme then implement this
+    PbhPayload::default()
 }
 
 #[cfg(test)]

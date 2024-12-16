@@ -39,6 +39,7 @@ tracing.workspace = true
 parking_lot.workspace = true
 tempfile.workspace = true
 bon.workspace = true
+rayon.workspace = true
 
 [dev-dependencies]
 ethers-core.workspace = true

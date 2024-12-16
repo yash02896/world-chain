@@ -13834,6 +13834,7 @@ dependencies = [
  "color-eyre",
  "ethers-core 2.0.14 (git+https://github.com/gakonst/ethers-rs)",
  "parking_lot",
+ "rayon",
  "reth",
  "reth-db",
  "reth-eth-wire-types",

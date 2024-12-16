@@ -1,6 +1,6 @@
 use clap::value_parser;
 use reth_optimism_node::args::RollupArgs;
-
+use alloy_primitives::Address;
 /// Parameters for rollup configuration
 #[derive(Debug, Clone, Default, PartialEq, Eq, clap::Args)]
 pub struct ExtArgs {
@@ -30,4 +30,14 @@ pub struct WorldChainBuilderArgs {
     /// This arg is a percentage of the total blockspace with the default set to 70 (ie 70%).
     #[arg(long = "builder.verified_blockspace_capacity", default_value = "70", value_parser = value_parser!(u8).range(0..=100))]
     pub verified_blockspace_capacity: u8,
+
+    /// Sets the ERC-4337 EntryPoint Proxy contract address
+    /// This contract is used to verify World-Id Proofs attached to 4337 payloads.
+    #[arg(long = "builder.pbh_validator")]
+    pub pbh_validator: Address,
+
+    /// Sets the ERC0-7766 Signature Aggregator contract address
+    /// This contract signifies that a given bundle should receive priority inclusion if it passes validation
+    #[arg(long = "builder.signature_aggregator")]
+    pub signature_aggregator: Address,
 }

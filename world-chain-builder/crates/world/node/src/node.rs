@@ -86,6 +86,8 @@ impl WorldChainBuilder {
             clear_nullifiers,
             num_pbh_txs,
             verified_blockspace_capacity,
+            pbh_validator,
+            signature_aggregator,
         } = args.builder_args;
 
         let RollupArgs {
@@ -97,11 +99,13 @@ impl WorldChainBuilder {
 
         ComponentsBuilder::default()
             .node_types::<Node>()
-            .pool(WorldChainPoolBuilder {
-                num_pbh_txs,
+            .pool(WorldChainPoolBuilder::new(
                 clear_nullifiers,
-                db: db.clone(),
-            })
+                num_pbh_txs,
+                db.clone(),
+                pbh_validator,
+                signature_aggregator
+            ))
             .payload(WorldChainPayloadBuilder::new(
                 compute_pending_block,
                 verified_blockspace_capacity,

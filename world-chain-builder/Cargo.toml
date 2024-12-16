@@ -146,3 +146,4 @@ serde_json = "1"
 rand = "0.8"
 reqwest = { version = "0.12", default-features = false }
 bon = "3.3.0"
+rayon = "1.10.0"

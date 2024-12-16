@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use alloy_eips::eip2718::Decodable2718;
 use chrono::Utc;
+use parking_lot::RwLock;
 use reth::chainspec::MAINNET;
 use reth::transaction_pool::blobstore::InMemoryBlobStore;
 use reth::transaction_pool::validate::EthTransactionValidatorBuilder;
@@ -7,7 +10,7 @@ use reth::transaction_pool::{EthPooledTransaction, PoolTransaction as _};
 use reth_optimism_node::txpool::OpTransactionValidator;
 use reth_primitives::PooledTransactionsElement;
 use reth_provider::test_utils::MockEthProvider;
-use revm_primitives::hex;
+use revm_primitives::{hex, Address};
 use semaphore::identity::Identity;
 use semaphore::poseidon_tree::LazyPoseidonTree;
 use semaphore::protocol::{generate_nullifier_hash, generate_proof};
@@ -35,7 +38,7 @@ pub fn get_non_pbh_transaction() -> WorldChainPooledTransaction {
     let eth_tx = get_eth_transaction();
     WorldChainPooledTransaction {
         inner: eth_tx,
-        valid_pbh: false,
+        valid_pbh: Arc::new(RwLock::new(false)),
         conditional_options: None,
     }
 }
@@ -50,7 +53,7 @@ pub fn get_pbh_transaction(nonce: u16) -> WorldChainPooledTransaction {
     );
     WorldChainPooledTransaction {
         inner: eth_tx,
-        valid_pbh: false,
+        valid_pbh: Arc::new(RwLock::new(false)),
         conditional_options: None,
     }
 }
@@ -67,7 +70,7 @@ pub fn world_chain_validator(
     let path = temp_dir.path().join("db");
     let db = load_world_chain_db(&path, false).unwrap();
     let root_validator = WorldChainRootValidator::new(client).unwrap();
-    WorldChainTransactionValidator::new(validator, root_validator, db, 30)
+    WorldChainTransactionValidator::new(validator, root_validator, db, 30, Address::default(), Address::default())
 }
 
 pub fn valid_pbh_payload(

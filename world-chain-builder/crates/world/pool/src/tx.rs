@@ -3,6 +3,7 @@ use std::sync::Arc;
 use alloy_consensus::{BlobTransactionSidecar, BlobTransactionValidationError, Transaction};
 use alloy_primitives::TxHash;
 use alloy_rpc_types::erc4337::ConditionalOptions;
+use parking_lot::RwLock;
 use reth::{
     core::primitives::SignedTransaction,
     transaction_pool::{
@@ -20,13 +21,14 @@ use revm_primitives::{AccessList, Address, KzgSettings, TxKind, U256};
 
 pub trait WorldChainPoolTransaction: EthPoolTransaction {
     fn valid_pbh(&self) -> bool;
+    fn set_valid_pbh(&self);
     fn conditional_options(&self) -> Option<&ConditionalOptions>;
 }
 
 #[derive(Debug, Clone)]
 pub struct WorldChainPooledTransaction {
     pub inner: EthPooledTransaction,
-    pub valid_pbh: bool,
+    pub valid_pbh: Arc<RwLock<bool>>,
     pub conditional_options: Option<ConditionalOptions>,
 }
 
@@ -58,7 +60,7 @@ impl EthPoolTransaction for WorldChainPooledTransaction {
 
         pooled.map(|inner| Self {
             inner,
-            valid_pbh: false,
+            valid_pbh: Arc::new(RwLock::new(false)),
             conditional_options: None,
         })
     }
@@ -86,11 +88,15 @@ impl EthPoolTransaction for WorldChainPooledTransaction {
 
 impl WorldChainPoolTransaction for WorldChainPooledTransaction {
     fn valid_pbh(&self) -> bool {
-        self.valid_pbh
+        *self.valid_pbh.read()
     }
 
     fn conditional_options(&self) -> Option<&ConditionalOptions> {
         self.conditional_options.as_ref()
+    }
+
+    fn set_valid_pbh(&self) {
+        *self.valid_pbh.write() = true;
     }
 }
 
@@ -98,7 +104,7 @@ impl From<EthPooledTransaction> for WorldChainPooledTransaction {
     fn from(tx: EthPooledTransaction) -> Self {
         Self {
             inner: tx,
-            valid_pbh: false,
+            valid_pbh: Arc::new(RwLock::new(false)),
             conditional_options: None,
         }
     }
@@ -110,7 +116,7 @@ impl From<PooledTransactionsElementEcRecovered> for WorldChainPooledTransaction 
         let inner = EthPooledTransaction::from(tx);
         Self {
             inner,
-            valid_pbh: false,
+            valid_pbh: Arc::new(RwLock::new(false)),
             conditional_options: None,
         }
     }
@@ -123,7 +129,7 @@ impl TryFrom<RecoveredTx> for WorldChainPooledTransaction {
         let inner = EthPooledTransaction::try_from(tx)?;
         Ok(Self {
             inner,
-            valid_pbh: false,
+            valid_pbh: Arc::new(RwLock::new(false)),
             conditional_options: None,
         })
     }
