@@ -129,7 +129,6 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
-    /// @custom:reverts InvalidWorldId if `_worldId` is set to the zero address
     function initialize(IWorldIDGroups _worldId, uint8 _numPbhPerMonth) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
