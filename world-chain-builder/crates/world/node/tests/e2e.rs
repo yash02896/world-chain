@@ -143,7 +143,8 @@ impl WorldChainBuilderTestContext {
                 let provider = ctx.provider().clone();
                 let pool = ctx.pool().clone();
                 let eth_api_ext = WorldChainEthApiExt::new(pool, provider, None);
-                ctx.modules.merge_configured(eth_api_ext.into_rpc())?;
+
+                ctx.modules.replace_configured(eth_api_ext.into_rpc())?;
                 Ok(())
             });
 
