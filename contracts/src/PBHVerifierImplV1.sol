@@ -58,9 +58,6 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
 
-    /// @notice Thrown if the World ID instance is set to the zero address
-    error InvalidWorldId();
-
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Events                                ///
     //////////////////////////////////////////////////////////////////////////////

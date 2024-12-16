@@ -32,7 +32,6 @@ library PBHExternalNullifier {
     /// @return The encoded PBHExternalNullifier.
     function encode(uint8 pbhNonce, uint8 month, uint16 year) internal pure returns (uint256) {
         require(month > 0 && month < 13, InvalidExternalNullifierMonth());
-        require(year < 10000, InvalidExternalNullifierYear());
         return (uint32(year) << 16) | (uint32(month) << 8) | uint32(pbhNonce);
     }
 
