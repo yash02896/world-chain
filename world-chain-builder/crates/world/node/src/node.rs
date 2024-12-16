@@ -3,9 +3,7 @@ use std::sync::Arc;
 
 use eyre::eyre::Result;
 use reth::api::{ConfigureEvm, TxTy};
-use reth::builder::components::{
-    ComponentsBuilder, PayloadServiceBuilder,
-};
+use reth::builder::components::{ComponentsBuilder, PayloadServiceBuilder};
 use reth::builder::{
     BuilderContext, FullNodeTypes, Node, NodeAdapter, NodeComponentsBuilder, NodeTypes,
     NodeTypesWithEngine, PayloadBuilderConfig,
