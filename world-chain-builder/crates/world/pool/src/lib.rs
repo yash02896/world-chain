@@ -6,5 +6,6 @@ pub mod root;
 pub mod tx;
 pub mod validator;
 
-#[cfg(feature = "test")]
+#[cfg(any(feature = "test", test))]
 pub mod test_utils;
+

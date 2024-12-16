@@ -143,3 +143,4 @@ ethers-core = { git = "https://github.com/gakonst/ethers-rs", default-features =
 serde_json = "1"
 rand = "0.8"
 reqwest = { version = "0.12", default-features = false }
+

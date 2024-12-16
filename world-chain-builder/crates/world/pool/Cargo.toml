@@ -28,26 +28,23 @@ alloy-primitives.workspace = true
 alloy-rpc-types.workspace = true
 alloy-eips.workspace = true
 
+# 3rd party
 tokio.workspace = true
 semaphore.workspace = true
 chrono.workspace = true
 eyre.workspace = true
 thiserror.workspace = true
-
 tracing.workspace = true
 parking_lot.workspace = true
-
-tempfile = {workspace = true, optional = true}
-
+tempfile = {workspace = true}
 
 [dev-dependencies]
 ethers-core.workspace = true
 test-case.workspace = true
-tempfile.workspace = true
 
 [features]
 default = []
-test = ["dep:tempfile"]
+test = []
 
 [lints]
 workspace = true
