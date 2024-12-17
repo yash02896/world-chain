@@ -631,3 +631,4 @@ pub mod tests {
             .validate_external_nullifier(date, &payload)
             .unwrap();
     }
+}
