@@ -8,6 +8,8 @@ import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol"
 import {WorldIDTest} from "@world-id-contracts/test/WorldIDTest.sol";
 import {PBHVerifierImplV1 as PBHVerifierImpl} from "../src/PBHVerifierImplV1.sol";
 import {PBHVerifier} from "../src/PBHVerifier.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+
 // import {WorldIDTest} from "@world-id-contracts/test/WorldIdTest.sol";
 
 /// @title PBHVerifier Test.
@@ -29,6 +31,8 @@ contract PBHVerifierTest is WorldIDTest {
     IWorldIDGroups internal nullManager = IWorldIDGroups(address(0));
     IWorldIDGroups internal thisWorldID;
 
+    IEntryPoint internal entryPoint = IEntryPoint(address(0));
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -37,7 +41,7 @@ contract PBHVerifierTest is WorldIDTest {
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
         thisWorldID = IWorldIDGroups(thisAddress);
-        makeNewPBHVerifier(thisWorldID);
+        makeNewPBHVerifier(thisWorldID, entryPoint);
 
         // Label the addresses for better errors.
         hevm.label(thisAddress, "Sender");
@@ -53,18 +57,19 @@ contract PBHVerifierTest is WorldIDTest {
     /// @dev It is constructed in the globals.
     ///
     /// @param initialGroupAddress The initial group's identity manager.
-    function makeNewPBHVerifier(IWorldIDGroups initialGroupAddress) public {
+    function makeNewPBHVerifier(IWorldIDGroups initialGroupAddress, IEntryPoint initialEntryPoint) public {
         pbhVerifierImpl = new PBHVerifierImpl();
         pbhVerifierImplAddress = address(pbhVerifierImpl);
 
         // TODO: why does this not work?
         // vm.expectEmit(true, true, true, true);
 
-        bytes memory initCallData = abi.encodeCall(PBHVerifierImpl.initialize, (initialGroupAddress, 30));
+        bytes memory initCallData =
+            abi.encodeCall(PBHVerifierImpl.initialize, (initialGroupAddress, initialEntryPoint, 30));
 
         pbhVerifier = new PBHVerifier(pbhVerifierImplAddress, initCallData);
         pbhVerifierAddress = address(pbhVerifier);
-    } 
+    }
 
     /// @notice Constructs a new router without initializing the delegate.
     /// @dev It is constructed in the globals.

@@ -91,6 +91,9 @@ contract PBHVerifierImplV1 is IPBHVerifier, WorldIDImpl {
     ///                                  Vars                                  ///
     //////////////////////////////////////////////////////////////////////////////
 
+    /// @dev Gap for transient storage.
+    uint256[1] private __gap;
+
     /// @dev The World ID group ID (always 1)
     uint256 internal immutable _GROUP_ID = 1;
 
@@ -107,7 +110,7 @@ contract PBHVerifierImplV1 is IPBHVerifier, WorldIDImpl {
     /// @notice Transient Storage key used to store Hashed UserOps.
     /// @dev The PBHSignatureAggregator will cross reference this slot to ensure
     ///     The PBHVerifier is always the proxy to the EntryPoint for PBH Bundles.
-    uint256 internal constant HASHED_OPS_SLOT = 0x4;
+    uint256 internal constant HASHED_OPS_SLOT = 0;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Mappings                              ///
@@ -197,8 +200,6 @@ contract PBHVerifierImplV1 is IPBHVerifier, WorldIDImpl {
             }
         }
 
-        // Grab all proof data off the Aggregated Signature for each `UserOpsPerAggregator`
-        // Iterate over the Vec<ProofData> and verify each proof.
         _entryPoint.handleAggregatedOps(opsPerAggregator, beneficiary);
     }
 

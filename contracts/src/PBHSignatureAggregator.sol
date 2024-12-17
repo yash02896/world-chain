@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {IPBHVerifier} from "./interfaces/IPBHVerifier.sol";
+import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 
 contract PBHSignatureAggregator is IAggregator {
-    error InvalidUserOperations();
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  ERRORS                                ///
+    //////////////////////////////////////////////////////////////////////////////
 
-    error MalformedUserOperationSignature();
+    /// @notice Thrown when the Hash of the UserOperations is not
+    ///         in transient storage of the `PBHVerifier`.
+    error InvalidUserOperations();
 
     /// @notice The PBHVerifier contract.
     IPBHVerifier internal immutable _pbhVerifier;
