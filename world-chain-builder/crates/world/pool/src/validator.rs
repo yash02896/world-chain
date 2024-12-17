@@ -174,7 +174,10 @@ where
         }
     }
 
-    pub fn validate_pbh_bundle(&self, transaction: &Tx) -> Result<(), TransactionValidationError> {
+    pub fn validate_pbh_bundle(
+        &self,
+        transaction: &mut Tx,
+    ) -> Result<(), TransactionValidationError> {
         if let Some(calldata) = self.is_valid_eip4337_pbh_bundle(transaction) {
             for aggregated_ops in calldata._0 {
                 let mut buff = aggregated_ops.signature.as_ref();
@@ -217,10 +220,10 @@ where
     async fn validate_transaction(
         &self,
         origin: TransactionOrigin,
-        transaction: Self::Transaction,
+        mut transaction: Self::Transaction,
     ) -> TransactionValidationOutcome<Self::Transaction> {
         if transaction.to().unwrap_or_default() == self.pbh_validator {
-            if let Err(e) = self.validate_pbh_bundle(&transaction) {
+            if let Err(e) = self.validate_pbh_bundle(&mut transaction) {
                 return e.to_outcome(transaction);
             }
         };

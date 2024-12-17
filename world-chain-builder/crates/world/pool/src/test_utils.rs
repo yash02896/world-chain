@@ -49,7 +49,7 @@ pub fn get_non_pbh_transaction() -> WorldChainPooledTransaction {
     let eth_tx = get_eth_transaction();
     WorldChainPooledTransaction {
         inner: eth_tx,
-        valid_pbh: Arc::new(RwLock::new(false)),
+        valid_pbh: false,
         conditional_options: None,
     }
 }
@@ -101,7 +101,7 @@ pub async fn get_pbh_4337_transaction() -> (WorldChainPooledTransaction, U256) {
     (
         WorldChainPooledTransaction {
             inner: eth_tx,
-            valid_pbh: Arc::new(RwLock::new(false)),
+            valid_pbh: false,
             conditional_options: None,
         },
         root,
@@ -118,7 +118,7 @@ pub fn get_pbh_transaction(nonce: u16) -> WorldChainPooledTransaction {
     );
     WorldChainPooledTransaction {
         inner: eth_tx,
-        valid_pbh: Arc::new(RwLock::new(false)),
+        valid_pbh: false,
         conditional_options: None,
     }
 }
