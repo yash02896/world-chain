@@ -3,3 +3,12 @@ src = "src"
 out = "out"
 libs = ["lib"]
 via_ir = true
+
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@world-id-contracts/=lib/world-id-contracts/src/",
+    "@account-abstraction/=lib/account-abstraction/contracts/",
+    "@BokkyPooBahsDateTimeLibrary/=lib/BokkyPooBahsDateTimeLibrary/contracts/",
+    "@helpers/=src/helpers/",
+    "openzeppelin-contracts/=lib/world-id-contracts/lib/openzeppelin-contracts/contracts/",
+]
