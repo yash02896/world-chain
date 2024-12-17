@@ -4,7 +4,6 @@ pub mod eip4337;
 pub mod error;
 pub mod noop;
 pub mod ordering;
-pub mod payload;
 pub mod root;
 pub mod tx;
 pub mod validator;

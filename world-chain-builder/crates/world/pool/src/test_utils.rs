@@ -20,7 +20,7 @@ use reth_primitives::PooledTransactionsElement;
 use reth_provider::test_utils::MockEthProvider;
 use revm_primitives::{hex, Address, TxKind};
 use semaphore::identity::Identity;
-use semaphore::poseidon_tree::{LazyPoseidonTree, PoseidonTree};
+use semaphore::poseidon_tree::LazyPoseidonTree;
 use semaphore::protocol::{generate_nullifier_hash, generate_proof};
 use semaphore::{hash_to_field, Field};
 use world_chain_builder_pbh::date_marker::DateMarker;
@@ -173,16 +173,9 @@ pub fn user_op(
 }
 
 pub fn pbh_bundle(
-    ops: Vec<(PackedUserOperation, PbhPayload)>,
+    user_ops: Vec<PackedUserOperation>,
+    proofs: Vec<PbhPayload>,
 ) -> IPBHValidator::handleAggregatedOpsCall {
-    let mut user_ops = Vec::new();
-    let mut proofs = Vec::new();
-
-    for (user_op, proof) in ops {
-        user_ops.push(user_op);
-        proofs.push(proof);
-    }
-
     let mut signature_buff = Vec::new();
     proofs.encode(&mut signature_buff);
 
@@ -348,5 +341,28 @@ pub fn create_pbh_paylaod(
         nullifier_hash,
         external_nullifier,
         proof,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use test_case::test_case;
+
+    use super::*;
+
+    #[test_case(0, "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")]
+    #[test_case(1, "0x70997970C51812dc3A010C7d01b50e0d17dc79C8")]
+    #[test_case(2, "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC")]
+    #[test_case(3, "0x90F79bf6EB2c4f870365E785982E1f101E93b906")]
+    #[test_case(4, "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65")]
+    #[test_case(5, "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc")]
+    #[test_case(6, "0x976EA74026E726554dB657fA54763abd0C3a0aa9")]
+    #[test_case(7, "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955")]
+    #[test_case(8, "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f")]
+    #[test_case(9, "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720")]
+    fn mnemonic_accounts(index: u32, exp_address: &str) {
+        let exp: Address = exp_address.parse().unwrap();
+
+        assert_eq!(exp, account(index));
     }
 }

@@ -13795,6 +13795,7 @@ name = "world-chain-builder-pbh"
 version = "0.1.0"
 dependencies = [
  "alloy-rlp",
+ "bon",
  "chrono",
  "ethers-core 2.0.14 (git+https://github.com/gakonst/ethers-rs)",
  "semaphore",

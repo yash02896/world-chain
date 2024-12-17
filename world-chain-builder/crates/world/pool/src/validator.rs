@@ -1,7 +1,7 @@
 //! World Chain transaction pool types
-use alloy_primitives::{Address, Bytes, U256};
+use alloy_primitives::{Address, U256};
 use alloy_rlp::Decodable;
-use alloy_sol_types::{SolCall, SolValue};
+use alloy_sol_types::SolCall;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reth::transaction_pool::{
     Pool, TransactionOrigin, TransactionValidationOutcome, TransactionValidationTaskExecutor,
@@ -10,10 +10,8 @@ use reth::transaction_pool::{
 use reth_optimism_node::txpool::OpTransactionValidator;
 use reth_primitives::{Block, SealedBlock, TransactionSigned};
 use reth_provider::{BlockReaderIdExt, StateProviderFactory};
-use semaphore::hash_to_field;
 use semaphore::protocol::verify_proof;
 use world_chain_builder_pbh::date_marker::DateMarker;
-use world_chain_builder_pbh::external_nullifier::ExternalNullifier;
 use world_chain_builder_pbh::payload::{PbhPayload, TREE_DEPTH};
 
 use super::error::{TransactionValidationError, WorldChainTransactionPoolInvalid};
@@ -182,19 +180,17 @@ where
                 .map_err(WorldChainTransactionPoolInvalid::from)
                 .map_err(TransactionValidationError::from)?;
 
+            if pbh_payloads.len() != aggregated_ops.userOps.len() {
+                Err(WorldChainTransactionPoolInvalid::MissingPbhPayload)?;
+            }
+
             pbh_payloads
                 .par_iter()
                 .zip(aggregated_ops.userOps)
                 .try_for_each(|(payload, op)| {
-                    let signal = alloy_primitives::keccak256(
-                        <(Address, U256, Bytes) as SolValue>::abi_encode_packed(&(
-                            op.sender,
-                            op.nonce,
-                            op.callData,
-                        )),
-                    );
+                    let signal = crate::eip4337::hash_user_op(&op);
 
-                    self.validate_pbh_payload(&payload, hash_to_field(signal.as_ref()))?;
+                    self.validate_pbh_payload(&payload, signal)?;
 
                     Ok::<(), TransactionValidationError>(())
                 })?;
@@ -236,30 +232,24 @@ where
 
 #[cfg(test)]
 pub mod tests {
-    use std::time::Instant;
-
-    use alloy_primitives::Address;
-    use alloy_signer_local::coins_bip39::English;
-    use alloy_signer_local::PrivateKeySigner;
     use alloy_sol_types::SolCall;
-    use bon::builder;
     use chrono::{TimeZone, Utc};
     use ethers_core::types::U256;
     use reth::transaction_pool::blobstore::InMemoryBlobStore;
+    use reth::transaction_pool::error::{InvalidPoolTransactionError, PoolError, PoolErrorKind};
     use reth::transaction_pool::{
         Pool, PoolTransaction as _, TransactionPool, TransactionValidator,
     };
     use reth_primitives::{BlockBody, SealedBlock, SealedHeader};
     use reth_provider::test_utils::{ExtendedAccount, MockEthProvider};
-    use semaphore::identity::Identity;
-    use semaphore::poseidon_tree::PoseidonTree;
     use semaphore::Field;
     use test_case::test_case;
-    use world_chain_builder_pbh::ext_nullifier;
+    use world_chain_builder_pbh::date_marker::DateMarker;
     use world_chain_builder_pbh::external_nullifier::ExternalNullifier;
     use world_chain_builder_pbh::payload::{PbhPayload, Proof};
 
     use super::WorldChainTransactionValidator;
+    use crate::error::WorldChainTransactionPoolInvalid;
     use crate::ordering::WorldChainOrdering;
     use crate::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
     use crate::test_utils::{
@@ -268,56 +258,11 @@ pub mod tests {
     };
     use crate::tx::WorldChainPooledTransaction;
 
-    #[builder(on(String, into))]
-    pub fn signer(
-        #[builder(default = "test test test test test test test test test test test junk")]
-        mnemonic: String,
-        #[builder(default = 0)] index: u32,
-    ) -> PrivateKeySigner {
-        let signer = alloy_signer_local::MnemonicBuilder::<English>::default()
-            .phrase(&mnemonic)
-            .index(index)
-            .expect("Failed to set index")
-            .build()
-            .expect("Failed to create signer");
-
-        signer
-    }
-
-    #[builder(on(String, into))]
-    pub fn account(
-        #[builder(default = "test test test test test test test test test test test junk")]
-        mnemonic: String,
-        #[builder(default = 0)] index: u32,
-    ) -> Address {
-        let signer = signer().mnemonic(mnemonic).index(index).call();
-
-        signer.address()
-    }
-
-    #[test_case(0, "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")]
-    #[test_case(1, "0x70997970C51812dc3A010C7d01b50e0d17dc79C8")]
-    #[test_case(2, "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC")]
-    #[test_case(3, "0x90F79bf6EB2c4f870365E785982E1f101E93b906")]
-    #[test_case(4, "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65")]
-    #[test_case(5, "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc")]
-    #[test_case(6, "0x976EA74026E726554dB657fA54763abd0C3a0aa9")]
-    #[test_case(7, "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955")]
-    #[test_case(8, "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f")]
-    #[test_case(9, "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720")]
-    fn mnemonic_accounts(index: u32, exp_address: &str) {
-        let exp: Address = exp_address.parse().unwrap();
-
-        assert_eq!(exp, account().index(index).call());
-    }
-
     async fn setup() -> Pool<
         WorldChainTransactionValidator<MockEthProvider, WorldChainPooledTransaction>,
         WorldChainOrdering<WorldChainPooledTransaction>,
         InMemoryBlobStore,
     > {
-        let start = Instant::now();
-
         let validator = world_chain_validator();
 
         // TODO: Remove
@@ -329,7 +274,7 @@ pub mod tests {
 
         // Fund 10 test accounts
         for acc in 0..10 {
-            let account_address = account().index(acc).call();
+            let account_address = test_utils::account(acc);
 
             validator.inner.client().add_account(
                 account_address,
@@ -364,9 +309,21 @@ pub mod tests {
             Default::default(),
         );
 
-        println!("Building the pool took {:?}", start.elapsed());
-
         pool
+    }
+
+    fn downcast_pool_err(err: &PoolError) -> &WorldChainTransactionPoolInvalid {
+        let PoolErrorKind::InvalidTransaction(InvalidPoolTransactionError::Other(other)) =
+            &err.kind
+        else {
+            panic!("Invalid error kind!");
+        };
+
+        other
+            .source()
+            .expect("Missing error source")
+            .downcast_ref::<WorldChainTransactionPoolInvalid>()
+            .expect("Failed to downcast")
     }
 
     #[tokio::test]
@@ -410,8 +367,15 @@ pub mod tests {
 
         let pool = setup().await;
 
-        let user_op = test_utils::user_op().acc(USER_ACCOUNT).call();
-        let bundle = test_utils::pbh_bundle(vec![user_op]);
+        let (user_op, proof) = test_utils::user_op()
+            .acc(USER_ACCOUNT)
+            .external_nullifier(
+                ExternalNullifier::builder()
+                    .date_marker(DateMarker::from(chrono::Utc::now()))
+                    .build(),
+            )
+            .call();
+        let bundle = test_utils::pbh_bundle(vec![user_op], vec![proof]);
         let calldata = bundle.abi_encode();
 
         let tx = test_utils::eip1559()
@@ -424,6 +388,46 @@ pub mod tests {
         pool.add_external_transaction(tx.clone().into())
             .await
             .expect("Failed to add transaction");
+    }
+
+    #[tokio::test]
+    async fn validate_pbh_missing_proof_for_user_op() {
+        const BUNDLER_ACCOUNT: u32 = 9;
+        const USER_ACCOUNT: u32 = 0;
+
+        let pool = setup().await;
+
+        let (user_op, _proof) = test_utils::user_op()
+            .acc(USER_ACCOUNT)
+            .external_nullifier(
+                ExternalNullifier::builder()
+                    .date_marker(DateMarker::from(chrono::Utc::now()))
+                    .build(),
+            )
+            .call();
+
+        let bundle = test_utils::pbh_bundle(vec![user_op], vec![]);
+
+        let calldata = bundle.abi_encode();
+
+        let tx = test_utils::eip1559()
+            .to(PBH_TEST_VALIDATOR)
+            .input(calldata)
+            .call();
+
+        let tx = test_utils::eth_tx(BUNDLER_ACCOUNT, tx).await;
+
+        let err = pool
+            .add_external_transaction(tx.clone().into())
+            .await
+            .expect_err("Validation should fail because of missing proof");
+
+        let world_chain_err = downcast_pool_err(&err);
+
+        assert_eq!(
+            world_chain_err,
+            &WorldChainTransactionPoolInvalid::MissingPbhPayload
+        );
     }
 
     #[tokio::test]

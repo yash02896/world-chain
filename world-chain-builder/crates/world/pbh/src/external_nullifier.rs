@@ -1,26 +1,12 @@
 use std::str::FromStr;
 
-use alloy_rlp::{Decodable, Encodable, Rlp};
+use alloy_rlp::{Decodable, Encodable};
+use bon::Builder;
 use semaphore::{hash_to_field, Field};
 use strum::{Display, EnumString};
 use thiserror::Error;
 
 use crate::date_marker::{DateMarker, DateMarkerParsingError};
-
-#[macro_export]
-macro_rules! ext_nullifier {
-    ($mo:expr,$yr:expr,$no:expr) => {{
-        let prefix = $crate::external_nullifier::Prefix::V1;
-        let date_marker = $crate::date_marker::DateMarker::new($yr, $mo);
-
-        $crate::external_nullifier::ExternalNullifier::new(prefix, date_marker, $no)
-    }};
-}
-
-#[test]
-fn whatever() {
-    ext_nullifier!(01, 2025, 1);
-}
 
 #[derive(Display, EnumString, Debug, Clone, Copy, PartialEq, Eq)]
 #[strum(serialize_all = "snake_case")]
@@ -28,10 +14,12 @@ pub enum Prefix {
     V1,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Builder, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExternalNullifier {
+    #[builder(default = Prefix::V1)]
     pub prefix: Prefix,
     pub date_marker: DateMarker,
+    #[builder(default = 0)]
     pub nonce: u16,
 }
 
@@ -117,13 +105,17 @@ impl FromStr for ExternalNullifier {
 
 impl Decodable for ExternalNullifier {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
-        todo!()
+        let s: String = Decodable::decode(buf)?;
+
+        s.parse::<ExternalNullifier>()
+            .map_err(|_| alloy_rlp::Error::Custom("Failed to parse string to external nullifier"))
     }
 }
 
 impl Encodable for ExternalNullifier {
     fn encode(&self, out: &mut dyn alloy_rlp::BufMut) {
-        todo!()
+        let s = self.to_string();
+        Encodable::encode(&s, out)
     }
 }
 
