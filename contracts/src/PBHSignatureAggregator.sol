@@ -2,28 +2,29 @@
 pragma solidity ^0.8.20;
 
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
-import {IPBHVerifier} from "./interfaces/IPBHVerifier.sol";
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {IPBHVerifier} from "./interfaces/IPBHVerifier.sol";
 
 contract PBHSignatureAggregator is IAggregator {
     error InvalidUserOperations();
 
-    /// @notice The PBHVerifier contract.
-    IPBHVerifier internal immutable pbhVerifier;
+    error MalformedUserOperationSignature();
 
-    constructor(address _pbhVerifier) {
-        pbhVerifier = IPBHVerifier(_pbhVerifier);
+    /// @notice The PBHVerifier contract.
+    IPBHVerifier internal immutable _pbhVerifier;
+
+    constructor(address __pbhVerifier) {
+        _pbhVerifier = IPBHVerifier(__pbhVerifier);
     }
 
     /**
      * Validate aggregated signature.
      * Revert if the aggregated signature does not match the given list of operations.
      * @param userOps   - Array of UserOperations to validate the signature for.
-     * @param signature - The aggregated signature.
      */
     function validateSignatures(PackedUserOperation[] calldata userOps, bytes calldata) external view {
         bytes memory encoded = abi.encode(userOps);
-        try pbhVerifier.validateSignaturesCallback(keccak256(encoded)) {}
+        try _pbhVerifier.validateSignaturesCallback(keccak256(encoded)) {}
         catch {
             revert InvalidUserOperations();
         }
@@ -56,11 +57,13 @@ contract PBHSignatureAggregator is IAggregator {
         view
         returns (bytes memory aggregatedSignature)
     {
-        // Aggregates all of the proofs on
+        IPBHVerifier.PBHPayload[] memory pbhPayloads = new IPBHVerifier.PBHPayload[](userOps.length);
         for (uint256 i = 0; i < userOps.length; ++i) {
-            // (0:65) - UserOp Signature
-            // (65:65 + 320) - Packed Proof Data
-            bytes memory signature = userOps[i].signature;
+            // Bytes (0:65) - UserOp Signature
+            // Bytes (66:66 + 320) - Packed Proof Data
+            bytes memory proofData = userOps[i].signature[66:];
+            pbhPayloads[i] = abi.decode(proofData, (IPBHVerifier.PBHPayload));
         }
+        aggregatedSignature = abi.encode(pbhPayloads);
     }
 }

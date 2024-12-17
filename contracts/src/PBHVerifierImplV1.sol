@@ -83,7 +83,9 @@ contract PBHVerifierImplV1 is IPBHVerifier, WorldIDImpl {
         uint256[8] proof
     );
 
-    event PBHVerifierImplInitialized(IWorldIDGroups indexed worldId, uint8 indexed numPbhPerMonth);
+    event PBHVerifierImplInitialized(
+        IWorldIDGroups indexed worldId, IEntryPoint indexed entryPoint, uint8 indexed numPbhPerMonth
+    );
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Vars                                  ///
@@ -96,7 +98,7 @@ contract PBHVerifierImplV1 is IPBHVerifier, WorldIDImpl {
     IWorldIDGroups internal _worldId;
 
     /// @dev The EntryPoint where Aggregated PBH Bundles will be proxied to.
-    IEntryPoint internal immutable _entryPoint;
+    IEntryPoint internal _entryPoint;
 
     /// @notice The number of PBH transactions that may be used by a single
     ///         World ID in a given month.
@@ -105,7 +107,7 @@ contract PBHVerifierImplV1 is IPBHVerifier, WorldIDImpl {
     /// @notice Transient Storage key used to store Hashed UserOps.
     /// @dev The PBHSignatureAggregator will cross reference this slot to ensure
     ///     The PBHVerifier is always the proxy to the EntryPoint for PBH Bundles.
-    bytes32 internal constant HASHED_OPS_SLOT = bytes32("0x4");
+    uint256 internal constant HASHED_OPS_SLOT = 0x4;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Mappings                              ///
@@ -140,18 +142,21 @@ contract PBHVerifierImplV1 is IPBHVerifier, WorldIDImpl {
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
-    function initialize(address __worldId, address __entryPoint, uint8 _numPbhPerMonth) public reinitializer(1) {
+    function initialize(IWorldIDGroups __worldId, IEntryPoint __entryPoint, uint8 _numPbhPerMonth)
+        public
+        reinitializer(1)
+    {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
-        _worldId = IWorldIDGroups(__worldId);
-        _entryPoint = IEntryPoint(__entryPoint);
+        _worldId = __worldId;
+        _entryPoint = __entryPoint;
         numPbhPerMonth = _numPbhPerMonth;
 
         // Say that the contract is initialized.
         __setInitialized();
 
-        emit PBHVerifierImplInitialized(__worldId, _numPbhPerMonth);
+        emit PBHVerifierImplInitialized(__worldId, __entryPoint, _numPbhPerMonth);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -168,27 +173,49 @@ contract PBHVerifierImplV1 is IPBHVerifier, WorldIDImpl {
     ///                                  Functions                             ///
     //////////////////////////////////////////////////////////////////////////////
 
-    /// @param root The root of the Merkle tree that this proof is valid for.
+    /// Execute a batch of UserOperation with Aggregators
+    /// @param opsPerAggregator - The operations to execute, grouped by aggregator (or address(0) for no-aggregator accounts).
+    /// @param beneficiary      - The address to receive the fees.
+    function handleAggregatedOps(
+        IEntryPoint.UserOpsPerAggregator[] calldata opsPerAggregator,
+        address payable beneficiary
+    ) external virtual onlyProxy onlyInitialized {
+        bytes32 hashedOps = keccak256(abi.encode(opsPerAggregator));
+        assembly ("memory-safe") {
+            tstore(HASHED_OPS_SLOT, hashedOps)
+        }
+
+        for (uint256 i = 0; i < opsPerAggregator.length; ++i) {
+            PBHPayload[] memory pbhPayloads = abi.decode(opsPerAggregator[i].signature, (PBHPayload[]));
+            for (uint256 j = 0; j < pbhPayloads.length; ++j) {
+                verifyPbhProof(
+                    opsPerAggregator[i].userOps[j].sender,
+                    opsPerAggregator[i].userOps[j].nonce,
+                    opsPerAggregator[i].userOps[j].callData,
+                    pbhPayloads[j]
+                );
+            }
+        }
+
+        // Grab all proof data off the Aggregated Signature for each `UserOpsPerAggregator`
+        // Iterate over the Vec<ProofData> and verify each proof.
+        _entryPoint.handleAggregatedOps(opsPerAggregator, beneficiary);
+    }
+
     /// @param sender The sender of this particular transaction or UserOp.
     /// @param nonce Transaction/UserOp nonce.
     /// @param callData Transaction/UserOp call data.
-    /// @param pbhExternalNullifier External nullifier encodeing month, year, and a pbhNonce.
-    /// @param nullifierHash Nullifier hash for this semaphore proof.
-    /// @param proof The zero-knowledge proof that demonstrates the claimer is registered with World ID.
-    function verifyPbhProof(
-        uint256 root,
-        address sender,
-        uint256 nonce,
-        bytes memory callData,
-        uint256 pbhExternalNullifier,
-        uint256 nullifierHash,
-        uint256[8] memory proof
-    ) external virtual onlyProxy onlyInitialized {
+    /// @param pbhPayload The PBH payload containing the proof data.
+    function verifyPbhProof(address sender, uint256 nonce, bytes memory callData, PBHPayload memory pbhPayload)
+        internal
+        virtual
+        onlyInitialized
+    {
         // First, we make sure this nullifier has not been used before.
-        if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
+        if (nullifierHashes[pbhPayload.nullifierHash]) revert InvalidNullifier();
 
         // Verify the external nullifier
-        PBHExternalNullifier.verify(pbhExternalNullifier, numPbhPerMonth);
+        PBHExternalNullifier.verify(pbhPayload.pbhExternalNullifier, numPbhPerMonth);
 
         // If worldId address is set, proceed with on chain verification,
         // otherwise assume verification has been done off chain by the builder.
@@ -197,13 +224,28 @@ contract PBHVerifierImplV1 is IPBHVerifier, WorldIDImpl {
             uint256 signalHash = abi.encodePacked(sender, nonce, callData).hashToField();
 
             // We now verify the provided proof is valid and the user is verified by World ID
-            _worldId.verifyProof(root, _GROUP_ID, signalHash, nullifierHash, pbhExternalNullifier, proof);
+            _worldId.verifyProof(
+                pbhPayload.root,
+                _GROUP_ID,
+                signalHash,
+                pbhPayload.nullifierHash,
+                pbhPayload.pbhExternalNullifier,
+                pbhPayload.proof
+            );
         }
 
         // We now record the user has done this, so they can't do it again (proof of uniqueness)
-        nullifierHashes[nullifierHash] = true;
+        nullifierHashes[pbhPayload.nullifierHash] = true;
 
-        emit PBH(root, sender, nonce, callData, pbhExternalNullifier, nullifierHash, proof);
+        emit PBH(
+            pbhPayload.root,
+            sender,
+            nonce,
+            callData,
+            pbhPayload.pbhExternalNullifier,
+            pbhPayload.nullifierHash,
+            pbhPayload.proof
+        );
     }
 
     /// @notice Validates the hashed operations is the same as the hash transiently stored.
@@ -224,7 +266,7 @@ contract PBHVerifierImplV1 is IPBHVerifier, WorldIDImpl {
 
     /// @dev If the World ID address is set to 0, then it is assumed that verification will take place off chain.
     /// @notice Sets the World ID instance that will be used for verifying proofs.
-    /// @param worldId The World ID instance that will be used for verifying proofs.
+    /// @param __worldId The World ID instance that will be used for verifying proofs.
     function setWorldId(address __worldId) external virtual onlyOwner onlyProxy onlyInitialized {
         _worldId = IWorldIDGroups(__worldId);
     }

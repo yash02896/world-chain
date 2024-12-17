@@ -64,7 +64,7 @@ contract PBHVerifierTest is WorldIDTest {
 
         pbhVerifier = new PBHVerifier(pbhVerifierImplAddress, initCallData);
         pbhVerifierAddress = address(pbhVerifier);
-    }
+    } 
 
     /// @notice Constructs a new router without initializing the delegate.
     /// @dev It is constructed in the globals.
