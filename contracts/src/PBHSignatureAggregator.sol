@@ -45,7 +45,7 @@ contract PBHSignatureAggregator is IAggregator {
      */
     function validateUserOpSignature(PackedUserOperation calldata userOp)
         external
-        view
+        pure
         returns (bytes memory sigForUserOp)
     {}
 
@@ -58,7 +58,7 @@ contract PBHSignatureAggregator is IAggregator {
      */
     function aggregateSignatures(PackedUserOperation[] calldata userOps)
         external
-        view
+        pure
         returns (bytes memory aggregatedSignature)
     {
         IPBHVerifier.PBHPayload[] memory pbhPayloads = new IPBHVerifier.PBHPayload[](userOps.length);
