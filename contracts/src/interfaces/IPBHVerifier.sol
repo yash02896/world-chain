@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 interface IPBHVerifier {
     /// @notice The Packed World ID Proof data.
@@ -16,7 +17,7 @@ interface IPBHVerifier {
         uint256[8] proof;
     }
 
-    // function initialize(address __worldId, address __entryPoint, uint8 _numPbhPerMonth) external;
+    function initialize(IWorldIDGroups __worldId, IEntryPoint __entryPoint, uint8 _numPbhPerMonth) external;
 
     function validateSignaturesCallback(bytes32 hashedOps) external view;
 
