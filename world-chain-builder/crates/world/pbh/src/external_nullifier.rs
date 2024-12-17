@@ -1,8 +1,26 @@
-use crate::date_marker::{DateMarker, DateMarkerParsingError};
-use semaphore::{hash_to_field, Field};
 use std::str::FromStr;
+
+use alloy_rlp::{Decodable, Encodable, Rlp};
+use semaphore::{hash_to_field, Field};
 use strum::{Display, EnumString};
 use thiserror::Error;
+
+use crate::date_marker::{DateMarker, DateMarkerParsingError};
+
+#[macro_export]
+macro_rules! ext_nullifier {
+    ($mo:expr,$yr:expr,$no:expr) => {{
+        let prefix = $crate::external_nullifier::Prefix::V1;
+        let date_marker = $crate::date_marker::DateMarker::new($yr, $mo);
+
+        $crate::external_nullifier::ExternalNullifier::new(prefix, date_marker, $no)
+    }};
+}
+
+#[test]
+fn whatever() {
+    ext_nullifier!(01, 2025, 1);
+}
 
 #[derive(Display, EnumString, Debug, Clone, Copy, PartialEq, Eq)]
 #[strum(serialize_all = "snake_case")]
@@ -18,6 +36,10 @@ pub struct ExternalNullifier {
 }
 
 impl ExternalNullifier {
+    pub fn v1(month: u32, year: i32, nonce: u16) -> Self {
+        Self::new(Prefix::V1, DateMarker::new(year, month), nonce)
+    }
+
     pub fn new(prefix: Prefix, date_marker: DateMarker, nonce: u16) -> Self {
         Self {
             prefix,
@@ -90,6 +112,18 @@ impl FromStr for ExternalNullifier {
             date_marker,
             nonce,
         })
+    }
+}
+
+impl Decodable for ExternalNullifier {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        todo!()
+    }
+}
+
+impl Encodable for ExternalNullifier {
+    fn encode(&self, out: &mut dyn alloy_rlp::BufMut) {
+        todo!()
     }
 }
 

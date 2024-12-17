@@ -1,19 +1,15 @@
-use std::sync::Arc;
-
-use crate::bindings::IEntryPoint::{PackedUserOperation, UserOpsPerAggregator};
-use crate::bindings::IPBHValidator::{handleAggregatedOpsCall, IPBHValidatorCalls};
-use crate::root::WorldChainRootValidator;
-use crate::tx::WorldChainPooledTransaction;
-use crate::validator::WorldChainTransactionValidator;
-use alloy_eips::eip2718::Decodable2718;
-use alloy_eips::eip2718::Encodable2718;
-use alloy_primitives::{address, keccak256, Bytes, U256};
+use alloy_consensus::{SignableTransaction, TxEip1559};
+use alloy_eips::eip2718::{Decodable2718, Encodable2718};
+use alloy_eips::eip2930::AccessList;
+use alloy_network::TxSigner;
+use alloy_primitives::{address, keccak256, Bytes, ChainId, U256};
 use alloy_rlp::Encodable;
 use alloy_rpc_types::{TransactionInput, TransactionRequest};
-use alloy_signer_local::LocalSigner;
+use alloy_signer_local::coins_bip39::English;
+use alloy_signer_local::{LocalSigner, PrivateKeySigner};
 use alloy_sol_types::{SolInterface, SolValue};
+use bon::builder;
 use chrono::Utc;
-use parking_lot::RwLock;
 use reth::chainspec::MAINNET;
 use reth::transaction_pool::blobstore::InMemoryBlobStore;
 use reth::transaction_pool::validate::EthTransactionValidatorBuilder;
@@ -24,12 +20,181 @@ use reth_primitives::PooledTransactionsElement;
 use reth_provider::test_utils::MockEthProvider;
 use revm_primitives::{hex, Address, TxKind};
 use semaphore::identity::Identity;
-use semaphore::poseidon_tree::LazyPoseidonTree;
+use semaphore::poseidon_tree::{LazyPoseidonTree, PoseidonTree};
 use semaphore::protocol::{generate_nullifier_hash, generate_proof};
 use semaphore::{hash_to_field, Field};
 use world_chain_builder_pbh::date_marker::DateMarker;
 use world_chain_builder_pbh::external_nullifier::{ExternalNullifier, Prefix};
 use world_chain_builder_pbh::payload::{PbhPayload, Proof, TREE_DEPTH};
+
+use crate::bindings::IEntryPoint::{self, PackedUserOperation, UserOpsPerAggregator};
+use crate::bindings::IPBHValidator::{self, handleAggregatedOpsCall, IPBHValidatorCalls};
+use crate::root::WorldChainRootValidator;
+use crate::tx::WorldChainPooledTransaction;
+use crate::validator::WorldChainTransactionValidator;
+
+const MNEMONIC: &str = "test test test test test test test test test test test junk";
+
+pub fn signer(index: u32) -> PrivateKeySigner {
+    let signer = alloy_signer_local::MnemonicBuilder::<English>::default()
+        .phrase(MNEMONIC)
+        .index(index)
+        .expect("Failed to set index")
+        .build()
+        .expect("Failed to create signer");
+
+    signer
+}
+
+pub fn account(index: u32) -> Address {
+    let signer = signer(index);
+
+    signer.address()
+}
+
+pub fn identity(index: u32) -> Identity {
+    let mut secret = account(index).into_word().0;
+
+    Identity::from_secret(&mut secret as &mut _, None)
+}
+
+// TODO: Cache with Once or lazy-static?
+pub fn tree() -> LazyPoseidonTree {
+    let mut tree = LazyPoseidonTree::new(30, Field::ZERO);
+
+    // Only accounts 0 through 5 are included in the tree
+    for acc in 0..=5 {
+        let identity = identity(acc);
+        let commitment = identity.commitment();
+
+        tree = tree.update_with_mutation(acc as usize, &commitment);
+    }
+
+    tree.derived()
+}
+
+pub fn tree_root() -> Field {
+    tree().root()
+}
+
+pub fn tree_inclusion_proof(acc: u32) -> semaphore::poseidon_tree::Proof {
+    tree().proof(acc as usize)
+}
+
+pub fn nullifier_hash(acc: u32, external_nullifier: Field) -> Field {
+    let identity = identity(acc);
+
+    semaphore::protocol::generate_nullifier_hash(&identity, external_nullifier)
+}
+
+pub fn semaphore_proof(
+    acc: u32,
+    ext_nullifier: Field,
+    signal: Field,
+) -> semaphore::protocol::Proof {
+    let identity = identity(acc);
+    let incl_proof = tree_inclusion_proof(acc);
+
+    semaphore::protocol::generate_proof(&identity, &incl_proof, ext_nullifier, signal)
+        .expect("Failed to generate semaphore proof")
+}
+
+#[builder]
+pub fn eip1559(
+    #[builder(default = 1)] chain_id: ChainId,
+    #[builder(default = 0)] nonce: u64,
+    #[builder(default = 150000)] gas_limit: u64,
+    #[builder(default = 10000000)] // 0.1 GWEI
+    max_fee_per_gas: u128,
+    #[builder(default = 0)] max_priority_fee_per_gas: u128,
+    #[builder(into)] to: TxKind,
+    #[builder(default = U256::ZERO)] value: U256,
+    #[builder(default)] access_list: AccessList,
+    #[builder(into, default)] input: Bytes,
+) -> TxEip1559 {
+    TxEip1559 {
+        chain_id,
+        nonce,
+        gas_limit,
+        max_fee_per_gas,
+        max_priority_fee_per_gas,
+        to,
+        value,
+        access_list,
+        input,
+    }
+}
+
+pub async fn eth_tx(acc: u32, mut tx: TxEip1559) -> EthPooledTransaction {
+    let signer = signer(acc);
+
+    let signature = signer
+        .sign_transaction(&mut tx)
+        .await
+        .expect("Failed to sign transaction");
+
+    let tx_signed = tx.into_signed(signature);
+    let pooled = PooledTransactionsElement::Eip1559(tx_signed);
+
+    pooled.try_into_ecrecovered().unwrap().into()
+}
+
+#[builder]
+pub fn user_op(
+    acc: u32,
+    #[builder(into, default = U256::ZERO)] nonce: U256,
+    #[builder(default = ExternalNullifier::v1(1, 2025, 0))] external_nullifier: ExternalNullifier,
+) -> (IEntryPoint::PackedUserOperation, PbhPayload) {
+    let sender = account(acc);
+
+    let user_op = PackedUserOperation {
+        sender,
+        nonce: nonce,
+        ..Default::default()
+    };
+
+    let signal = crate::eip4337::hash_user_op(&user_op);
+
+    let tree = tree();
+    let root = tree.root();
+    let proof = semaphore_proof(acc, external_nullifier.hash(), signal);
+    let nullifier_hash = nullifier_hash(acc, external_nullifier.hash());
+
+    let proof = Proof(proof);
+
+    let payload = PbhPayload {
+        external_nullifier,
+        nullifier_hash,
+        root,
+        proof,
+    };
+
+    (user_op, payload)
+}
+
+pub fn pbh_bundle(
+    ops: Vec<(PackedUserOperation, PbhPayload)>,
+) -> IPBHValidator::handleAggregatedOpsCall {
+    let mut user_ops = Vec::new();
+    let mut proofs = Vec::new();
+
+    for (user_op, proof) in ops {
+        user_ops.push(user_op);
+        proofs.push(proof);
+    }
+
+    let mut signature_buff = Vec::new();
+    proofs.encode(&mut signature_buff);
+
+    IPBHValidator::handleAggregatedOpsCall {
+        _0: vec![UserOpsPerAggregator {
+            userOps: user_ops,
+            signature: signature_buff.into(),
+            aggregator: PBH_TEST_SIGNATURE_AGGREGATOR,
+        }],
+        _1: Address::ZERO,
+    }
+}
 
 pub const PBH_TEST_SIGNATURE_AGGREGATOR: Address =
     address!("dEAD000000000000000042069420694206942069");
@@ -171,7 +336,8 @@ pub fn create_pbh_paylaod(
     let merkle_proof = tree.proof(0);
 
     let signal_hash = hash_to_field(signal);
-    let external_nullifier_hash = hash_to_field(external_nullifier.as_bytes());
+    let external_nullifier: ExternalNullifier = external_nullifier.parse().unwrap();
+    let external_nullifier_hash = external_nullifier.hash();
     let nullifier_hash = generate_nullifier_hash(&id, external_nullifier_hash);
 
     let proof =

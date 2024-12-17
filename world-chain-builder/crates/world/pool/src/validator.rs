@@ -92,12 +92,6 @@ where
         date: chrono::DateTime<chrono::Utc>,
         pbh_payload: &PbhPayload,
     ) -> Result<(), TransactionValidationError> {
-        let external_nullifier: ExternalNullifier = pbh_payload
-            .external_nullifier
-            .parse()
-            .map_err(WorldChainTransactionPoolInvalid::InvalidExternalNullifier)
-            .map_err(TransactionValidationError::from)?;
-
         // In most cases these will be the same value, but at the month boundary
         // we'll still accept the previous month if the transaction is at most a minute late
         // or the next month if the transaction is at most a minute early
@@ -108,12 +102,12 @@ where
         ];
         if valid_dates
             .iter()
-            .all(|d| external_nullifier.date_marker != *d)
+            .all(|d| pbh_payload.external_nullifier.date_marker != *d)
         {
             return Err(WorldChainTransactionPoolInvalid::InvalidExternalNullifierPeriod.into());
         }
 
-        if external_nullifier.nonce >= self.num_pbh_txs {
+        if pbh_payload.external_nullifier.nonce >= self.num_pbh_txs {
             return Err(WorldChainTransactionPoolInvalid::InvalidExternalNullifierNonce.into());
         }
 
@@ -133,7 +127,7 @@ where
             payload.root,
             payload.nullifier_hash,
             signal,
-            hash_to_field(payload.external_nullifier.as_bytes()),
+            payload.external_nullifier.hash(),
             &payload.proof.0,
             TREE_DEPTH,
         );
@@ -242,6 +236,13 @@ where
 
 #[cfg(test)]
 pub mod tests {
+    use std::time::Instant;
+
+    use alloy_primitives::Address;
+    use alloy_signer_local::coins_bip39::English;
+    use alloy_signer_local::PrivateKeySigner;
+    use alloy_sol_types::SolCall;
+    use bon::builder;
     use chrono::{TimeZone, Utc};
     use ethers_core::types::U256;
     use reth::transaction_pool::blobstore::InMemoryBlobStore;
@@ -250,31 +251,103 @@ pub mod tests {
     };
     use reth_primitives::{BlockBody, SealedBlock, SealedHeader};
     use reth_provider::test_utils::{ExtendedAccount, MockEthProvider};
+    use semaphore::identity::Identity;
+    use semaphore::poseidon_tree::PoseidonTree;
     use semaphore::Field;
     use test_case::test_case;
+    use world_chain_builder_pbh::ext_nullifier;
+    use world_chain_builder_pbh::external_nullifier::ExternalNullifier;
     use world_chain_builder_pbh::payload::{PbhPayload, Proof};
 
+    use super::WorldChainTransactionValidator;
     use crate::ordering::WorldChainOrdering;
     use crate::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
-    use crate::test_utils::{get_pbh_4337_transaction, get_pbh_transaction, world_chain_validator};
+    use crate::test_utils::{
+        self, get_pbh_4337_transaction, get_pbh_transaction, world_chain_validator,
+        PBH_TEST_VALIDATOR,
+    };
+    use crate::tx::WorldChainPooledTransaction;
 
-    #[tokio::test]
-    async fn validate_pbh_transaction() {
+    #[builder(on(String, into))]
+    pub fn signer(
+        #[builder(default = "test test test test test test test test test test test junk")]
+        mnemonic: String,
+        #[builder(default = 0)] index: u32,
+    ) -> PrivateKeySigner {
+        let signer = alloy_signer_local::MnemonicBuilder::<English>::default()
+            .phrase(&mnemonic)
+            .index(index)
+            .expect("Failed to set index")
+            .build()
+            .expect("Failed to create signer");
+
+        signer
+    }
+
+    #[builder(on(String, into))]
+    pub fn account(
+        #[builder(default = "test test test test test test test test test test test junk")]
+        mnemonic: String,
+        #[builder(default = 0)] index: u32,
+    ) -> Address {
+        let signer = signer().mnemonic(mnemonic).index(index).call();
+
+        signer.address()
+    }
+
+    #[test_case(0, "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")]
+    #[test_case(1, "0x70997970C51812dc3A010C7d01b50e0d17dc79C8")]
+    #[test_case(2, "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC")]
+    #[test_case(3, "0x90F79bf6EB2c4f870365E785982E1f101E93b906")]
+    #[test_case(4, "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65")]
+    #[test_case(5, "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc")]
+    #[test_case(6, "0x976EA74026E726554dB657fA54763abd0C3a0aa9")]
+    #[test_case(7, "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955")]
+    #[test_case(8, "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f")]
+    #[test_case(9, "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720")]
+    fn mnemonic_accounts(index: u32, exp_address: &str) {
+        let exp: Address = exp_address.parse().unwrap();
+
+        assert_eq!(exp, account().index(index).call());
+    }
+
+    async fn setup() -> Pool<
+        WorldChainTransactionValidator<MockEthProvider, WorldChainPooledTransaction>,
+        WorldChainOrdering<WorldChainPooledTransaction>,
+        InMemoryBlobStore,
+    > {
+        let start = Instant::now();
+
         let validator = world_chain_validator();
+
+        // TODO: Remove
         let transaction = get_pbh_transaction(0);
         validator.inner.client().add_account(
             transaction.sender(),
             ExtendedAccount::new(transaction.nonce(), alloy_primitives::U256::MAX),
         );
+
+        // Fund 10 test accounts
+        for acc in 0..10 {
+            let account_address = account().index(acc).call();
+
+            validator.inner.client().add_account(
+                account_address,
+                ExtendedAccount::new(0, alloy_primitives::U256::MAX),
+            );
+        }
+
+        // Prep a merkle tree with first 5 accounts
+        let tree = test_utils::tree();
+        let root = tree.root();
+
         // Insert a world id root into the OpWorldId Account
-        // TODO: This should be set to the root on the Payloads of a Bundle Tx
-        // validator.inner.client().add_account(
-        //     OP_WORLD_ID,
-        //     ExtendedAccount::new(0, alloy_primitives::U256::ZERO).extend_storage(vec![(
-        //         LATEST_ROOT_SLOT.into(),
-        //         transaction.pbh_payload.clone().unwrap().root,
-        //     )]),
-        // );
+        validator.inner.client().add_account(
+            OP_WORLD_ID,
+            ExtendedAccount::new(0, alloy_primitives::U256::ZERO)
+                .extend_storage(vec![(LATEST_ROOT_SLOT.into(), root)]),
+        );
+
         let header = SealedHeader::default();
         let body = BlockBody::default();
         let block = SealedBlock::new(header, body);
@@ -291,24 +364,66 @@ pub mod tests {
             Default::default(),
         );
 
-        let start = chrono::Utc::now();
-        let res = pool.add_external_transaction(transaction.clone()).await;
-        let first_insert = chrono::Utc::now() - start;
-        println!("first_insert: {first_insert:?}");
+        println!("Building the pool took {:?}", start.elapsed());
 
-        assert!(res.is_ok());
-        let tx = pool.get(transaction.hash());
-        assert!(tx.is_some());
+        pool
+    }
 
-        let start = chrono::Utc::now();
-        let res = pool.add_external_transaction(transaction.clone()).await;
+    #[tokio::test]
+    async fn validate_noop_non_pbh() {
+        const ACC: u32 = 0;
 
-        let second_insert = chrono::Utc::now() - start;
-        println!("second_insert: {second_insert:?}");
+        let pool = setup().await;
 
-        // Check here that we're properly caching the transaction
-        assert!(first_insert > second_insert * 10);
+        let account = test_utils::account(ACC);
+        let tx = test_utils::eip1559().to(account).call();
+        let tx = test_utils::eth_tx(ACC, tx).await;
+
+        pool.add_external_transaction(tx.clone().into())
+            .await
+            .expect("Failed to add transaction");
+    }
+
+    #[tokio::test]
+    async fn validate_no_duplicates() {
+        const ACC: u32 = 0;
+
+        let pool = setup().await;
+
+        let account = test_utils::account(ACC);
+        let tx = test_utils::eip1559().to(account).call();
+        let tx = test_utils::eth_tx(ACC, tx).await;
+
+        pool.add_external_transaction(tx.clone().into())
+            .await
+            .expect("Failed to add transaction");
+
+        let res = pool.add_external_transaction(tx.clone().into()).await;
+
         assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn validate_pbh_bundle() {
+        const BUNDLER_ACCOUNT: u32 = 9;
+        const USER_ACCOUNT: u32 = 0;
+
+        let pool = setup().await;
+
+        let user_op = test_utils::user_op().acc(USER_ACCOUNT).call();
+        let bundle = test_utils::pbh_bundle(vec![user_op]);
+        let calldata = bundle.abi_encode();
+
+        let tx = test_utils::eip1559()
+            .to(PBH_TEST_VALIDATOR)
+            .input(calldata)
+            .call();
+
+        let tx = test_utils::eth_tx(BUNDLER_ACCOUNT, tx).await;
+
+        pool.add_external_transaction(tx.clone().into())
+            .await
+            .expect("Failed to add transaction");
     }
 
     #[tokio::test]
@@ -425,7 +540,7 @@ pub mod tests {
             (U256::from(7u64), U256::from(8u64)),
         ));
         let payload = PbhPayload {
-            external_nullifier: "0-012025-11".to_string(),
+            external_nullifier: ExternalNullifier::v1(1, 2025, 11),
             nullifier_hash: Field::from(10u64),
             root,
             proof,
@@ -459,7 +574,7 @@ pub mod tests {
             (U256::from(7u64), U256::from(8u64)),
         ));
         let payload = PbhPayload {
-            external_nullifier: "0-012025-11".to_string(),
+            external_nullifier: ExternalNullifier::v1(1, 2025, 11),
             nullifier_hash: Field::from(10u64),
             root,
             proof,
@@ -488,7 +603,7 @@ pub mod tests {
         let date = chrono::Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
 
         let payload = PbhPayload {
-            external_nullifier: external_nullifier.to_string(),
+            external_nullifier: external_nullifier.parse().unwrap(),
             nullifier_hash: Field::ZERO,
             root: Field::ZERO,
             proof: Default::default(),
@@ -506,7 +621,7 @@ pub mod tests {
         let date: chrono::DateTime<Utc> = time.parse().unwrap();
 
         let payload = PbhPayload {
-            external_nullifier: external_nullifier.to_string(),
+            external_nullifier: external_nullifier.parse().unwrap(),
             nullifier_hash: Field::ZERO,
             root: Field::ZERO,
             proof: Default::default(),
@@ -516,27 +631,3 @@ pub mod tests {
             .validate_external_nullifier(date, &payload)
             .unwrap();
     }
-
-    #[test_case("v0-012025-0")]
-    #[test_case("v1-022025-0")]
-    #[test_case("v1-122024-0")]
-    #[test_case("v1-002025-0")]
-    #[test_case("v1-012025-30")]
-    #[test_case("v1-012025")]
-    #[test_case("12025-0")]
-    #[test_case("v1-012025-0-0")]
-    fn validate_external_nullifier_invalid(external_nullifier: &str) {
-        let validator = world_chain_validator();
-        let date = chrono::Utc.with_ymd_and_hms(2025, 1, 1, 12, 0, 0).unwrap();
-
-        let payload = PbhPayload {
-            external_nullifier: external_nullifier.to_string(),
-            nullifier_hash: Field::ZERO,
-            root: Field::ZERO,
-            proof: Default::default(),
-        };
-
-        let res = validator.validate_external_nullifier(date, &payload);
-        assert!(res.is_err());
-    }
-}

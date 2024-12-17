@@ -3,6 +3,8 @@ use semaphore::packed_proof::PackedProof;
 use semaphore::Field;
 use serde::{Deserialize, Serialize};
 
+use crate::external_nullifier::ExternalNullifier;
+
 pub const TREE_DEPTH: usize = 30;
 
 const LEN: usize = 256;
@@ -46,10 +48,10 @@ impl Encodable for Proof {
 ///
 /// Contains the semaphore proof and relevent metadata
 /// required to to verify the pbh transaction.
-#[derive(Clone, Debug, RlpEncodable, RlpDecodable, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, RlpEncodable, RlpDecodable, PartialEq, Eq)]
 pub struct PbhPayload {
     /// A string containing a prefix, the date marker, and the pbh nonce
-    pub external_nullifier: String,
+    pub external_nullifier: ExternalNullifier,
     /// A nullifier hash used to keep track of
     /// previously used pbh transactions
     pub nullifier_hash: Field,
@@ -78,7 +80,7 @@ mod test {
             (U256::from(7u64), U256::from(8u64)),
         ));
         let pbh_payload = PbhPayload {
-            external_nullifier: "0-012025-11".to_string(),
+            external_nullifier: ExternalNullifier::v1(1, 2024, 11),
             nullifier_hash: Field::from(10u64),
             root: Field::from(12u64),
             proof,
