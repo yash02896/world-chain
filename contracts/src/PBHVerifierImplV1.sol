@@ -5,13 +5,15 @@ import {ByteHasher} from "./helpers/ByteHasher.sol";
 import {PBHExternalNullifier} from "./helpers/PBHExternalNullifier.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDImpl.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {IPBHVerifier} from "./interfaces/IPBHVerifier.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
 /// @title PBH Verifier Implementation Version 1
 /// @author Worldcoin
 /// @notice An implementation of a priority blockspace for humans (PBH) transaction verifier.
 /// @dev This is the implementation delegated to by a proxy.
-contract PBHVerifierImplV1 is WorldIDImpl {
+contract PBHVerifierImplV1 is IPBHVerifier, WorldIDImpl {
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -74,7 +76,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     event PBH(
         uint256 indexed root,
         address indexed sender,
-        uint256  nonce,
+        uint256 nonce,
         bytes callData,
         uint256 indexed pbhExternalNullifier,
         uint256 nullifierHash,
@@ -93,9 +95,17 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     /// @dev The World ID instance that will be used for verifying proofs
     IWorldIDGroups internal _worldId;
 
+    /// @dev The EntryPoint where Aggregated PBH Bundles will be proxied to.
+    IEntryPoint internal immutable _entryPoint;
+
     /// @notice The number of PBH transactions that may be used by a single
     ///         World ID in a given month.
     uint8 public numPbhPerMonth;
+
+    /// @notice Transient Storage key used to store Hashed UserOps.
+    /// @dev The PBHSignatureAggregator will cross reference this slot to ensure
+    ///     The PBHVerifier is always the proxy to the EntryPoint for PBH Bundles.
+    bytes32 internal constant HASHED_OPS_SLOT = bytes32("0x4");
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Mappings                              ///
@@ -125,22 +135,23 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     /// @dev This function is explicitly not virtual as it does not make sense to override even when
     ///      upgrading. Create a separate initializer function instead.
     ///
-    /// @param worldId The World ID instance that will be used for verifying proofs. If set to the 
+    /// @param __worldId The World ID instance that will be used for verifying proofs. If set to the
     ///        0 addess, then it will be assumed that verification will take place off chain.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
-    function initialize(IWorldIDGroups worldId, uint8 _numPbhPerMonth) public reinitializer(1) {
+    function initialize(address __worldId, address __entryPoint, uint8 _numPbhPerMonth) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
-        _worldId = worldId;
+        _worldId = IWorldIDGroups(__worldId);
+        _entryPoint = IEntryPoint(__entryPoint);
         numPbhPerMonth = _numPbhPerMonth;
 
         // Say that the contract is initialized.
         __setInitialized();
 
-        emit PBHVerifierImplInitialized(worldId, _numPbhPerMonth);
+        emit PBHVerifierImplInitialized(__worldId, _numPbhPerMonth);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -178,7 +189,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
 
         // Verify the external nullifier
         PBHExternalNullifier.verify(pbhExternalNullifier, numPbhPerMonth);
-        
+
         // If worldId address is set, proceed with on chain verification,
         // otherwise assume verification has been done off chain by the builder.
         if (address(_worldId) != address(0)) {
@@ -192,20 +203,20 @@ contract PBHVerifierImplV1 is WorldIDImpl {
         // We now record the user has done this, so they can't do it again (proof of uniqueness)
         nullifierHashes[nullifierHash] = true;
 
-        emit PBH(
-            root,
-            sender,
-            nonce,
-            callData,
-            pbhExternalNullifier,
-            nullifierHash,
-            proof
-        );
+        emit PBH(root, sender, nonce, callData, pbhExternalNullifier, nullifierHash, proof);
+    }
+
+    /// @notice Validates the hashed operations is the same as the hash transiently stored.
+    /// @param hashedOps The hashed operations to validate.
+    function validateSignaturesCallback(bytes32 hashedOps) external view virtual onlyProxy onlyInitialized {
+        assembly ("memory-safe") {
+            if iszero(eq(tload(HASHED_OPS_SLOT), hashedOps)) { revert(0, 0) }
+        }
     }
 
     /// @notice Sets the number of PBH transactions allowed per month.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
-    function setNumPbhPerMonth(uint8 _numPbhPerMonth) external onlyOwner {
+    function setNumPbhPerMonth(uint8 _numPbhPerMonth) external virtual onlyOwner onlyProxy onlyInitialized {
         assembly ("memory-safe") {
             sstore(numPbhPerMonth.slot, _numPbhPerMonth)
         }
@@ -214,9 +225,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     /// @dev If the World ID address is set to 0, then it is assumed that verification will take place off chain.
     /// @notice Sets the World ID instance that will be used for verifying proofs.
     /// @param worldId The World ID instance that will be used for verifying proofs.
-    function setWorldId(address worldId) external onlyOwner {
-        assembly ("memory-safe") {
-            sstore(_worldId.slot, worldId)
-        }
+    function setWorldId(address __worldId) external virtual onlyOwner onlyProxy onlyInitialized {
+        _worldId = IWorldIDGroups(__worldId);
     }
 }

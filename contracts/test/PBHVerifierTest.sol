@@ -28,7 +28,7 @@ contract PBHVerifierTest is WorldIDTest {
 
     IWorldIDGroups internal nullManager = IWorldIDGroups(address(0));
     IWorldIDGroups internal thisWorldID;
-    
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -75,4 +75,3 @@ contract PBHVerifierTest is WorldIDTest {
         pbhVerifierAddress = address(pbhVerifier);
     }
 }
-
