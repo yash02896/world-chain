@@ -28,7 +28,7 @@ pub struct WorldChainBuilderArgs {
     pub verified_blockspace_capacity: u8,
 
     /// Sets the ERC-4337 EntryPoint Proxy contract address
-    /// This contract is used to verify World-Id Proofs attached to 4337 payloads.
+    /// This contract is used to validate 4337 PBH bundles
     #[arg(long = "builder.pbh_validator")]
     pub pbh_validator: Address,
 
