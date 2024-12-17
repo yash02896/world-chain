@@ -109,9 +109,10 @@ where
 {
     let start = Instant::now();
     loop {
-        if let Ok(_) = provider
+        if provider
             .get_block_by_number(BlockNumberOrTag::Latest, false)
             .await
+            .is_ok()
         {
             break;
         }
