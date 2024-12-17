@@ -16,7 +16,7 @@ use reth::payload::{EthPayloadBuilderAttributes, PayloadId};
 use reth::tasks::TaskManager;
 use reth::transaction_pool::blobstore::DiskFileBlobStore;
 use reth::transaction_pool::{Pool, TransactionValidationTaskExecutor};
-use reth_db::test_utils::{tempdir_path, TempDatabase};
+use reth_db::test_utils::TempDatabase;
 use reth_db::DatabaseEnv;
 use reth_e2e_test_utils::node::NodeTestContext;
 use reth_e2e_test_utils::transaction::TransactionTestContext;
@@ -124,21 +124,16 @@ impl WorldChainBuilderTestContext {
         // is 0.0.0.0 by default
         node_config.network.addr = [127, 0, 0, 1].into();
 
-        let path = tempdir_path();
-
         let builder = NodeBuilder::new(node_config.clone())
             .testing_node(exec.clone())
-            .node(WorldChainBuilder::new(
-                ExtArgs {
-                    builder_args: WorldChainBuilderArgs {
-                        num_pbh_txs: 30,
-                        verified_blockspace_capacity: 70,
-                        ..Default::default()
-                    },
+            .node(WorldChainBuilder::new(ExtArgs {
+                builder_args: WorldChainBuilderArgs {
+                    num_pbh_txs: 30,
+                    verified_blockspace_capacity: 70,
                     ..Default::default()
                 },
-                &path,
-            )?)
+                ..Default::default()
+            })?)
             .extend_rpc_modules(move |ctx| {
                 let provider = ctx.provider().clone();
                 let pool = ctx.pool().clone();

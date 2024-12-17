@@ -5,7 +5,6 @@ use reth::builder::components::PoolBuilder;
 use reth::builder::{BuilderContext, FullNodeTypes, NodeTypes};
 use reth::transaction_pool::blobstore::DiskFileBlobStore;
 use reth::transaction_pool::TransactionValidationTaskExecutor;
-use reth_db::DatabaseEnv;
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_node::txpool::OpTransactionValidator;
 use reth_optimism_primitives::OpPrimitives;
@@ -23,25 +22,19 @@ use crate::validator::WorldChainTransactionValidator;
 /// config.
 #[derive(Debug, Clone)]
 pub struct WorldChainPoolBuilder {
-    pub clear_nullifiers: bool,
     pub num_pbh_txs: u16,
-    pub db: Arc<DatabaseEnv>,
     pub pbh_validator: Address,
     pub pbh_signature_aggregator: Address,
 }
 
 impl WorldChainPoolBuilder {
     pub fn new(
-        clear_nullifiers: bool,
         num_pbh_txs: u16,
-        db: Arc<DatabaseEnv>,
         pbh_validator: Address,
         pbh_signature_aggregator: Address,
     ) -> Self {
         Self {
-            clear_nullifiers,
             num_pbh_txs,
-            db,
             pbh_validator,
             pbh_signature_aggregator,
         }
@@ -78,7 +71,6 @@ where
             WorldChainTransactionValidator::new(
                 op_tx_validator,
                 root_validator,
-                self.db.clone(),
                 self.num_pbh_txs,
                 self.pbh_validator,
                 self.pbh_signature_aggregator,

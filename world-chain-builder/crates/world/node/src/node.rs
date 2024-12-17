@@ -1,6 +1,3 @@
-use std::path::Path;
-use std::sync::Arc;
-
 use eyre::eyre::Result;
 use reth::api::{ConfigureEvm, TxTy};
 use reth::builder::components::{ComponentsBuilder, PayloadServiceBuilder};
@@ -11,7 +8,6 @@ use reth::builder::{
 use reth::payload::{PayloadBuilderHandle, PayloadBuilderService};
 use reth::transaction_pool::TransactionPool;
 use reth_basic_payload_builder::{BasicPayloadJobGenerator, BasicPayloadJobGeneratorConfig};
-use reth_db::DatabaseEnv;
 use reth_optimism_chainspec::OpChainSpec;
 use reth_optimism_node::args::RollupArgs;
 use reth_optimism_node::node::{
@@ -24,7 +20,6 @@ use reth_optimism_primitives::OpPrimitives;
 use reth_primitives::{Header, TransactionSigned};
 use reth_provider::CanonStateSubscriptions;
 use reth_trie_db::MerklePatriciaTrie;
-use world_chain_builder_db::load_world_chain_db;
 use world_chain_builder_pool::builder::WorldChainPoolBuilder;
 use world_chain_builder_pool::tx::WorldChainPoolTransaction;
 
@@ -41,16 +36,12 @@ pub struct WorldChainBuilder {
     ///
     /// By default no throttling is applied.
     pub da_config: OpDAConfig,
-    /// The World Chain database
-    pub db: Arc<DatabaseEnv>,
 }
 
 impl WorldChainBuilder {
-    pub fn new(args: ExtArgs, data_dir: &Path) -> Result<Self> {
-        let db = load_world_chain_db(data_dir, args.builder_args.clear_nullifiers)?;
+    pub fn new(args: ExtArgs) -> Result<Self> {
         Ok(Self {
             args,
-            db,
             da_config: OpDAConfig::default(),
         })
     }
@@ -64,7 +55,6 @@ impl WorldChainBuilder {
     /// Returns the components for the given [`RollupArgs`].
     pub fn components<Node>(
         args: ExtArgs,
-        db: Arc<DatabaseEnv>,
     ) -> ComponentsBuilder<
         Node,
         WorldChainPoolBuilder,
@@ -83,7 +73,6 @@ impl WorldChainBuilder {
         >,
     {
         let WorldChainBuilderArgs {
-            clear_nullifiers,
             num_pbh_txs,
             verified_blockspace_capacity,
             pbh_validator,
@@ -100,9 +89,7 @@ impl WorldChainBuilder {
         ComponentsBuilder::default()
             .node_types::<Node>()
             .pool(WorldChainPoolBuilder::new(
-                clear_nullifiers,
                 num_pbh_txs,
-                db.clone(),
                 pbh_validator,
                 signature_aggregator,
             ))
@@ -143,16 +130,12 @@ where
         OpAddOns<NodeAdapter<N, <Self::ComponentsBuilder as NodeComponentsBuilder<N>>::Components>>;
 
     fn components_builder(&self) -> Self::ComponentsBuilder {
-        let Self { args, db, .. } = self;
-        Self::components(args.clone(), db.clone())
+        let Self { args, .. } = self;
+        Self::components(args.clone())
     }
 
     fn add_ons(&self) -> Self::AddOns {
-        let Self {
-            args,
-            db,
-            da_config,
-        } = self;
+        let Self { args, da_config } = self;
         Self::AddOns::builder()
             .with_sequencer(args.rollup_args.sequencer_http.clone())
             .with_da_config(da_config.clone())

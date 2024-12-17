@@ -27,8 +27,6 @@ use semaphore::identity::Identity;
 use semaphore::poseidon_tree::LazyPoseidonTree;
 use semaphore::protocol::{generate_nullifier_hash, generate_proof};
 use semaphore::{hash_to_field, Field};
-use tempfile::tempdir;
-use world_chain_builder_db::load_world_chain_db;
 use world_chain_builder_pbh::date_marker::DateMarker;
 use world_chain_builder_pbh::external_nullifier::{ExternalNullifier, Prefix};
 use world_chain_builder_pbh::payload::{PbhPayload, Proof, TREE_DEPTH};
@@ -133,14 +131,10 @@ pub fn world_chain_validator(
         .no_cancun()
         .build(client.clone(), InMemoryBlobStore::default());
     let validator = OpTransactionValidator::new(validator).require_l1_data_gas_fee(false);
-    let temp_dir = tempdir().unwrap();
-    let path = temp_dir.path().join("db");
-    let db = load_world_chain_db(&path, false).unwrap();
     let root_validator = WorldChainRootValidator::new(client).unwrap();
     WorldChainTransactionValidator::new(
         validator,
         root_validator,
-        db,
         30,
         PBH_TEST_VALIDATOR,
         PBH_TEST_SIGNATURE_AGGREGATOR,

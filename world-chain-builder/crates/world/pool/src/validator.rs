@@ -1,6 +1,4 @@
 //! World Chain transaction pool types
-use std::sync::Arc;
-
 use crate::bindings::IPBHValidator;
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_rlp::Decodable;
@@ -10,15 +8,11 @@ use reth::transaction_pool::{
     Pool, TransactionOrigin, TransactionValidationOutcome, TransactionValidationTaskExecutor,
     TransactionValidator,
 };
-use reth_db::cursor::DbCursorRW;
-use reth_db::transaction::{DbTx, DbTxMut};
-use reth_db::{Database, DatabaseEnv, DatabaseError};
 use reth_optimism_node::txpool::OpTransactionValidator;
 use reth_primitives::{Block, SealedBlock, TransactionSigned};
 use reth_provider::{BlockReaderIdExt, StateProviderFactory};
 use semaphore::hash_to_field;
 use semaphore::protocol::verify_proof;
-use world_chain_builder_db::{EmptyValue, ValidatedPbhTransaction};
 use world_chain_builder_pbh::date_marker::DateMarker;
 use world_chain_builder_pbh::external_nullifier::ExternalNullifier;
 use world_chain_builder_pbh::payload::{PbhPayload, TREE_DEPTH};
@@ -45,7 +39,6 @@ where
 {
     inner: OpTransactionValidator<Client, Tx>,
     root_validator: WorldChainRootValidator<Client>,
-    pub(crate) pbh_db: Arc<DatabaseEnv>,
     num_pbh_txs: u16,
     pbh_validator: Address,
     pbh_signature_aggregator: Address,
@@ -60,7 +53,6 @@ where
     pub fn new(
         inner: OpTransactionValidator<Client, Tx>,
         root_validator: WorldChainRootValidator<Client>,
-        pbh_db: Arc<DatabaseEnv>,
         num_pbh_txs: u16,
         pbh_validator: Address,
         pbh_signature_aggregator: Address,
@@ -68,7 +60,6 @@ where
         Self {
             inner,
             root_validator,
-            pbh_db,
             num_pbh_txs,
             pbh_validator,
             pbh_signature_aggregator,
@@ -78,14 +69,6 @@ where
     /// Get a reference to the inner transaction validator.
     pub fn inner(&self) -> &OpTransactionValidator<Client, Tx> {
         &self.inner
-    }
-
-    pub fn set_validated(&self, pbh_payload: &PbhPayload) -> Result<(), DatabaseError> {
-        let db_tx = self.pbh_db.tx_mut()?;
-        let mut cursor = db_tx.cursor_write::<ValidatedPbhTransaction>()?;
-        cursor.insert(pbh_payload.nullifier_hash.to_be_bytes().into(), EmptyValue)?;
-        db_tx.commit()?;
-        Ok(())
     }
 
     /// Ensure the provided root is on chain and valid
@@ -146,12 +129,6 @@ where
         let date = chrono::Utc::now();
         self.validate_external_nullifier(date, payload)?;
 
-        // Create db transaction and insert the nullifier hash
-        // We do this first to prevent repeatedly validating the same transaction
-        let db_tx = self.pbh_db.tx_mut()?;
-        let mut cursor = db_tx.cursor_write::<ValidatedPbhTransaction>()?;
-        cursor.insert(payload.nullifier_hash.to_be_bytes().into(), EmptyValue)?;
-
         let res = verify_proof(
             payload.root,
             payload.nullifier_hash,
@@ -162,11 +139,7 @@ where
         );
 
         match res {
-            Ok(true) => {
-                // Only commit if the proof is valid
-                db_tx.commit()?;
-                Ok(())
-            }
+            Ok(true) => Ok(()),
             Ok(false) => Err(WorldChainTransactionPoolInvalid::InvalidSemaphoreProof.into()),
             Err(e) => Err(TransactionValidationError::Error(e.into())),
         }
@@ -183,7 +156,6 @@ where
             return None;
         }
 
-        // TODO: Boolean args is `validate`. Can it be `false`?
         let Ok(decoded) = IPBHValidator::handleAggregatedOpsCall::abi_decode(tx.input(), true)
         else {
             return None;
@@ -560,27 +532,5 @@ pub mod tests {
 
         let res = validator.validate_external_nullifier(date, &payload);
         assert!(res.is_err());
-    }
-
-    #[test]
-    fn test_set_validated() {
-        let validator = world_chain_validator();
-
-        let proof = Proof(semaphore::protocol::Proof(
-            (U256::from(1u64), U256::from(2u64)),
-            (
-                [U256::from(3u64), U256::from(4u64)],
-                [U256::from(5u64), U256::from(6u64)],
-            ),
-            (U256::from(7u64), U256::from(8u64)),
-        ));
-        let payload = PbhPayload {
-            external_nullifier: "0-012025-11".to_string(),
-            nullifier_hash: Field::from(10u64),
-            root: Field::from(12u64),
-            proof,
-        };
-
-        validator.set_validated(&payload).unwrap();
     }
 }

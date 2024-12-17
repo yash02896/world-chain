@@ -192,7 +192,7 @@ where
 
         let builder = WorldChainBuilder {
             pool,
-            best: self.inner.best_transactions.clone(),
+            _best: self.inner.best_transactions.clone(),
         };
 
         let client = ctx.client();
@@ -287,7 +287,7 @@ where
 
         let builder = WorldChainBuilder {
             pool: NoopWorldChainTransactionPool::default(),
-            best: (),
+            _best: (),
         };
         builder.witness(&mut state, &ctx)
     }
@@ -365,7 +365,7 @@ pub struct WorldChainBuilder<Pool, Txs> {
     /// The transaction pool
     pool: Pool,
     /// Yields the best transaction to include if transactions from the mempool are allowed.
-    best: Txs,
+    _best: Txs,
 }
 
 impl<Pool, Txs> WorldChainBuilder<Pool, Txs>
@@ -385,7 +385,7 @@ where
         Client:
             StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
     {
-        let Self { pool, best } = self;
+        let Self { pool, _best } = self;
         debug!(target: "payload_builder", id=%ctx.payload_id(), parent_header = ?ctx.parent().hash(), parent_number = ctx.parent().number, "building new payload");
 
         // 1. apply eip-4788 pre block contract call
@@ -696,7 +696,7 @@ impl<EvmConfig, Client> WorldChainPayloadBuilderCtx<EvmConfig, Client> {
     /// Returns true if the fees are higher than the previous payload.
     /// TODO: PBH
     pub fn is_better_payload(&self, total_fees: U256) -> bool {
-        // is_better_payload(self.best_payload.as_ref(), total_fees)
+        // self.inner.is_better_payload( total_fees)
         todo!()
     }
 
