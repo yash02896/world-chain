@@ -88,20 +88,21 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     //////////////////////////////////////////////////////////////////////////////
 
     /// @dev The World ID group ID (always 1)
-    uint256 internal immutable GROUP_ID = 1;
+    uint256 internal immutable _GROUP_ID = 1;
 
     /// @dev The World ID instance that will be used for verifying proofs
-    IWorldIDGroups internal worldId;
+    IWorldIDGroups internal _worldId;
 
-    /// @dev Make this configurable
-    uint8 internal numPbhPerMonth;
+    /// @notice The number of PBH transactions that may be used by a single
+    ///         World ID in a given month.
+    uint8 public numPbhPerMonth;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Mappings                              ///
     //////////////////////////////////////////////////////////////////////////////
 
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
-    mapping(uint256 => bool) internal nullifierHashes;
+    mapping(uint256 => bool) public nullifierHashes;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
@@ -124,22 +125,22 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     /// @dev This function is explicitly not virtual as it does not make sense to override even when
     ///      upgrading. Create a separate initializer function instead.
     ///
-    /// @param _worldId The World ID instance that will be used for verifying proofs. If set to the 
+    /// @param worldId The World ID instance that will be used for verifying proofs. If set to the 
     ///        0 addess, then it will be assumed that verification will take place off chain.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
-    function initialize(IWorldIDGroups _worldId, uint8 _numPbhPerMonth) public reinitializer(1) {
+    function initialize(IWorldIDGroups worldId, uint8 _numPbhPerMonth) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
-        worldId = _worldId;
+        _worldId = worldId;
         numPbhPerMonth = _numPbhPerMonth;
 
         // Say that the contract is initialized.
         __setInitialized();
 
-        emit PBHVerifierImplInitialized(_worldId, _numPbhPerMonth);
+        emit PBHVerifierImplInitialized(worldId, _numPbhPerMonth);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -180,12 +181,12 @@ contract PBHVerifierImplV1 is WorldIDImpl {
         
         // If worldId address is set, proceed with on chain verification,
         // otherwise assume verification has been done off chain by the builder.
-        if (address(worldId) != address(0)) {
+        if (address(_worldId) != address(0)) {
             // We now generate the signal hash from the sender, nonce, and calldata
             uint256 signalHash = abi.encodePacked(sender, nonce, callData).hashToField();
 
             // We now verify the provided proof is valid and the user is verified by World ID
-            worldId.verifyProof(root, GROUP_ID, signalHash, nullifierHash, pbhExternalNullifier, proof);
+            _worldId.verifyProof(root, _GROUP_ID, signalHash, nullifierHash, pbhExternalNullifier, proof);
         }
 
         // We now record the user has done this, so they can't do it again (proof of uniqueness)
@@ -200,5 +201,22 @@ contract PBHVerifierImplV1 is WorldIDImpl {
             nullifierHash,
             proof
         );
+    }
+
+    /// @notice Sets the number of PBH transactions allowed per month.
+    /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
+    function setNumPbhPerMonth(uint8 _numPbhPerMonth) external onlyOwner {
+        assembly ("memory-safe") {
+            sstore(numPbhPerMonth.slot, _numPbhPerMonth)
+        }
+    }
+
+    /// @dev If the World ID address is set to 0, then it is assumed that verification will take place off chain.
+    /// @notice Sets the World ID instance that will be used for verifying proofs.
+    /// @param worldId The World ID instance that will be used for verifying proofs.
+    function setWorldId(address worldId) external onlyOwner {
+        assembly ("memory-safe") {
+            sstore(_worldId.slot, worldId)
+        }
     }
 }
