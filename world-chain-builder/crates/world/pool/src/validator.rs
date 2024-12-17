@@ -1,5 +1,4 @@
 //! World Chain transaction pool types
-use crate::bindings::IPBHValidator;
 use alloy_primitives::{Address, Bytes, U256};
 use alloy_rlp::Decodable;
 use alloy_sol_types::{SolCall, SolValue};
@@ -21,6 +20,7 @@ use super::error::{TransactionValidationError, WorldChainTransactionPoolInvalid}
 use super::ordering::WorldChainOrdering;
 use super::root::WorldChainRootValidator;
 use super::tx::{WorldChainPoolTransaction, WorldChainPooledTransaction};
+use crate::bindings::IPBHValidator;
 
 /// Type alias for World Chain transaction pool
 pub type WorldChainTransactionPool<Client, S> = Pool<
@@ -178,33 +178,35 @@ where
         &self,
         transaction: &mut Tx,
     ) -> Result<(), TransactionValidationError> {
-        if let Some(calldata) = self.is_valid_eip4337_pbh_bundle(transaction) {
-            for aggregated_ops in calldata._0 {
-                let mut buff = aggregated_ops.signature.as_ref();
-                let pbh_payloads = <Vec<PbhPayload>>::decode(&mut buff)
-                    .map_err(WorldChainTransactionPoolInvalid::from)
-                    .map_err(TransactionValidationError::from)?;
+        let Some(calldata) = self.is_valid_eip4337_pbh_bundle(transaction) else {
+            return Ok(());
+        };
 
-                pbh_payloads
-                    .par_iter()
-                    .zip(aggregated_ops.userOps)
-                    .try_for_each(|(payload, op)| {
-                        let signal = alloy_primitives::keccak256(
-                            <(Address, U256, Bytes) as SolValue>::abi_encode_packed(&(
-                                op.sender,
-                                op.nonce,
-                                op.callData,
-                            )),
-                        );
+        for aggregated_ops in calldata._0 {
+            let mut buff = aggregated_ops.signature.as_ref();
+            let pbh_payloads = <Vec<PbhPayload>>::decode(&mut buff)
+                .map_err(WorldChainTransactionPoolInvalid::from)
+                .map_err(TransactionValidationError::from)?;
 
-                        self.validate_pbh_payload(&payload, hash_to_field(signal.as_ref()))?;
+            pbh_payloads
+                .par_iter()
+                .zip(aggregated_ops.userOps)
+                .try_for_each(|(payload, op)| {
+                    let signal = alloy_primitives::keccak256(
+                        <(Address, U256, Bytes) as SolValue>::abi_encode_packed(&(
+                            op.sender,
+                            op.nonce,
+                            op.callData,
+                        )),
+                    );
 
-                        Ok::<(), TransactionValidationError>(())
-                    })?;
-            }
+                    self.validate_pbh_payload(&payload, hash_to_field(signal.as_ref()))?;
 
-            transaction.set_valid_pbh();
+                    Ok::<(), TransactionValidationError>(())
+                })?;
         }
+
+        transaction.set_valid_pbh();
 
         Ok(())
     }
@@ -240,9 +242,6 @@ where
 
 #[cfg(test)]
 pub mod tests {
-    use crate::ordering::WorldChainOrdering;
-    use crate::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
-    use crate::test_utils::{get_pbh_4337_transaction, get_pbh_transaction, world_chain_validator};
     use chrono::{TimeZone, Utc};
     use ethers_core::types::U256;
     use reth::transaction_pool::blobstore::InMemoryBlobStore;
@@ -254,6 +253,10 @@ pub mod tests {
     use semaphore::Field;
     use test_case::test_case;
     use world_chain_builder_pbh::payload::{PbhPayload, Proof};
+
+    use crate::ordering::WorldChainOrdering;
+    use crate::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
+    use crate::test_utils::{get_pbh_4337_transaction, get_pbh_transaction, world_chain_validator};
 
     #[tokio::test]
     async fn validate_pbh_transaction() {
