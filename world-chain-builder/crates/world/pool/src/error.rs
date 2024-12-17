@@ -27,6 +27,8 @@ pub enum WorldChainTransactionPoolInvalid {
     DuplicateTxHash,
     #[error("invalid root")]
     InvalidRoot,
+    #[error(transparent)]
+    MalformedSignature(#[from] alloy_rlp::Error),
 }
 
 #[derive(Debug, thiserror::Error)]

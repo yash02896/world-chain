@@ -596,14 +596,14 @@ pub struct WorldChainNoopValidator<Client, Tx>
 where
     Client: StateProviderFactory + BlockReaderIdExt,
 {
-    inner: WorldChainTransactionValidator<Client, Tx>,
+    _inner: WorldChainTransactionValidator<Client, Tx>,
 }
 
 impl WorldChainNoopValidator<WorldChainNoopProvider, WorldChainPooledTransaction> {
     pub fn new(
         inner: WorldChainTransactionValidator<WorldChainNoopProvider, WorldChainPooledTransaction>,
     ) -> Self {
-        Self { inner }
+        Self { _inner: inner }
     }
 }
 

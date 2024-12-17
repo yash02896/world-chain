@@ -13716,21 +13716,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "world-chain-builder-db"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "color-eyre",
- "reth-db",
- "reth-db-api",
- "reth-primitives",
- "revm-primitives",
- "semaphore",
- "serde",
- "tracing",
-]
-
-[[package]]
 name = "world-chain-builder-node"
 version = "0.1.0"
 dependencies = [
@@ -13768,7 +13753,6 @@ dependencies = [
  "semaphore",
  "serde_json",
  "tokio",
- "world-chain-builder-db",
  "world-chain-builder-payload",
  "world-chain-builder-pbh",
  "world-chain-builder-pool",
@@ -13827,15 +13811,19 @@ dependencies = [
  "alloy-consensus 0.7.3",
  "alloy-eips 0.7.3",
  "alloy-primitives",
+ "alloy-rlp",
  "alloy-rpc-types",
+ "alloy-signer-local",
  "alloy-sol-types",
  "bon",
  "chrono",
  "color-eyre",
  "ethers-core 2.0.14 (git+https://github.com/gakonst/ethers-rs)",
  "parking_lot",
+ "rayon",
  "reth",
  "reth-db",
+ "reth-e2e-test-utils",
  "reth-eth-wire-types",
  "reth-optimism-chainspec",
  "reth-optimism-node",
@@ -13849,7 +13837,6 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tracing",
- "world-chain-builder-db",
  "world-chain-builder-pbh",
 ]
 

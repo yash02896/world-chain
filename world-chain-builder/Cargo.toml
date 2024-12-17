@@ -16,7 +16,6 @@ members = [
     "crates/world/payload",
     "crates/world/rpc",
     "crates/world/pbh",
-    "crates/world/db",
     "crates/world/primitives",
     "crates/world/pool",
 ]
@@ -26,7 +25,6 @@ members = [
 [workspace.dependencies]
 # internal
 world-chain-builder-node = { path = "crates/world/node" }
-world-chain-builder-db = { path = "crates/world/db" }
 world-chain-builder-pbh = { path = "crates/world/pbh" }
 world-chain-builder-payload = { path = "crates/world/payload" }
 world-chain-builder-primitives = { path = "crates/world/primitives" }
@@ -146,3 +144,4 @@ serde_json = "1"
 rand = "0.8"
 reqwest = { version = "0.12", default-features = false }
 bon = "3.3.0"
+rayon = "1.10.0"

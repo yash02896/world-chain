@@ -20,6 +20,7 @@ use revm_primitives::{AccessList, Address, KzgSettings, TxKind, U256};
 
 pub trait WorldChainPoolTransaction: EthPoolTransaction {
     fn valid_pbh(&self) -> bool;
+    fn set_valid_pbh(&mut self);
     fn conditional_options(&self) -> Option<&ConditionalOptions>;
 }
 
@@ -91,6 +92,10 @@ impl WorldChainPoolTransaction for WorldChainPooledTransaction {
 
     fn conditional_options(&self) -> Option<&ConditionalOptions> {
         self.conditional_options.as_ref()
+    }
+
+    fn set_valid_pbh(&mut self) {
+        self.valid_pbh = true;
     }
 }
 
