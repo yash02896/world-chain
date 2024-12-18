@@ -5,6 +5,7 @@ import "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 
 contract MockWorldIDGroups is IWorldIDGroups {
     bool public verifyProofSuccess = true;
+
     event VerifyProofCalled(
         uint256 root,
         uint256 groupId,
