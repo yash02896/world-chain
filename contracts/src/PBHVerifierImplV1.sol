@@ -74,7 +74,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     event PBH(
         uint256 indexed root,
         address indexed sender,
-        uint256  nonce,
+        uint256 nonce,
         bytes callData,
         uint256 indexed pbhExternalNullifier,
         uint256 nullifierHash,
@@ -88,20 +88,20 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     //////////////////////////////////////////////////////////////////////////////
 
     /// @dev The World ID group ID (always 1)
-    uint256 internal immutable GROUP_ID = 1;
+    uint256 public immutable GROUP_ID = 1;
 
     /// @dev The World ID instance that will be used for verifying proofs
-    IWorldIDGroups internal worldId;
+    IWorldIDGroups public worldId;
 
     /// @dev Make this configurable
-    uint8 internal numPbhPerMonth;
+    uint8 public numPbhPerMonth;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Mappings                              ///
     //////////////////////////////////////////////////////////////////////////////
 
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
-    mapping(uint256 => bool) internal nullifierHashes;
+    mapping(uint256 => bool) public nullifierHashes;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
@@ -124,7 +124,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     /// @dev This function is explicitly not virtual as it does not make sense to override even when
     ///      upgrading. Create a separate initializer function instead.
     ///
-    /// @param _worldId The World ID instance that will be used for verifying proofs. If set to the 
+    /// @param _worldId The World ID instance that will be used for verifying proofs. If set to the
     ///        0 addess, then it will be assumed that verification will take place off chain.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     ///
@@ -156,6 +156,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
     ///                                  Functions                             ///
     //////////////////////////////////////////////////////////////////////////////
 
+    /// @notice Verifies a PBH proof.
     /// @param root The root of the Merkle tree that this proof is valid for.
     /// @param sender The sender of this particular transaction or UserOp.
     /// @param nonce Transaction/UserOp nonce.
@@ -177,7 +178,7 @@ contract PBHVerifierImplV1 is WorldIDImpl {
 
         // Verify the external nullifier
         PBHExternalNullifier.verify(pbhExternalNullifier, numPbhPerMonth);
-        
+
         // If worldId address is set, proceed with on chain verification,
         // otherwise assume verification has been done off chain by the builder.
         if (address(worldId) != address(0)) {
@@ -191,14 +192,6 @@ contract PBHVerifierImplV1 is WorldIDImpl {
         // We now record the user has done this, so they can't do it again (proof of uniqueness)
         nullifierHashes[nullifierHash] = true;
 
-        emit PBH(
-            root,
-            sender,
-            nonce,
-            callData,
-            pbhExternalNullifier,
-            nullifierHash,
-            proof
-        );
+        emit PBH(root, sender, nonce, callData, pbhExternalNullifier, nullifierHash, proof);
     }
 }

@@ -7,8 +7,8 @@ import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol"
 import {PBHVerifierImplV1 as PBHVerifierImpl} from "../src/PBHVerifierImplV1.sol";
 import {PBHVerifier} from "../src/PBHVerifier.sol";
 
-/// @title World ID Router Construction Tests
-/// @notice Contains tests for the WorldID router
+/// @title PBHVerifier Construction Tests
+/// @notice Contains tests for the PBH Verifier construction
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.

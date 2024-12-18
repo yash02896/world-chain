@@ -37,12 +37,10 @@ contract PBHVerifierRouting is PBHVerifierTest {
     function testTransferOwner(address newOwner) public {
         // Setup
         vm.assume(newOwner != nullAddress);
-        bytes memory transferCallData =
-            abi.encodeCall(Ownable2StepUpgradeable.transferOwnership, (newOwner));
+        bytes memory transferCallData = abi.encodeCall(Ownable2StepUpgradeable.transferOwnership, (newOwner));
         bytes memory ownerCallData = abi.encodeCall(OwnableUpgradeable.owner, ());
         bytes memory pendingOwnerCallData = abi.encodeCall(Ownable2StepUpgradeable.pendingOwner, ());
-        bytes memory acceptOwnerCallData =
-            abi.encodeCall(Ownable2StepUpgradeable.acceptOwnership, ());
+        bytes memory acceptOwnerCallData = abi.encodeCall(Ownable2StepUpgradeable.acceptOwnership, ());
 
         // Test
         assertCallSucceedsOn(pbhVerifierAddress, transferCallData, new bytes(0x0));
@@ -58,14 +56,11 @@ contract PBHVerifierRouting is PBHVerifierTest {
     }
 
     /// @notice Tests that only the pending owner can accept the ownership transfer.
-    function testCannotAcceptOwnershipAsNonPendingOwner(address newOwner, address notNewOwner)
-        public
-    {
+    function testCannotAcceptOwnershipAsNonPendingOwner(address newOwner, address notNewOwner) public {
         // Setup
         vm.assume(newOwner != nullAddress);
         vm.assume(notNewOwner != newOwner);
-        bytes memory callData =
-            abi.encodeCall(Ownable2StepUpgradeable.transferOwnership, (newOwner));
+        bytes memory callData = abi.encodeCall(Ownable2StepUpgradeable.transferOwnership, (newOwner));
         bytes memory acceptCallData = abi.encodeCall(Ownable2StepUpgradeable.acceptOwnership, ());
         bytes memory expectedError = encodeStringRevert("Ownable2Step: caller is not the new owner");
         assertCallSucceedsOn(pbhVerifierAddress, callData);
@@ -91,8 +86,7 @@ contract PBHVerifierRouting is PBHVerifierTest {
     function testCannotRenounceOwnershipAsOwner() public {
         // Setup
         bytes memory renounceData = abi.encodeCall(OwnableUpgradeable.renounceOwnership, ());
-        bytes memory errorData =
-            abi.encodeWithSelector(WorldIDImpl.CannotRenounceOwnership.selector);
+        bytes memory errorData = abi.encodeWithSelector(WorldIDImpl.CannotRenounceOwnership.selector);
 
         // Test
         assertCallFailsOn(pbhVerifierAddress, renounceData, errorData);
@@ -109,5 +103,4 @@ contract PBHVerifierRouting is PBHVerifierTest {
         // Test
         assertCallFailsOn(pbhVerifierAddress, callData, returnData);
     }
-
 }

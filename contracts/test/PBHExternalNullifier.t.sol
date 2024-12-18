@@ -12,16 +12,13 @@ contract PBHExternalNullifierLibTest is Test {
     uint8 constant MAX_PBH_PER_MONTH = 10;
 
     function testEncodeDecodeValidInput() public {
-        // Arrange
         uint8 pbhNonce = VALID_PBH_NONCE;
         uint8 month = VALID_MONTH;
         uint16 year = VALID_YEAR;
 
-        // Act
         uint256 encoded = PBHExternalNullifier.encode(pbhNonce, month, year);
         (uint8 decodedNonce, uint8 decodedMonth, uint16 decodedYear) = PBHExternalNullifier.decode(encoded);
 
-        // Assert
         assertEq(decodedNonce, pbhNonce, "Decoded nonce should match the original");
         assertEq(decodedMonth, month, "Decoded month should match the original");
         assertEq(decodedYear, year, "Decoded year should match the original");
@@ -41,7 +38,6 @@ contract PBHExternalNullifierLibTest is Test {
 
         uint256 encoded = PBHExternalNullifier.encode(VALID_PBH_NONCE, VALID_MONTH, VALID_YEAR);
 
-        // Act & Assert
         PBHExternalNullifier.verify(encoded, MAX_PBH_PER_MONTH);
     }
 

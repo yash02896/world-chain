@@ -8,7 +8,6 @@ import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol"
 import {WorldIDTest} from "@world-id-contracts/test/WorldIDTest.sol";
 import {PBHVerifierImplV1 as PBHVerifierImpl} from "../src/PBHVerifierImplV1.sol";
 import {PBHVerifier} from "../src/PBHVerifier.sol";
-// import {WorldIDTest} from "@world-id-contracts/test/WorldIdTest.sol";
 
 /// @title PBHVerifier Test.
 /// @notice Contains tests for the PBHVerifier.
@@ -22,25 +21,23 @@ contract PBHVerifierTest is WorldIDTest {
 
     PBHVerifier internal pbhVerifier;
     PBHVerifierImpl internal pbhVerifierImpl;
+    MockWorldIDGroups internal worldID;
 
     address internal pbhVerifierAddress;
     address internal pbhVerifierImplAddress;
+    address internal worldIDAddress;
 
-    IWorldIDGroups internal nullManager = IWorldIDGroups(address(0));
-    IWorldIDGroups internal thisWorldID;
-    
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice This function runs before every single test.
-    /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
-        thisWorldID = IWorldIDGroups(thisAddress);
-        makeNewPBHVerifier(thisWorldID);
+        makeNewPBHVerifier();
 
         // Label the addresses for better errors.
         hevm.label(thisAddress, "Sender");
+        hevm.label(worldIDAddress, "World ID");
         hevm.label(pbhVerifierAddress, "PBHVerifier");
         hevm.label(pbhVerifierImplAddress, "PBHVerifierImpl");
     }
@@ -49,24 +46,23 @@ contract PBHVerifierTest is WorldIDTest {
     ///                              TEST UTILITIES                             ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Initializes a new router.
+    /// @notice Initializes a new PBHVerifier.
     /// @dev It is constructed in the globals.
-    ///
-    /// @param initialGroupAddress The initial group's identity manager.
-    function makeNewPBHVerifier(IWorldIDGroups initialGroupAddress) public {
+    function makeNewPBHVerifier() public {
+        // IWorldIDGroups nullWorldID = IWorldIDGroups(address(0));
+        worldID = new MockWorldIDGroups();
+        worldIDAddress = address(worldID);
+
         pbhVerifierImpl = new PBHVerifierImpl();
         pbhVerifierImplAddress = address(pbhVerifierImpl);
 
-        // TODO: why does this not work?
-        // vm.expectEmit(true, true, true, true);
-
-        bytes memory initCallData = abi.encodeCall(PBHVerifierImpl.initialize, (initialGroupAddress, 30));
+        bytes memory initCallData = abi.encodeCall(PBHVerifierImpl.initialize, (worldID, 30));
 
         pbhVerifier = new PBHVerifier(pbhVerifierImplAddress, initCallData);
         pbhVerifierAddress = address(pbhVerifier);
     }
 
-    /// @notice Constructs a new router without initializing the delegate.
+    /// @notice Constructs a new PBHVerifier without initializing the delegate.
     /// @dev It is constructed in the globals.
     function makeUninitPBHVerifier() public {
         pbhVerifierImpl = new PBHVerifierImpl();
@@ -75,4 +71,3 @@ contract PBHVerifierTest is WorldIDTest {
         pbhVerifierAddress = address(pbhVerifier);
     }
 }
-
