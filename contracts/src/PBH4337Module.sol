@@ -19,7 +19,7 @@ contract PBHSafe4337Module is Safe4337Module {
         PBH_NONCE_KEY = _pbhNonceKey;
     }
 
-    // TODO: Fork the Safe4337Module dependency and add 'override' to _validateSignatures. It is manually updated currently
+    // TODO: Fork the Safe4337Module dependency and add 'override' to _validateSignatures. It is manually updated currently and CI will fail
     /**
      * @dev Validates that the user operation is correctly signed and returns an ERC-4337 packed validation data
      * of `validAfter || validUntil || authorizer`:
