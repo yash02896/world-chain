@@ -6,6 +6,7 @@ import {WorldIDProxy} from "@world-id-contracts/abstract/WorldIDProxy.sol";
 /// @title PBH Verifier
 /// @author Worldcoin
 /// @notice An implementation of an on chain PBH verifier.
+/// TODO: Inherit directly from ERC1967Proxy
 contract PBHVerifier is WorldIDProxy {
     ///////////////////////////////////////////////////////////////////////////////
     ///                    !!!! DO NOT ADD MEMBERS HERE !!!!                    ///
