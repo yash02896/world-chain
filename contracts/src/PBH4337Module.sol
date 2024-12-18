@@ -11,9 +11,6 @@ contract PBHSafe4337Module is Safe4337Module {
     uint256 constant ECDSA_SIGNATURE_LENGTH = 65;
     uint256 constant TIMESTAMP_BYTES = 12; // 6 bytes each for validAfter and validUntil
 
-    // TODO: Import from Parent Safe4337Module
-    bytes32 private constant SAFE_OP_TYPEHASH = 0xc03dfc11d8b10bf9cf703d558958c8c42777f785d998c62060d85a4f0ef6ea7f;
-
     address public immutable PBH_SIGNATURE_AGGREGATOR;
     uint192 public immutable PBH_NONCE_KEY;
 
