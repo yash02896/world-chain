@@ -100,4 +100,62 @@ contract Setup is Test {
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
         pbhEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, new bytes(0x0))));
     }
+
+    /// @notice Asserts that making the external call using `callData` on `target` succeeds.
+    ///
+    /// @param target The target at which to make the call.
+    /// @param callData The ABI-encoded call to a function.
+    function assertCallSucceedsOn(address target, bytes memory callData) public {
+        (bool status,) = target.call(callData);
+        assert(status);
+    }
+
+    /// @notice Asserts that making the external call using `callData` on `target` succeeds.
+    ///
+    /// @param target The target at which to make the call.
+    /// @param callData The ABI-encoded call to a function.
+    /// @param expectedReturnData The expected return data from the function.
+    function assertCallSucceedsOn(
+        address target,
+        bytes memory callData,
+        bytes memory expectedReturnData
+    ) public {
+        (bool status, bytes memory returnData) = target.call(callData);
+        assert(status);
+        assertEq(expectedReturnData, returnData);
+    }
+
+    /// @notice Asserts that making the external call using `callData` on `target` fails.
+    ///
+    /// @param target The target at which to make the call.
+    /// @param callData The ABI-encoded call to a function.
+    function assertCallFailsOn(address target, bytes memory callData) public {
+        (bool status,) = target.call(callData);
+        assert(!status);
+    }
+
+    /// @notice Asserts that making the external call using `callData` on `target` fails.
+    ///
+    /// @param target The target at which to make the call.
+    /// @param callData The ABI-encoded call to a function.
+    /// @param expectedReturnData The expected return data from the function.
+    function assertCallFailsOn(
+        address target,
+        bytes memory callData,
+        bytes memory expectedReturnData
+    ) public {
+        (bool status, bytes memory returnData) = target.call(callData);
+        assert(!status);
+        assertEq(expectedReturnData, returnData);
+    }
+
+    /// @notice Performs the low-level encoding of the `revert(string)` call's return data.
+    /// @dev Equivalent to `abi.encodeWithSignature("Error(string)", reason)`.
+    ///
+    /// @param reason The string reason for the revert.
+    ///
+    /// @return data The ABI encoding of the revert.
+    function encodeStringRevert(string memory reason) public pure returns (bytes memory data) {
+        return abi.encodeWithSignature("Error(string)", reason);
+    }
 }

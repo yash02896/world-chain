@@ -28,10 +28,11 @@ contract PBHVerifierVerify is Setup {
         uint256[8] proof
     );
 
+
     /// @notice Test payload for the PBHVerifier
     IPBHVerifier.PBHPayload testPayload = IPBHVerifier.PBHPayload({
         root: 1,
-        pbhExternalNullifier: 1,
+        pbhExternalNullifier: getValidPBHExternalNullifier(),
         nullifierHash: 1,
         proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
     });
@@ -39,7 +40,6 @@ contract PBHVerifierVerify is Setup {
     uint256 internal nonce = 1;
     address internal sender = address(0x123);
     bytes internal testCallData = hex"deadbeef";
-
 
     function getValidPBHExternalNullifier() public view returns (uint256) {
         uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
