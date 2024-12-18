@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-`
+pragma solidity ^0.8.20;
+
 import {Safe4337Module} from "@4337/Safe4337Module.sol";
 
 contract PBHSafe4337Module is Safe4337Module {
