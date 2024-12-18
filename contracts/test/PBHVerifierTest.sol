@@ -2,11 +2,11 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "./MockWorldIDGroups.sol";
+import "./mocks/MockWorldIDGroups.sol";
 import "../src/helpers/ByteHasher.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 import {WorldIDTest} from "@world-id-contracts/test/WorldIDTest.sol";
-import {PBHVerifierImplV1 as PBHVerifierImpl} from "../src/PBHVerifierImplV1.sol";
+import {PBHVerifierImplV1 as PBHVerifierImpl} from "../src/PBHVerifier.sol";
 import {PBHVerifier} from "../src/PBHVerifier.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 

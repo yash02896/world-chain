@@ -5,11 +5,13 @@ import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {IPBHVerifier} from "./interfaces/IPBHVerifier.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 
+/// @title PBH Signature Aggregator
+/// @author Worldcoin
+/// @notice This contract does not implement signature verification.
+///         It is instead used as an identifier for Priority User Operations on World Chain. 
+///         Smart Accounts that return the `PBHSignatureAggregator` as the authorizer in `validationData`
+///         will be considered as Priority User Operations, and will need to pack a World ID proof in the signature field.
 contract PBHSignatureAggregator is IAggregator {
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                                  ERRORS                                ///
-    //////////////////////////////////////////////////////////////////////////////
-
     /// @notice Thrown when the Hash of the UserOperations is not
     ///         in transient storage of the `PBHVerifier`.
     error InvalidUserOperations();
