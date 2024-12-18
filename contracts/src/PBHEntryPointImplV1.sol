@@ -2,12 +2,15 @@
 pragma solidity ^0.8.20;
 
 import {PBHVerifier} from "./PBHVerifier.sol";
+import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {IPBHEntryPoint} from "./interfaces/IPBHEntryPoint.sol";
 
 /// @title PBH Entry Point Implementation V1
 /// @dev This contract is an implementation of the PBH Entry Point.
 ///      It is used to verify the signature of a Priority User Operation, and Relaying Priority Bundles to the EIP-4337 Entry Point.
 /// @author Worldcoin
-contract PBHEntryPointImplV1 is PBHVerifier {
+contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -45,12 +48,22 @@ contract PBHEntryPointImplV1 is PBHVerifier {
     // these variables takes place. If reordering happens, a storage clash will occur (effectively a
     // memory safety error).
 
+    /// @notice Transient Storage key used to store Hashed UserOps.
+    /// @dev The PBHSignatureAggregator will cross reference this slot to ensure
+    ///     The PBHVerifier is always the proxy to the EntryPoint for PBH Bundles.
+    uint256 internal constant _HASHED_OPS_SLOT = 0;
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Constructs the contract.
-    constructor() PBHVerifier() {}
+    constructor() {
+        // When called in the constructor, this is called in the context of the implementation and
+        // not the proxy. Calling this thereby ensures that the contract cannot be spuriously
+        // initialized on its own.
+        _disableInitializers();
+    }
 
     /// @notice Initializes the contract.
     /// @dev Must be called exactly once.
@@ -69,6 +82,7 @@ contract PBHEntryPointImplV1 is PBHVerifier {
     function initialize(IWorldIDGroups __worldId, IEntryPoint __entryPoint, uint8 _numPbhPerMonth)
         external
         reinitializer(1)
+
     {
         _initialize(__worldId, __entryPoint, _numPbhPerMonth);
     }
@@ -104,7 +118,7 @@ contract PBHEntryPointImplV1 is PBHVerifier {
     /// @param hashedOps The hashed operations to validate.
     function validateSignaturesCallback(bytes32 hashedOps) external view virtual onlyProxy onlyInitialized {
         assembly ("memory-safe") {
-            if iszero(eq(tload(HASHED_OPS_SLOT), hashedOps)) { revert(0, 0) }
+            if iszero(eq(tload(_HASHED_OPS_SLOT), hashedOps)) { revert(0, 0) }
         }
     }
 }

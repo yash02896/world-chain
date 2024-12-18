@@ -6,22 +6,19 @@ import "@helpers/PBHExternalNullifier.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
 contract PBHExternalNullifierLibTest is Test {
-    uint8 constant VALID_PBH_NONCE = 5;
-    uint8 constant VALID_MONTH = 12;
-    uint16 constant VALID_YEAR = 2024;
-    uint8 constant MAX_PBH_PER_MONTH = 10;
+    uint8 public constant VALID_PBH_NONCE = 5;
+    uint8 public constant VALID_MONTH = 12;
+    uint16 public constant VALID_YEAR = 2024;
+    uint8 public constant MAX_PBH_PER_MONTH = 10;
 
     function testEncodeDecodeValidInput() public {
-        // Arrange
         uint8 pbhNonce = VALID_PBH_NONCE;
         uint8 month = VALID_MONTH;
         uint16 year = VALID_YEAR;
 
-        // Act
         uint256 encoded = PBHExternalNullifier.encode(pbhNonce, month, year);
         (uint8 decodedNonce, uint8 decodedMonth, uint16 decodedYear) = PBHExternalNullifier.decode(encoded);
 
-        // Assert
         assertEq(decodedNonce, pbhNonce, "Decoded nonce should match the original");
         assertEq(decodedMonth, month, "Decoded month should match the original");
         assertEq(decodedYear, year, "Decoded year should match the original");
@@ -41,7 +38,6 @@ contract PBHExternalNullifierLibTest is Test {
 
         uint256 encoded = PBHExternalNullifier.encode(VALID_PBH_NONCE, VALID_MONTH, VALID_YEAR);
 
-        // Act & Assert
         PBHExternalNullifier.verify(encoded, MAX_PBH_PER_MONTH);
     }
 

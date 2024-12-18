@@ -107,29 +107,12 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
     ///         World ID in a given month.
     uint8 public numPbhPerMonth;
 
-    /// @notice Transient Storage key used to store Hashed UserOps.
-    /// @dev The PBHSignatureAggregator will cross reference this slot to ensure
-    ///     The PBHVerifier is always the proxy to the EntryPoint for PBH Bundles.
-    uint256 internal constant _HASHED_OPS_SLOT = 0;
-
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Mappings                              ///
     //////////////////////////////////////////////////////////////////////////////
 
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) public nullifierHashes;
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                             INITIALIZATION                              ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Constructs the contract.
-    constructor() {
-        // When called in the constructor, this is called in the context of the implementation and
-        // not the proxy. Calling this thereby ensures that the contract cannot be spuriously
-        // initialized on its own.
-        _disableInitializers();
-    }
 
     /// @notice Initializes the contract.
     /// @dev Must be called exactly once.
@@ -147,7 +130,6 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
     /// @custom:reverts string If called more than once at the same initialisation number.
     function _initialize(IWorldIDGroups __worldId, IEntryPoint __entryPoint, uint8 _numPbhPerMonth)
         internal
-        reinitializer(1)
     {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
@@ -180,10 +162,11 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
     /// @param nonce Transaction/UserOp nonce.
     /// @param callData Transaction/UserOp call data.
     /// @param pbhPayload The PBH payload containing the proof data.
-    function _verifyPbhProof(address sender, uint256 nonce, bytes memory callData, PBHPayload memory pbhPayload)
-        internal
+    function verifyPbhProof(address sender, uint256 nonce, bytes memory callData, PBHPayload memory pbhPayload)
+        public
         virtual
         onlyInitialized
+        onlyProxy
     {
         // First, we make sure this nullifier has not been used before.
         if (nullifierHashes[pbhPayload.nullifierHash]) revert InvalidNullifier();
@@ -225,9 +208,7 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
     /// @notice Sets the number of PBH transactions allowed per month.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     function setNumPbhPerMonth(uint8 _numPbhPerMonth) external virtual onlyOwner onlyProxy onlyInitialized {
-        assembly ("memory-safe") {
-            sstore(numPbhPerMonth.slot, _numPbhPerMonth)
-        }
+        numPbhPerMonth = _numPbhPerMonth;
     }
 
     /// @dev If the World ID address is set to 0, then it is assumed that verification will take place off chain.

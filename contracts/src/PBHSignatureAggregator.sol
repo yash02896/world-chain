@@ -2,13 +2,14 @@
 pragma solidity ^0.8.20;
 
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {IPBHEntryPoint} from "./interfaces/IPBHEntryPoint.sol";
 import {IPBHVerifier} from "./interfaces/IPBHVerifier.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 
 /// @title PBH Signature Aggregator
 /// @author Worldcoin
 /// @notice This contract does not implement signature verification.
-///         It is instead used as an identifier for Priority User Operations on World Chain. 
+///         It is instead used as an identifier for Priority User Operations on World Chain.
 ///         Smart Accounts that return the `PBHSignatureAggregator` as the authorizer in `validationData`
 ///         will be considered as Priority User Operations, and will need to pack a World ID proof in the signature field.
 contract PBHSignatureAggregator is IAggregator {
@@ -17,10 +18,10 @@ contract PBHSignatureAggregator is IAggregator {
     error InvalidUserOperations();
 
     /// @notice The PBHVerifier contract.
-    IPBHVerifier internal immutable _pbhVerifier;
+    IPBHEntryPoint internal immutable _pbhEntryPoint;
 
-    constructor(address __pbhVerifier) {
-        _pbhVerifier = IPBHVerifier(__pbhVerifier);
+    constructor(address __pbhEntryPoint) {
+        _pbhEntryPoint = IPBHEntryPoint(__pbhEntryPoint);
     }
 
     /**
@@ -30,7 +31,7 @@ contract PBHSignatureAggregator is IAggregator {
      */
     function validateSignatures(PackedUserOperation[] calldata userOps, bytes calldata) external view {
         bytes memory encoded = abi.encode(userOps);
-        try _pbhVerifier.validateSignaturesCallback(keccak256(encoded)) {}
+        try _pbhEntryPoint.validateSignaturesCallback(keccak256(encoded)) {}
         catch {
             revert InvalidUserOperations();
         }

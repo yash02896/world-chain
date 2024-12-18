@@ -4,94 +4,100 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {MockWorldIDGroups} from "./mocks/MockWorldIDGroups.sol";
-import {IPBHVerifier} from "../src/interfaces/IPBHVerifier.sol";
-import {PBHVerifierImplV1} from "../src/PBHVerifierImplV1.sol";
-import {PBHVerifier} from "../src/PBHVerifier.sol";
+import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
 import {PBHSignatureAggregator} from "../src/PBHSignatureAggregator.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
-import {PBHVerifierTest} from "./PBHVerifierTest.sol";
-import {MockSafe} from "./mocks/MockSafe.sol";
+import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
+import {MockAccount} from "./mocks/MockAccount.sol";
+import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
+import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 
+/// @title Test Setup Contract.
+/// @author Worldcoin
+/// @dev This test suite tests both the proxy and the functionality of the underlying implementation
+///      so as to test everything in the context of how it will be deployed.
 contract Setup is Test {
-
     ///////////////////////////////////////////////////////////////////////////////
     ///                                TEST DATA                                ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice The Deployed EntryPoint on Ethereum Mainnet.
-    IEntryPoint public immutable entryPoint = IEntryPoint(address(0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789));
-
-    /// @notice Worldcoin Contracts
-    IPBHVerifier public pbhVerifier;
-    IAggregator public pbhSignatureAggregator;
-    IWorldIDGroups public worldIDGroups;
+    /// @notice The 4337 Entry Point on Ethereum Mainnet.
+    IEntryPoint internal entryPoint = IEntryPoint(address(0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789));
+    /// @notice The PBHEntryPoint contract.
+    IPBHEntryPoint public pbhEntryPoint;
+    /// @notice The PBHSignatureAggregator contract.
+    IAggregator public pbhAggregator;
+    /// @notice No-op account.
     IAccount public safe;
+    /// @notice The Mock World ID Groups contract.
+    IWorldIDGroups public worldIDGroups;
 
-    /// @notice The VM contract.
-    Vm public vm;
-
-    /// @notice Test Fixture Data
-    PackedUserOperation[] public testOps;
-
+    address public pbhEntryPointImpl;
     ///////////////////////////////////////////////////////////////////////////////
-    ///                                  Setup                                  ///
+    ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
 
+    /// @notice This function runs before every single test.
+    /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
-        worldIDGroups = IWorldIDGroups(worldIDGroups());
-        pbhVerifier = IPBHVerifier(pbhVerifier(address(worldIDGroups), address(entryPoint), 100));
-        pbhSignatureAggregator = IAggregator(pbhSignatureAggregator(address(pbhVerifier)));
-        safe = IAccount(mockSafe(address(pbhSignatureAggregator)));
+        deployWorldIDGroups();
+        deployPBHEntryPoint(worldIDGroups, entryPoint);
+        deployPBHSignatureAggregator(address(pbhEntryPoint));
+        deploySafeAccount(address(pbhAggregator));
 
-        vm = new Vm(HEVM_ADDRESS);
-        vm.deal(safe, type(uint128).max);
+        // Label the addresses for better errors.
+        vm.label(address(entryPoint), "ERC-4337 Entry Point");
+        vm.label(address(pbhAggregator), "PBH Signature Aggregator");
+        vm.label(address(safe), "Safe Account");
+        vm.label(address(worldIDGroups), "Mock World ID Groups");
+        vm.label(address(pbhEntryPoint), "PBH Entry Point");
+        vm.label(pbhEntryPointImpl, "PBH Entry Point Impl V1");
+
+        vm.deal(address(this), type(uint128).max);
+        vm.deal(address(safe), type(uint128).max);
     }
 
-    function _pbhVerifierImpl() internal view returns (address) {
-        return new PBHVerifierImplV1();
-    }
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                              TEST UTILITIES                             ///
+    ///////////////////////////////////////////////////////////////////////////////
 
-    function _mockSafe(address pbhAggregator) internal view returns (address) {
-        return new MockSafe(pbhAggregator);
-    }
-
-    function _pbhSignatureAggregator(address pbhVerifier) internal view returns (address) {
-        return new PBHSignatureAggregator(pbhVerifier);
-    }
-
-    function _pbhVerifier(address worldIDGroups, address entryPoint, uint256 maxOperations)
-        internal
-        view
-        returns (address)
-    {
+    /// @notice Initializes a new router.
+    /// @dev It is constructed in the globals.
+    ///
+    /// @param initialGroupAddress The initial group's identity manager.
+    /// @param initialEntryPoint The initial entry point.
+    function deployPBHEntryPoint(IWorldIDGroups initialGroupAddress, IEntryPoint initialEntryPoint) public {
+        pbhEntryPointImpl = address(new PBHEntryPointImplV1());
         bytes memory initCallData =
-            abi.encodeCall(PBHVerifierImpl.initialize, (worldIDGroups, entryPoint, maxOperations));
-        return new PBHVerifier(pbhVerifierImpl(), initCallData);
+            abi.encodeCall(PBHEntryPointImplV1.initialize, (initialGroupAddress, initialEntryPoint, 30));
+        // vm.expectEmit(true, true, true, true);
+        pbhEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, initCallData)));
     }
 
-    function _worldIDGroups() internal view returns (address) {
-        return new MockWorldIDGroups();
+    /// @notice Initializes a new PBHSignatureAggregator.
+    /// @dev It is constructed in the globals.
+    function deployPBHSignatureAggregator(address _pbhEntryPoint) public {
+        pbhAggregator = new PBHSignatureAggregator(_pbhEntryPoint);
     }
 
-    function _mockUserOperations() internal view returns (PackedUserOperation[] memory) {
-//         struct PackedUserOperation {
-//     address sender;
-//     uint256 nonce;
-//     bytes initCode;
-//     bytes callData;
-//     bytes32 accountGasLimits;
-//     uint256 preVerificationGas;
-//     bytes32 gasFees;
-//     bytes paymasterAndData;
-//     bytes signature;
-// }
-        return new PackedUserOperation[](0);
+    /// @notice Initializes a new safe account.
+    /// @dev It is constructed in the globals.
+    function deploySafeAccount(address _pbhSignatureAggregator) public {
+        safe = new MockAccount(_pbhSignatureAggregator);
     }
 
-    function _mockUserOperation() internal view returns (PackedUserOperation memory) {
-        
-        return PackedUserOperation(address(safe), 0, new bytes(0), bytes(0), 0, 0, 0, "", "");
+    /// @notice Initializes a new World ID Groups contract.
+    /// @dev It is constructed in the globals.
+    function deployWorldIDGroups() public {
+        worldIDGroups = new MockWorldIDGroups();
+    }
+
+    /// @notice Constructs a new router without initializing the delegate.
+    /// @dev It is constructed in the globals.
+    function makeUninitPBHEntryPoint() public {
+        pbhEntryPointImpl = address(new PBHEntryPointImplV1());
+        pbhEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, new bytes(0x0))));
     }
 }
