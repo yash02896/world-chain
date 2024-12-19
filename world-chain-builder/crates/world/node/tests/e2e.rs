@@ -38,11 +38,10 @@ use semaphore::{hash_to_field, Field};
 use world_chain_builder_node::args::{ExtArgs, WorldChainBuilderArgs};
 use world_chain_builder_node::node::WorldChainBuilder;
 use world_chain_builder_pbh::date_marker::DateMarker;
-use world_chain_builder_pbh::external_nullifier::{ExternalNullifier, Prefix};
+use world_chain_builder_pbh::external_nullifier::ExternalNullifier;
 use world_chain_builder_pbh::payload::{PbhPayload, Proof};
 use world_chain_builder_pool::ordering::WorldChainOrdering;
 use world_chain_builder_pool::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
-use world_chain_builder_pool::test_utils;
 use world_chain_builder_pool::tx::WorldChainPooledTransaction;
 use world_chain_builder_pool::validator::WorldChainTransactionValidator;
 use world_chain_builder_primitives::transaction::WorldChainPooledTransactionsElement;
@@ -163,7 +162,7 @@ impl WorldChainBuilderTestContext {
     pub async fn raw_pbh_tx_bytes(
         &self,
         signer: PrivateKeySigner,
-        pbh_nonce: u16,
+        pbh_nonce: u8,
         tx_nonce: u64,
     ) -> Bytes {
         let tx = tx(DEV_CHAIN_ID, None, tx_nonce);
@@ -193,10 +192,10 @@ impl WorldChainBuilderTestContext {
         identity: Address,
         tx_hash: &[u8],
         time: chrono::DateTime<Utc>,
-        pbh_nonce: u16,
+        pbh_nonce: u8,
     ) -> PbhPayload {
         let external_nullifier =
-            ExternalNullifier::new(Prefix::V1, DateMarker::from(time), pbh_nonce).to_string();
+            ExternalNullifier::with_date_marker(DateMarker::from(time), pbh_nonce).to_string();
 
         self.create_proof(identity, external_nullifier, tx_hash)
     }
@@ -216,7 +215,7 @@ impl WorldChainBuilderTestContext {
         let merkle_proof = self.tree.proof(*idx);
 
         let signal_hash = hash_to_field(signal);
-        let external_nullifier_hash = external_nullifier.hash();
+        let external_nullifier_hash = external_nullifier.to_word();
         let nullifier_hash = generate_nullifier_hash(&id, external_nullifier_hash);
 
         let proof = Proof(

@@ -37,7 +37,7 @@ where
 {
     inner: OpTransactionValidator<Client, Tx>,
     root_validator: WorldChainRootValidator<Client>,
-    num_pbh_txs: u16,
+    num_pbh_txs: u8,
     pbh_validator: Address,
     pbh_signature_aggregator: Address,
 }
@@ -51,7 +51,7 @@ where
     pub fn new(
         inner: OpTransactionValidator<Client, Tx>,
         root_validator: WorldChainRootValidator<Client>,
-        num_pbh_txs: u16,
+        num_pbh_txs: u8,
         pbh_validator: Address,
         pbh_signature_aggregator: Address,
     ) -> Self {
@@ -100,7 +100,7 @@ where
         ];
         if valid_dates
             .iter()
-            .all(|d| pbh_payload.external_nullifier.date_marker != *d)
+            .all(|d| pbh_payload.external_nullifier.date_marker() != *d)
         {
             return Err(WorldChainTransactionPoolInvalid::InvalidExternalNullifierPeriod.into());
         }
@@ -125,7 +125,7 @@ where
             payload.root,
             payload.nullifier_hash,
             signal,
-            payload.external_nullifier.hash(),
+            payload.external_nullifier.to_word(),
             &payload.proof.0,
             TREE_DEPTH,
         );
@@ -344,11 +344,10 @@ pub mod tests {
 
         let (user_op, proof) = test_utils::user_op()
             .acc(USER_ACCOUNT)
-            .external_nullifier(
-                ExternalNullifier::builder()
-                    .date_marker(DateMarker::from(chrono::Utc::now()))
-                    .build(),
-            )
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(chrono::Utc::now()),
+                0,
+            ))
             .call();
         let bundle = test_utils::pbh_bundle(vec![user_op], vec![proof]);
         let calldata = bundle.abi_encode();
@@ -376,11 +375,10 @@ pub mod tests {
         // NOTE: We're ignoring the proof here
         let (user_op, _proof) = test_utils::user_op()
             .acc(USER_ACCOUNT)
-            .external_nullifier(
-                ExternalNullifier::builder()
-                    .date_marker(DateMarker::from(chrono::Utc::now()))
-                    .build(),
-            )
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(chrono::Utc::now()),
+                0,
+            ))
             .call();
 
         let bundle = test_utils::pbh_bundle(vec![user_op], vec![]);
@@ -412,11 +410,10 @@ pub mod tests {
         // NOTE: We're ignoring the proof here
         let (user_op, _proof) = test_utils::user_op()
             .acc(USER_ACCOUNT)
-            .external_nullifier(
-                ExternalNullifier::builder()
-                    .date_marker(DateMarker::from(chrono::Utc::now()))
-                    .build(),
-            )
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(chrono::Utc::now()),
+                0,
+            ))
             .call();
 
         let bundle = test_utils::pbh_bundle(vec![user_op], vec![]);
@@ -453,11 +450,10 @@ pub mod tests {
         // NOTE: We're ignoring the proof here
         let (user_op, proof) = test_utils::user_op()
             .acc(USER_ACCOUNT)
-            .external_nullifier(
-                ExternalNullifier::builder()
-                    .date_marker(DateMarker::from(month_in_the_past))
-                    .build(),
-            )
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(month_in_the_past),
+                0,
+            ))
             .call();
 
         let bundle = test_utils::pbh_bundle(vec![user_op], vec![proof]);
@@ -494,11 +490,10 @@ pub mod tests {
         // NOTE: We're ignoring the proof here
         let (user_op, proof) = test_utils::user_op()
             .acc(USER_ACCOUNT)
-            .external_nullifier(
-                ExternalNullifier::builder()
-                    .date_marker(DateMarker::from(month_in_the_future))
-                    .build(),
-            )
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(month_in_the_future),
+                0,
+            ))
             .call();
 
         let bundle = test_utils::pbh_bundle(vec![user_op], vec![proof]);
@@ -531,12 +526,10 @@ pub mod tests {
 
         let (user_op, proof) = test_utils::user_op()
             .acc(USER_ACCOUNT)
-            .external_nullifier(
-                ExternalNullifier::builder()
-                    .date_marker(DateMarker::from(chrono::Utc::now()))
-                    .nonce(255)
-                    .build(),
-            )
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(chrono::Utc::now()),
+                255,
+            ))
             .call();
 
         let bundle = test_utils::pbh_bundle(vec![user_op], vec![proof]);
@@ -626,15 +619,15 @@ pub mod tests {
         assert!(res.is_err());
     }
 
-    #[test_case("v1-012025-0")]
-    #[test_case("v1-012025-1")]
-    #[test_case("v1-012025-29")]
-    fn validate_external_nullifier_valid(external_nullifier: &str) {
+    #[test_case(ExternalNullifier::v1(1, 2025, 0) ; "01-2025-0")]
+    #[test_case(ExternalNullifier::v1(1, 2025, 1) ; "01-2025-1")]
+    #[test_case(ExternalNullifier::v1(1, 2025, 29) ; "01-2025-29")]
+    fn validate_external_nullifier_valid(external_nullifier: ExternalNullifier) {
         let validator = world_chain_validator();
         let date = chrono::Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
 
         let payload = PbhPayload {
-            external_nullifier: external_nullifier.parse().unwrap(),
+            external_nullifier,
             nullifier_hash: Field::ZERO,
             root: Field::ZERO,
             proof: Default::default(),
@@ -645,14 +638,14 @@ pub mod tests {
             .unwrap();
     }
 
-    #[test_case("v1-012025-0", "2024-12-31 23:59:30Z" ; "a minute early")]
-    #[test_case("v1-012025-0", "2025-02-01 00:00:30Z" ; "a minute late")]
-    fn validate_external_nullifier_at_time(external_nullifier: &str, time: &str) {
+    #[test_case(ExternalNullifier::v1(1, 2025, 0), "2024-12-31 23:59:30Z" ; "a minute early")]
+    #[test_case(ExternalNullifier::v1(1, 2025, 0), "2025-02-01 00:00:30Z" ; "a minute late")]
+    fn validate_external_nullifier_at_time(external_nullifier: ExternalNullifier, time: &str) {
         let validator = world_chain_validator();
         let date: chrono::DateTime<Utc> = time.parse().unwrap();
 
         let payload = PbhPayload {
-            external_nullifier: external_nullifier.parse().unwrap(),
+            external_nullifier,
             nullifier_hash: Field::ZERO,
             root: Field::ZERO,
             proof: Default::default(),
