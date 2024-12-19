@@ -14,7 +14,7 @@ contract PBHSafe4337Module is Safe4337Module {
     address public immutable PBH_SIGNATURE_AGGREGATOR;
     uint192 public immutable PBH_NONCE_KEY;
 
-    constructor(address _safe, address _pbhSignatureAggregator, uint192 _pbhNonceKey) Safe4337Module(_safe) {
+    constructor(address entryPoint, address _pbhSignatureAggregator, uint192 _pbhNonceKey) Safe4337Module(entryPoint) {
         PBH_SIGNATURE_AGGREGATOR = _pbhSignatureAggregator;
         PBH_NONCE_KEY = _pbhNonceKey;
     }
@@ -61,6 +61,7 @@ contract PBHSafe4337Module is Safe4337Module {
         // If the signature length is greater than the expected length, then we know that the bundler appended the proof
         // We need to remove the proof from the signature before validation
         if (key == PBH_NONCE_KEY && userOp.signature.length > expectedLength) {
+            // TODO: Check for valid proof size
             signatures = userOp.signature[0:expectedLength];
         }
 
