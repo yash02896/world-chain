@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
+
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
@@ -25,7 +26,11 @@ contract TestUtils {
         return signature;
     }
 
-    function createUOTestData(address sender, bytes memory proofData) public pure returns (PackedUserOperation[] memory) {
+    function createUOTestData(address sender, bytes memory proofData)
+        public
+        pure
+        returns (PackedUserOperation[] memory)
+    {
         bytes memory signature = encodeSignature(proofData);
         PackedUserOperation[] memory uOps = new PackedUserOperation[](2);
         PackedUserOperation memory baseUO = PackedUserOperation({
@@ -45,7 +50,11 @@ contract TestUtils {
         return uOps;
     }
 
-    function createAggregatedUOTestData(IAggregator aggregator, address sender, bytes memory proofData) public pure returns (PackedUserOperation[] memory) {
+    function createAggregatedUOTestData(IAggregator aggregator, address sender, bytes memory proofData)
+        public
+        pure
+        returns (PackedUserOperation[] memory)
+    {
         bytes memory signature = encodeSignature(proofData);
         PackedUserOperation[] memory uOps = new PackedUserOperation[](2);
         PackedUserOperation memory baseUO = PackedUserOperation({
