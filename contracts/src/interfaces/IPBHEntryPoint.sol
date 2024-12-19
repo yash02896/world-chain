@@ -10,6 +10,6 @@ interface IPBHEntryPoint is IPBHVerifier {
         IEntryPoint.UserOpsPerAggregator[] calldata opsPerAggregator,
         address payable beneficiary
     ) external;
-    function initialize(IWorldIDGroups __worldId, IEntryPoint __entryPoint, uint8 _numPbhPerMonth) external;
+    function initialize(IWorldIDGroups worldId, IEntryPoint entryPoint, uint8 _numPbhPerMonth) external;
     function validateSignaturesCallback(bytes32 hashedOps) external view;
 }
