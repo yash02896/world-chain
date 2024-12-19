@@ -83,10 +83,6 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
         uint256[8] proof
     );
 
-    event PBHVerifierImplInitialized(
-        IWorldIDGroups indexed worldId, IEntryPoint indexed entryPoint, uint8 indexed numPbhPerMonth
-    );
-
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Vars                                  ///
     //////////////////////////////////////////////////////////////////////////////
@@ -113,46 +109,6 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
 
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) public nullifierHashes;
-
-    /// @notice Initializes the contract.
-    /// @dev Must be called exactly once.
-    /// @dev This is marked `reinitializer()` to allow for updated initialisation steps when working
-    ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
-    ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
-    ///      replaced by use of setters.
-    /// @dev This function is explicitly not virtual as it does not make sense to override even when
-    ///      upgrading. Create a separate initializer function instead.
-    ///
-    /// @param __worldId The World ID instance that will be used for verifying proofs. If set to the
-    ///        0 addess, then it will be assumed that verification will take place off chain.
-    /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
-    ///
-    /// @custom:reverts string If called more than once at the same initialisation number.
-    function _initialize(IWorldIDGroups __worldId, IEntryPoint __entryPoint, uint8 _numPbhPerMonth)
-        internal
-    {
-        // First, ensure that all of the parent contracts are initialised.
-        __delegateInit();
-
-        _worldId = __worldId;
-        _entryPoint = __entryPoint;
-        numPbhPerMonth = _numPbhPerMonth;
-
-        // Say that the contract is initialized.
-        __setInitialized();
-
-        emit PBHVerifierImplInitialized(__worldId, __entryPoint, _numPbhPerMonth);
-    }
-
-    /// @notice Responsible for initialising all of the supertypes of this contract.
-    /// @dev Must be called exactly once.
-    /// @dev When adding new superclasses, ensure that any initialization that they need to perform
-    ///      is accounted for here.
-    ///
-    /// @custom:reverts string If called more than once.
-    function __delegateInit() internal virtual onlyInitializing {
-        __WorldIDImpl_init();
-    }
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Functions                             ///

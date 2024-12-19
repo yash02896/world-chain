@@ -28,7 +28,6 @@ contract PBHVerifierVerify is Setup {
         uint256[8] proof
     );
 
-
     /// @notice Test payload for the PBHVerifier
     IPBHVerifier.PBHPayload testPayload = IPBHVerifier.PBHPayload({
         root: 1,
@@ -49,22 +48,24 @@ contract PBHVerifierVerify is Setup {
 
     /// @notice Test that a valid proof is verified correctly.
     function testVerifyPbhProofSuccess() public {
-        uint256 pbhExternalNullifier = getValidPBHExternalNullifier();
-
         // Expect revert when proof verification fails
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(false);
         vm.expectRevert("Proof verification failed");
-        pbhEntryPoint.verifyPbhProof(
-            sender, nonce, testCallData, testPayload
-        );
+        pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
 
         // Now expect success
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
         vm.expectEmit(true, true, true, true);
-        emit PBH(testPayload.root, sender, nonce, testCallData, testPayload.pbhExternalNullifier, testPayload.nullifierHash, testPayload.proof);
-        pbhEntryPoint.verifyPbhProof(
-            sender, nonce, testCallData, testPayload
+        emit PBH(
+            testPayload.root,
+            sender,
+            nonce,
+            testCallData,
+            testPayload.pbhExternalNullifier,
+            testPayload.nullifierHash,
+            testPayload.proof
         );
+        pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
 
         // Make sure the nullifier hash is marked as used
         bool used = pbhEntryPoint.nullifierHashes(testPayload.nullifierHash);
@@ -72,8 +73,6 @@ contract PBHVerifierVerify is Setup {
 
         // Now try to use the same nullifier hash again
         vm.expectRevert(PBHVerifier.InvalidNullifier.selector);
-        pbhEntryPoint.verifyPbhProof(
-            sender, nonce, testCallData, testPayload
-        );
+        pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
     }
 }

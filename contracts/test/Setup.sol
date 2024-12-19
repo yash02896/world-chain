@@ -35,13 +35,15 @@ contract Setup is Test {
     IWorldIDGroups public worldIDGroups;
 
     address public pbhEntryPointImpl;
+    address public immutable thisAddress = address(this);
+    address public constant nullAddress = address(0);
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
-    function setUp() public {
+    function setUp() public virtual {
         deployWorldIDGroups();
         deployPBHEntryPoint(worldIDGroups, entryPoint);
         deployPBHSignatureAggregator(address(pbhEntryPoint));
@@ -72,7 +74,8 @@ contract Setup is Test {
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
         bytes memory initCallData =
             abi.encodeCall(PBHEntryPointImplV1.initialize, (initialGroupAddress, initialEntryPoint, 30));
-        // vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, true, true);
+        emit PBHEntryPointImplV1.PBHEntryPointImplInitialized(initialGroupAddress, initialEntryPoint, 30);
         pbhEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, initCallData)));
     }
 
@@ -115,11 +118,7 @@ contract Setup is Test {
     /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
     /// @param expectedReturnData The expected return data from the function.
-    function assertCallSucceedsOn(
-        address target,
-        bytes memory callData,
-        bytes memory expectedReturnData
-    ) public {
+    function assertCallSucceedsOn(address target, bytes memory callData, bytes memory expectedReturnData) public {
         (bool status, bytes memory returnData) = target.call(callData);
         assert(status);
         assertEq(expectedReturnData, returnData);
@@ -139,11 +138,7 @@ contract Setup is Test {
     /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
     /// @param expectedReturnData The expected return data from the function.
-    function assertCallFailsOn(
-        address target,
-        bytes memory callData,
-        bytes memory expectedReturnData
-    ) public {
+    function assertCallFailsOn(address target, bytes memory callData, bytes memory expectedReturnData) public {
         (bool status, bytes memory returnData) = target.call(callData);
         assert(!status);
         assertEq(expectedReturnData, returnData);

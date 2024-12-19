@@ -48,6 +48,18 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
     // these variables takes place. If reordering happens, a storage clash will occur (effectively a
     // memory safety error).
 
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  Events                                ///
+    //////////////////////////////////////////////////////////////////////////////
+
+    event PBHEntryPointImplInitialized(
+        IWorldIDGroups indexed worldId, IEntryPoint indexed entryPoint, uint8 indexed numPbhPerMonth
+    );
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  Vars                                  ///
+    //////////////////////////////////////////////////////////////////////////////
+
     /// @notice Transient Storage key used to store Hashed UserOps.
     /// @dev The PBHSignatureAggregator will cross reference this slot to ensure
     ///     The PBHVerifier is always the proxy to the EntryPoint for PBH Bundles.
@@ -82,10 +94,32 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
     function initialize(IWorldIDGroups __worldId, IEntryPoint __entryPoint, uint8 _numPbhPerMonth)
         external
         reinitializer(1)
-
     {
-        _initialize(__worldId, __entryPoint, _numPbhPerMonth);
+        // First, ensure that all of the parent contracts are initialised.
+        __delegateInit();
+
+        _worldId = __worldId;
+        _entryPoint = __entryPoint;
+        numPbhPerMonth = _numPbhPerMonth;
+
+        // Say that the contract is initialized.
+        __setInitialized();
+        emit PBHEntryPointImplInitialized(__worldId, __entryPoint, _numPbhPerMonth);
     }
+
+    /// @notice Responsible for initialising all of the supertypes of this contract.
+    /// @dev Must be called exactly once.
+    /// @dev When adding new superclasses, ensure that any initialization that they need to perform
+    ///      is accounted for here.
+    ///
+    /// @custom:reverts string If called more than once.
+    function __delegateInit() internal virtual onlyInitializing {
+        __WorldIDImpl_init();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  Functions                             ///
+    //////////////////////////////////////////////////////////////////////////////
 
     /// Execute a batch of UserOperation with Aggregators
     /// @param opsPerAggregator - The operations to execute, grouped by aggregator (or address(0) for no-aggregator accounts).
@@ -121,4 +155,6 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
             if iszero(eq(tload(_HASHED_OPS_SLOT), hashedOps)) { revert(0, 0) }
         }
     }
+
+    // TODO: PBH Multicall Entry Point
 }

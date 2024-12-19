@@ -16,8 +16,10 @@ interface IPBHVerifier {
         uint256 nullifierHash;
         uint256[8] proof;
     }
+
     function nullifierHashes(uint256) external view returns (bool);
-    function verifyPbhProof(address sender, uint256 nonce, bytes memory callData, PBHPayload memory pbhPayload) external;
+    function verifyPbhProof(address sender, uint256 nonce, bytes memory callData, PBHPayload memory pbhPayload)
+        external;
     function setNumPbhPerMonth(uint8 _numPbhPerMonth) external;
     function setWorldId(address worldId) external;
 }
