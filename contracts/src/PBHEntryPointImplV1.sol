@@ -86,26 +86,26 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
     /// @dev This function is explicitly not virtual as it does not make sense to override even when
     ///      upgrading. Create a separate initializer function instead.
     ///
-    /// @param worldId The World ID instance that will be used for verifying proofs. If set to the
+    /// @param _worldId The World ID instance that will be used for verifying proofs. If set to the
     ///        0 addess, then it will be assumed that verification will take place off chain.
-    /// @param entryPoint The ERC-4337 Entry Point.
+    /// @param _entryPoint The ERC-4337 Entry Point.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
-    function initialize(IWorldIDGroups worldId, IEntryPoint entryPoint, uint8 _numPbhPerMonth)
+    function initialize(IWorldIDGroups _worldId, IEntryPoint _entryPoint, uint8 _numPbhPerMonth)
         external
         reinitializer(1)
     {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
-        _worldId = worldId;
-        _entryPoint = entryPoint;
+        worldId = _worldId;
+        entryPoint = _entryPoint;
         numPbhPerMonth = _numPbhPerMonth;
 
         // Say that the contract is initialized.
         __setInitialized();
-        emit PBHEntryPointImplInitialized(worldId, entryPoint, _numPbhPerMonth);
+        emit PBHEntryPointImplInitialized(_worldId, _entryPoint, _numPbhPerMonth);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -137,7 +137,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
         for (uint256 i = 0; i < opsPerAggregator.length; ++i) {
             PBHPayload[] memory pbhPayloads = abi.decode(opsPerAggregator[i].signature, (PBHPayload[]));
             for (uint256 j = 0; j < pbhPayloads.length; ++j) {
-                verifyPbhProof(
+                verifyPbh(
                     opsPerAggregator[i].userOps[j].sender,
                     opsPerAggregator[i].userOps[j].nonce,
                     opsPerAggregator[i].userOps[j].callData,
@@ -146,7 +146,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
             }
         }
 
-        _entryPoint.handleAggregatedOps(opsPerAggregator, beneficiary);
+        entryPoint.handleAggregatedOps(opsPerAggregator, beneficiary);
     }
 
     /// @notice Validates the hashed operations is the same as the hash transiently stored.

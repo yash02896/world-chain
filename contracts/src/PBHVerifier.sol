@@ -68,9 +68,18 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
     ///
     /// @param sender The sender of this particular transaction or UserOp.
     /// @param nonce Transaction/UserOp nonce.
-    /// @param callData Transaction/UserOp call data.
     /// @param payload The zero-knowledge proof that demonstrates the claimer is registered with World ID.
-    event PBH(address indexed sender, uint256 indexed nonce, bytes callData, PBHPayload payload);
+    event PBH(address indexed sender, uint256 indexed nonce, PBHPayload payload);
+
+    /// @notice Emitted when the World ID address is set.
+    ///
+    /// @param worldId The World ID instance that will be used for verifying proofs.
+    event WorldIdSet(address indexed worldId);
+
+    /// @notice Emitted when the number of PBH transactions allowed per month is set.
+    ///
+    /// @param numPbhPerMonth The number of allowed PBH transactions per month.
+    event NumPbhPerMonthSet(uint8 indexed numPbhPerMonth);
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Vars                                  ///
@@ -80,10 +89,10 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
     uint256 internal constant _GROUP_ID = 1;
 
     /// @dev The World ID instance that will be used for verifying proofs
-    IWorldIDGroups internal _worldId;
+    IWorldIDGroups public worldId;
 
     /// @dev The EntryPoint where Aggregated PBH Bundles will be proxied to.
-    IEntryPoint internal _entryPoint;
+    IEntryPoint public entryPoint;
 
     /// @notice The number of PBH transactions that may be used by a single
     ///         World ID in a given month.
@@ -104,7 +113,7 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
     /// @param nonce Transaction/UserOp nonce.
     /// @param callData Transaction/UserOp call data.
     /// @param pbhPayload The PBH payload containing the proof data.
-    function verifyPbhProof(address sender, uint256 nonce, bytes calldata callData, PBHPayload memory pbhPayload)
+    function verifyPbh(address sender, uint256 nonce, bytes calldata callData, PBHPayload memory pbhPayload)
         public
         virtual
         onlyInitialized
@@ -118,12 +127,12 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
 
         // If worldId address is set, proceed with on chain verification,
         // otherwise assume verification has been done off chain by the builder.
-        if (address(_worldId) != address(0)) {
+        if (address(worldId) != address(0)) {
             // We now generate the signal hash from the sender, nonce, and calldata
             uint256 signalHash = abi.encodePacked(sender, nonce, callData).hashToField();
 
             // We now verify the provided proof is valid and the user is verified by World ID
-            _worldId.verifyProof(
+            worldId.verifyProof(
                 pbhPayload.root,
                 _GROUP_ID,
                 signalHash,
@@ -136,19 +145,21 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
         // We now record the user has done this, so they can't do it again (proof of uniqueness)
         nullifierHashes[pbhPayload.nullifierHash] = true;
 
-        emit PBH(sender, nonce, callData, pbhPayload);
+        emit PBH(sender, nonce, pbhPayload);
     }
 
     /// @notice Sets the number of PBH transactions allowed per month.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     function setNumPbhPerMonth(uint8 _numPbhPerMonth) external virtual onlyOwner onlyProxy onlyInitialized {
         numPbhPerMonth = _numPbhPerMonth;
+        emit NumPbhPerMonthSet(_numPbhPerMonth);
     }
 
     /// @dev If the World ID address is set to 0, then it is assumed that verification will take place off chain.
     /// @notice Sets the World ID instance that will be used for verifying proofs.
-    /// @param __worldId The World ID instance that will be used for verifying proofs.
-    function setWorldId(address __worldId) external virtual onlyOwner onlyProxy onlyInitialized {
-        _worldId = IWorldIDGroups(__worldId);
+    /// @param _worldId The World ID instance that will be used for verifying proofs.
+    function setWorldId(address _worldId) external virtual onlyOwner onlyProxy onlyInitialized {
+        worldId = IWorldIDGroups(_worldId);
+        emit WorldIdSet(_worldId);
     }
 }

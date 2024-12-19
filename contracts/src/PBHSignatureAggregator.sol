@@ -18,10 +18,10 @@ contract PBHSignatureAggregator is IAggregator {
     error InvalidUserOperations();
 
     /// @notice The PBHVerifier contract.
-    IPBHEntryPoint internal immutable _pbhEntryPoint;
+    IPBHEntryPoint public immutable pbhEntryPoint;
 
-    constructor(address __pbhEntryPoint) {
-        _pbhEntryPoint = IPBHEntryPoint(__pbhEntryPoint);
+    constructor(address _pbhEntryPoint) {
+        pbhEntryPoint = IPBHEntryPoint(_pbhEntryPoint);
     }
 
     /**
@@ -31,7 +31,7 @@ contract PBHSignatureAggregator is IAggregator {
      */
     function validateSignatures(PackedUserOperation[] calldata userOps, bytes calldata) external view {
         bytes memory encoded = abi.encode(userOps);
-        try _pbhEntryPoint.validateSignaturesCallback(keccak256(encoded)) {}
+        try pbhEntryPoint.validateSignaturesCallback(keccak256(encoded)) {}
         catch {
             revert InvalidUserOperations();
         }

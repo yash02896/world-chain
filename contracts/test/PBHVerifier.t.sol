@@ -15,10 +15,12 @@ import {Setup} from "./Setup.sol";
 /// @title PBHVerifer Verify Tests
 /// @notice Contains tests for the pbhVerifier
 /// @author Worldcoin
-contract PBHVerifierVerify is Setup {
+contract PBHVerifierTest is Setup {
     using ByteHasher for bytes;
 
-    event PBH(address indexed sender, uint256 indexed nonce, bytes callData, IPBHVerifier.PBHPayload payload);
+    event PBH(address indexed sender, uint256 indexed nonce, IPBHVerifier.PBHPayload payload);
+    event NumPbhPerMonthSet(uint8 indexed numPbhPerMonth);
+    event WorldIdSet(address indexed worldId);
 
     /// @notice Test payload for the PBHVerifier
     IPBHVerifier.PBHPayload public testPayload = IPBHVerifier.PBHPayload({
@@ -39,17 +41,17 @@ contract PBHVerifierVerify is Setup {
     }
 
     /// @notice Test that a valid proof is verified correctly.
-    function testVerifyPbhProofSuccess() public {
+    function testverifyPbhSuccess() public {
         // Expect revert when proof verification fails
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(false);
         vm.expectRevert("Proof verification failed");
-        pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
+        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
 
         // Now expect success
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
         vm.expectEmit(true, true, true, true);
-        emit PBH(sender, nonce, testCallData, testPayload);
-        pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
+        emit PBH(sender, nonce, testPayload);
+        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
 
         // Make sure the nullifier hash is marked as used
         bool used = pbhEntryPoint.nullifierHashes(testPayload.nullifierHash);
@@ -57,7 +59,7 @@ contract PBHVerifierVerify is Setup {
 
         // Now try to use the same nullifier hash again
         vm.expectRevert(PBHVerifier.InvalidNullifier.selector);
-        pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
+        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
     }
 
     /// @notice Test that setNumPBHPerMonth works as expected
@@ -70,7 +72,7 @@ contract PBHVerifierVerify is Setup {
         testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 30, month, year);
         testPayload.nullifierHash = 0;
         vm.expectRevert(PBHExternalNullifier.InvalidPbhNonce.selector);
-        pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
+        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
 
         // Increase numPbhPerMonth from non owner, expect revert
         vm.prank(address(123));
@@ -79,6 +81,8 @@ contract PBHVerifierVerify is Setup {
 
         // Increase numPbhPerMonth from owner
         vm.prank(thisAddress);
+        vm.expectEmit(true, false, false, false);
+        emit NumPbhPerMonthSet(40);
         pbhEntryPoint.setNumPbhPerMonth(40);
 
         // Try again, it should work
@@ -86,7 +90,22 @@ contract PBHVerifierVerify is Setup {
         testPayload.nullifierHash = 1;
         vm.expectEmit(true, true, true, true);
 
-        emit PBH(sender, nonce, testCallData, testPayload);
-        pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
+        emit PBH(sender, nonce, testPayload);
+        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
+    }
+
+    function testSetWorldId() public {
+        vm.expectEmit(true, false, false, false);
+        emit WorldIdSet(address(0x123));
+        pbhEntryPoint.setWorldId(address(0x123));
+    }
+
+    function test_FailSetWorldId_NotOwner(address naughty) public {
+        if (naughty == thisAddress) {
+            return;
+        }
+        vm.prank(naughty);
+        vm.expectRevert("Ownable: caller is not the owner");
+        pbhEntryPoint.setWorldId(address(0x123));
     }
 }
