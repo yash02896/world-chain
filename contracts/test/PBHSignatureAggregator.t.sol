@@ -8,13 +8,12 @@ import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 contract PBHSignatureAggregatorTest is Setup {
     PackedUserOperation[] public uoTestFixture;
-    IPBHVerifier.PBHPayload public proof =
-        IPBHVerifier.PBHPayload({
-            root: 1,
-            pbhExternalNullifier: 1,
-            nullifierHash: 0,
-            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
-        });
+    IPBHVerifier.PBHPayload public proof = IPBHVerifier.PBHPayload({
+        root: 1,
+        pbhExternalNullifier: 1,
+        nullifierHash: 0,
+        proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+    });
 
     function setUp() public override {
         super.setUp();
@@ -22,32 +21,17 @@ contract PBHSignatureAggregatorTest is Setup {
     }
 
     function testAggregateSignatures() public {
-        bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(
-            uoTestFixture
-        );
-        IPBHVerifier.PBHPayload[] memory decodedProofs = abi.decode(
-            aggregatedSignature,
-            (IPBHVerifier.PBHPayload[])
-        );
+        bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
+        IPBHVerifier.PBHPayload[] memory decodedProofs = abi.decode(aggregatedSignature, (IPBHVerifier.PBHPayload[]));
         assertEq(decodedProofs.length, 1, "Decoded proof length should be 1");
         assertEq(decodedProofs[0].root, proof.root, "Root should match");
         assertEq(
-            decodedProofs[0].pbhExternalNullifier,
-            proof.pbhExternalNullifier,
-            "PBH External Nullifier should match"
+            decodedProofs[0].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
         );
-        assertEq(
-            decodedProofs[0].nullifierHash,
-            proof.nullifierHash,
-            "Nullifier Hash should match"
-        );
+        assertEq(decodedProofs[0].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
     }
 
-    function createUOTestData()
-        public
-        view
-        returns (PackedUserOperation[] memory)
-    {
+    function createUOTestData() public view returns (PackedUserOperation[] memory) {
         PackedUserOperation[] memory uOps = new PackedUserOperation[](1);
 
         bytes memory proofData = abi.encode(proof);

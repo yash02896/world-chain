@@ -38,7 +38,7 @@ use semaphore::{hash_to_field, Field};
 use world_chain_builder_node::args::{ExtArgs, WorldChainBuilderArgs};
 use world_chain_builder_node::node::WorldChainBuilder;
 use world_chain_builder_pbh::date_marker::DateMarker;
-use world_chain_builder_pbh::external_nullifier::{ExternalNullifier, Prefix};
+use world_chain_builder_pbh::external_nullifier::ExternalNullifier;
 use world_chain_builder_pbh::payload::{PbhPayload, Proof};
 use world_chain_builder_pool::ordering::WorldChainOrdering;
 use world_chain_builder_pool::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
@@ -162,7 +162,7 @@ impl WorldChainBuilderTestContext {
     pub async fn raw_pbh_tx_bytes(
         &self,
         signer: PrivateKeySigner,
-        pbh_nonce: u16,
+        pbh_nonce: u8,
         tx_nonce: u64,
     ) -> Bytes {
         let tx = tx(DEV_CHAIN_ID, None, tx_nonce);
@@ -192,10 +192,10 @@ impl WorldChainBuilderTestContext {
         identity: Address,
         tx_hash: &[u8],
         time: chrono::DateTime<Utc>,
-        pbh_nonce: u16,
+        pbh_nonce: u8,
     ) -> PbhPayload {
         let external_nullifier =
-            ExternalNullifier::new(Prefix::V1, DateMarker::from(time), pbh_nonce).to_string();
+            ExternalNullifier::with_date_marker(DateMarker::from(time), pbh_nonce).to_string();
 
         self.create_proof(identity, external_nullifier, tx_hash)
     }
@@ -206,6 +206,8 @@ impl WorldChainBuilderTestContext {
         external_nullifier: String,
         signal: &[u8],
     ) -> PbhPayload {
+        let external_nullifier: ExternalNullifier = external_nullifier.parse().unwrap();
+
         let idx = self.identities.get(&identity).unwrap();
         let secret = identity.as_mut_slice();
         // generate identity
@@ -213,7 +215,7 @@ impl WorldChainBuilderTestContext {
         let merkle_proof = self.tree.proof(*idx);
 
         let signal_hash = hash_to_field(signal);
-        let external_nullifier_hash = hash_to_field(external_nullifier.as_bytes());
+        let external_nullifier_hash = external_nullifier.to_word();
         let nullifier_hash = generate_nullifier_hash(&id, external_nullifier_hash);
 
         let proof = Proof(
@@ -230,9 +232,7 @@ impl WorldChainBuilderTestContext {
 }
 
 #[tokio::test]
-// #[serial]
 async fn test_can_build_pbh_payload() -> eyre::Result<()> {
-    // tokio::time::sleep(Duration::from_secs(1)).await;
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
     let mut pbh_tx_hashes = vec![];
     for signer in ctx.pbh_wallets.iter() {
@@ -256,9 +256,7 @@ async fn test_can_build_pbh_payload() -> eyre::Result<()> {
 }
 
 #[tokio::test]
-// #[serial]
 async fn test_transaction_pool_ordering() -> eyre::Result<()> {
-    // tokio::time::sleep(Duration::from_secs(1)).await;
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
     let non_pbh_tx = tx(ctx.node.inner.chain_spec().chain.id(), None, 0);
     let wallet = ctx.pbh_wallets[0].clone();
@@ -297,9 +295,7 @@ async fn test_transaction_pool_ordering() -> eyre::Result<()> {
 }
 
 #[tokio::test]
-// #[serial]
 async fn test_invalidate_dup_tx_and_nullifier() -> eyre::Result<()> {
-    // tokio::time::sleep(Duration::from_secs(1)).await;
     let ctx = WorldChainBuilderTestContext::setup().await?;
     let signer = ctx.pbh_wallets[0].clone();
     let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
@@ -310,9 +306,7 @@ async fn test_invalidate_dup_tx_and_nullifier() -> eyre::Result<()> {
 }
 
 #[tokio::test]
-// #[serial]
 async fn test_dup_pbh_nonce() -> eyre::Result<()> {
-    // tokio::time::sleep(Duration::from_secs(1)).await;
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
     let signer = ctx.pbh_wallets[0].clone();
 

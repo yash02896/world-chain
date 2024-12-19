@@ -29,7 +29,7 @@ contract PBHVerifierVerify is Setup {
     );
 
     /// @notice Test payload for the PBHVerifier
-    IPBHVerifier.PBHPayload testPayload = IPBHVerifier.PBHPayload({
+    IPBHVerifier.PBHPayload public testPayload = IPBHVerifier.PBHPayload({
         root: 1,
         pbhExternalNullifier: getValidPBHExternalNullifier(),
         nullifierHash: 1,
@@ -43,7 +43,7 @@ contract PBHVerifierVerify is Setup {
     function getValidPBHExternalNullifier() public view returns (uint256) {
         uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
         uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
-        return PBHExternalNullifier.encode(0, month, year);
+        return PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
     }
 
     /// @notice Test that a valid proof is verified correctly.
@@ -83,9 +83,8 @@ contract PBHVerifierVerify is Setup {
         uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
 
         // Value starts at 30, make sure 30 reverts.
-        uint256 pbhExternalNullifier = PBHExternalNullifier.encode(30, month, year);
+        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 30, month, year);
         testPayload.nullifierHash = 0;
-        testPayload.pbhExternalNullifier = pbhExternalNullifier;
         vm.expectRevert(PBHExternalNullifier.InvalidPbhNonce.selector);
         pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
 
@@ -99,9 +98,10 @@ contract PBHVerifierVerify is Setup {
         pbhEntryPoint.setNumPbhPerMonth(40);
 
         // Try again, it should work
-        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(30, month, year);
+        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 30, month, year);
         testPayload.nullifierHash = 1;
         vm.expectEmit(true, true, true, true);
+
         emit PBH(
             testPayload.root,
             sender,

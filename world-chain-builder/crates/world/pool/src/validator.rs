@@ -37,7 +37,7 @@ where
 {
     inner: OpTransactionValidator<Client, Tx>,
     root_validator: WorldChainRootValidator<Client>,
-    num_pbh_txs: u16,
+    num_pbh_txs: u8,
     pbh_validator: Address,
     pbh_signature_aggregator: Address,
 }
@@ -51,7 +51,7 @@ where
     pub fn new(
         inner: OpTransactionValidator<Client, Tx>,
         root_validator: WorldChainRootValidator<Client>,
-        num_pbh_txs: u16,
+        num_pbh_txs: u8,
         pbh_validator: Address,
         pbh_signature_aggregator: Address,
     ) -> Self {
@@ -100,7 +100,7 @@ where
         ];
         if valid_dates
             .iter()
-            .all(|d| pbh_payload.external_nullifier.date_marker != *d)
+            .all(|d| pbh_payload.external_nullifier.date_marker() != *d)
         {
             return Err(WorldChainTransactionPoolInvalid::InvalidExternalNullifierPeriod.into());
         }
@@ -125,7 +125,7 @@ where
             payload.root,
             payload.nullifier_hash,
             signal,
-            payload.external_nullifier.hash(),
+            payload.external_nullifier.to_word(),
             &payload.proof.0,
             TREE_DEPTH,
         );
@@ -232,14 +232,14 @@ where
 
 #[cfg(test)]
 pub mod tests {
+    use alloy_primitives::Address;
     use alloy_sol_types::SolCall;
     use chrono::{TimeZone, Utc};
+    use ethers_core::rand::rngs::SmallRng;
+    use ethers_core::rand::{Rng, SeedableRng};
     use ethers_core::types::U256;
     use reth::transaction_pool::blobstore::InMemoryBlobStore;
-    use reth::transaction_pool::error::{InvalidPoolTransactionError, PoolError, PoolErrorKind};
-    use reth::transaction_pool::{
-        Pool, PoolTransaction as _, TransactionPool, TransactionValidator,
-    };
+    use reth::transaction_pool::{Pool, TransactionPool, TransactionValidator};
     use reth_primitives::{BlockBody, SealedBlock, SealedHeader};
     use reth_provider::test_utils::{ExtendedAccount, MockEthProvider};
     use semaphore::Field;
@@ -249,13 +249,9 @@ pub mod tests {
     use world_chain_builder_pbh::payload::{PbhPayload, Proof};
 
     use super::WorldChainTransactionValidator;
-    use crate::error::WorldChainTransactionPoolInvalid;
     use crate::ordering::WorldChainOrdering;
     use crate::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
-    use crate::test_utils::{
-        self, get_pbh_4337_transaction, get_pbh_transaction, world_chain_validator,
-        PBH_TEST_VALIDATOR,
-    };
+    use crate::test_utils::{self, world_chain_validator, PBH_TEST_VALIDATOR};
     use crate::tx::WorldChainPooledTransaction;
 
     async fn setup() -> Pool<
@@ -264,13 +260,6 @@ pub mod tests {
         InMemoryBlobStore,
     > {
         let validator = world_chain_validator();
-
-        // TODO: Remove
-        let transaction = get_pbh_transaction(0);
-        validator.inner.client().add_account(
-            transaction.sender(),
-            ExtendedAccount::new(transaction.nonce(), alloy_primitives::U256::MAX),
-        );
 
         // Fund 10 test accounts
         for acc in 0..10 {
@@ -310,20 +299,6 @@ pub mod tests {
         );
 
         pool
-    }
-
-    fn downcast_pool_err(err: &PoolError) -> &WorldChainTransactionPoolInvalid {
-        let PoolErrorKind::InvalidTransaction(InvalidPoolTransactionError::Other(other)) =
-            &err.kind
-        else {
-            panic!("Invalid error kind!");
-        };
-
-        other
-            .source()
-            .expect("Missing error source")
-            .downcast_ref::<WorldChainTransactionPoolInvalid>()
-            .expect("Failed to downcast")
     }
 
     #[tokio::test]
@@ -369,11 +344,10 @@ pub mod tests {
 
         let (user_op, proof) = test_utils::user_op()
             .acc(USER_ACCOUNT)
-            .external_nullifier(
-                ExternalNullifier::builder()
-                    .date_marker(DateMarker::from(chrono::Utc::now()))
-                    .build(),
-            )
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(chrono::Utc::now()),
+                0,
+            ))
             .call();
         let bundle = test_utils::pbh_bundle(vec![user_op], vec![proof]);
         let calldata = bundle.abi_encode();
@@ -391,19 +365,55 @@ pub mod tests {
     }
 
     #[tokio::test]
+    async fn validate_bundle_no_pbh() {
+        let mut rng = SmallRng::seed_from_u64(42);
+
+        const USER_ACCOUNT: u32 = 0;
+
+        let pool = setup().await;
+
+        // NOTE: We're ignoring the proof here
+        let (user_op, _proof) = test_utils::user_op()
+            .acc(USER_ACCOUNT)
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(chrono::Utc::now()),
+                0,
+            ))
+            .call();
+
+        let bundle = test_utils::pbh_bundle(vec![user_op], vec![]);
+
+        let calldata = bundle.abi_encode();
+
+        let tx = test_utils::eip1559()
+            // NOTE: Random receiving account
+            .to(rng.gen::<Address>())
+            .input(calldata)
+            .call();
+
+        let tx = test_utils::eth_tx(USER_ACCOUNT, tx).await;
+
+        pool.add_external_transaction(tx.clone().into())
+            .await
+            .expect(
+                "Validation should succeed - PBH data is invalid, but this is not a PBH bundle",
+            );
+    }
+
+    #[tokio::test]
     async fn validate_pbh_missing_proof_for_user_op() {
         const BUNDLER_ACCOUNT: u32 = 9;
         const USER_ACCOUNT: u32 = 0;
 
         let pool = setup().await;
 
+        // NOTE: We're ignoring the proof here
         let (user_op, _proof) = test_utils::user_op()
             .acc(USER_ACCOUNT)
-            .external_nullifier(
-                ExternalNullifier::builder()
-                    .date_marker(DateMarker::from(chrono::Utc::now()))
-                    .build(),
-            )
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(chrono::Utc::now()),
+                0,
+            ))
             .call();
 
         let bundle = test_utils::pbh_bundle(vec![user_op], vec![]);
@@ -422,117 +432,127 @@ pub mod tests {
             .await
             .expect_err("Validation should fail because of missing proof");
 
-        let world_chain_err = downcast_pool_err(&err);
-
-        assert_eq!(
-            world_chain_err,
-            &WorldChainTransactionPoolInvalid::MissingPbhPayload
-        );
+        assert!(err
+            .to_string()
+            .contains("one or more user ops are missing pbh payloads"),);
     }
 
     #[tokio::test]
-    async fn validate_4337_bundle() {
-        let validator = world_chain_validator();
-        let (transaction, root) = get_pbh_4337_transaction().await;
-        validator.inner.client().add_account(
-            transaction.sender(),
-            ExtendedAccount::new(transaction.nonce(), alloy_primitives::U256::MAX),
-        );
-        // Insert a world id root into the OpWorldId Account
-        // TODO: This should be set to the root on the Payloads of a Bundle Tx
-        validator.inner.client().add_account(
-            OP_WORLD_ID,
-            ExtendedAccount::new(0, alloy_primitives::U256::ZERO)
-                .extend_storage(vec![(LATEST_ROOT_SLOT.into(), root)]),
-        );
-        let header = SealedHeader::default();
-        let body = BlockBody::default();
-        let block = SealedBlock::new(header, body);
+    async fn validate_date_marker_outdated() {
+        const BUNDLER_ACCOUNT: u32 = 9;
+        const USER_ACCOUNT: u32 = 0;
 
-        // Propogate the block to the root validator
-        validator.on_new_head_block(&block);
+        let pool = setup().await;
 
-        let ordering = WorldChainOrdering::default();
+        let now = chrono::Utc::now();
+        let month_in_the_past = now - chrono::Months::new(1);
 
-        let pool = Pool::new(
-            validator,
-            ordering,
-            InMemoryBlobStore::default(),
-            Default::default(),
-        );
+        // NOTE: We're ignoring the proof here
+        let (user_op, proof) = test_utils::user_op()
+            .acc(USER_ACCOUNT)
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(month_in_the_past),
+                0,
+            ))
+            .call();
 
-        let start = chrono::Utc::now();
-        let res = pool.add_external_transaction(transaction.clone()).await;
-        let first_insert = chrono::Utc::now() - start;
-        println!("first_insert: {first_insert:?}");
-        println!("res = {res:#?}");
-        assert!(res.is_ok());
-        let tx = pool.get(transaction.hash());
-        assert!(tx.is_some());
+        let bundle = test_utils::pbh_bundle(vec![user_op], vec![proof]);
 
-        let start = chrono::Utc::now();
-        let res = pool.add_external_transaction(transaction.clone()).await;
+        let calldata = bundle.abi_encode();
 
-        let second_insert = chrono::Utc::now() - start;
-        println!("second_insert: {second_insert:?}");
+        let tx = test_utils::eip1559()
+            .to(PBH_TEST_VALIDATOR)
+            .input(calldata)
+            .call();
 
-        // Check here that we're properly caching the transaction
-        assert!(first_insert > second_insert * 10);
-        assert!(res.is_err());
+        let tx = test_utils::eth_tx(BUNDLER_ACCOUNT, tx).await;
+
+        let err = pool
+            .add_external_transaction(tx.clone().into())
+            .await
+            .expect_err("Validation should fail because of missing proof");
+
+        assert!(err
+            .to_string()
+            .contains("invalid external nullifier period"),);
     }
 
     #[tokio::test]
-    async fn invalid_external_nullifier_hash() {
-        let validator = world_chain_validator();
-        let transaction = get_pbh_transaction(0);
+    async fn validate_date_marker_in_the_future() {
+        const BUNDLER_ACCOUNT: u32 = 9;
+        const USER_ACCOUNT: u32 = 0;
 
-        validator.inner.client().add_account(
-            transaction.sender(),
-            ExtendedAccount::new(transaction.nonce(), alloy_primitives::U256::MAX),
-        );
+        let pool = setup().await;
 
-        let ordering = WorldChainOrdering::default();
+        let now = chrono::Utc::now();
+        let month_in_the_future = now + chrono::Months::new(1);
 
-        let pool = Pool::new(
-            validator,
-            ordering,
-            InMemoryBlobStore::default(),
-            Default::default(),
-        );
+        // NOTE: We're ignoring the proof here
+        let (user_op, proof) = test_utils::user_op()
+            .acc(USER_ACCOUNT)
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(month_in_the_future),
+                0,
+            ))
+            .call();
 
-        let res = pool.add_external_transaction(transaction.clone()).await;
+        let bundle = test_utils::pbh_bundle(vec![user_op], vec![proof]);
 
-        println!("res = {res:#?}");
-        assert!(res.is_err());
+        let calldata = bundle.abi_encode();
 
-        assert!(false);
+        let tx = test_utils::eip1559()
+            .to(PBH_TEST_VALIDATOR)
+            .input(calldata)
+            .call();
+
+        let tx = test_utils::eth_tx(BUNDLER_ACCOUNT, tx).await;
+
+        let err = pool
+            .add_external_transaction(tx.clone().into())
+            .await
+            .expect_err("Validation should fail because of missing proof");
+
+        assert!(err
+            .to_string()
+            .contains("invalid external nullifier period"),);
     }
 
     #[tokio::test]
-    async fn invalid_signal_hash() {
-        let validator = world_chain_validator();
-        let transaction = get_pbh_transaction(0);
+    async fn invalid_external_nullifier_nonce() {
+        const BUNDLER_ACCOUNT: u32 = 9;
+        const USER_ACCOUNT: u32 = 0;
 
-        validator.inner.client().add_account(
-            transaction.sender(),
-            ExtendedAccount::new(transaction.nonce(), alloy_primitives::U256::MAX),
-        );
+        let pool = setup().await;
 
-        let ordering = WorldChainOrdering::default();
+        let (user_op, proof) = test_utils::user_op()
+            .acc(USER_ACCOUNT)
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(chrono::Utc::now()),
+                255,
+            ))
+            .call();
 
-        let pool = Pool::new(
-            validator,
-            ordering,
-            InMemoryBlobStore::default(),
-            Default::default(),
-        );
+        let bundle = test_utils::pbh_bundle(vec![user_op], vec![proof]);
 
-        let res = pool.add_external_transaction(transaction.clone()).await;
-        assert!(res.is_err());
+        let calldata = bundle.abi_encode();
+
+        let tx = test_utils::eip1559()
+            .to(PBH_TEST_VALIDATOR)
+            .input(calldata)
+            .call();
+
+        let tx = test_utils::eth_tx(BUNDLER_ACCOUNT, tx).await;
+
+        let err = pool
+            .add_external_transaction(tx.clone().into())
+            .await
+            .expect_err("Validation should fail because of missing proof");
+
+        assert!(err.to_string().contains("invalid external nullifier nonce"),);
     }
 
     #[test]
-    fn test_validate_root() {
+    fn valid_root() {
         let mut validator = world_chain_validator();
         let root = Field::from(1u64);
         let proof = Proof(semaphore::protocol::Proof(
@@ -566,7 +586,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_invalidate_root() {
+    fn invalid_root() {
         let mut validator = world_chain_validator();
         let root = Field::from(0);
         let proof = Proof(semaphore::protocol::Proof(
@@ -599,15 +619,15 @@ pub mod tests {
         assert!(res.is_err());
     }
 
-    #[test_case("v1-012025-0")]
-    #[test_case("v1-012025-1")]
-    #[test_case("v1-012025-29")]
-    fn validate_external_nullifier_valid(external_nullifier: &str) {
+    #[test_case(ExternalNullifier::v1(1, 2025, 0) ; "01-2025-0")]
+    #[test_case(ExternalNullifier::v1(1, 2025, 1) ; "01-2025-1")]
+    #[test_case(ExternalNullifier::v1(1, 2025, 29) ; "01-2025-29")]
+    fn validate_external_nullifier_valid(external_nullifier: ExternalNullifier) {
         let validator = world_chain_validator();
         let date = chrono::Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
 
         let payload = PbhPayload {
-            external_nullifier: external_nullifier.parse().unwrap(),
+            external_nullifier,
             nullifier_hash: Field::ZERO,
             root: Field::ZERO,
             proof: Default::default(),
@@ -618,14 +638,14 @@ pub mod tests {
             .unwrap();
     }
 
-    #[test_case("v1-012025-0", "2024-12-31 23:59:30Z" ; "a minute early")]
-    #[test_case("v1-012025-0", "2025-02-01 00:00:30Z" ; "a minute late")]
-    fn validate_external_nullifier_at_time(external_nullifier: &str, time: &str) {
+    #[test_case(ExternalNullifier::v1(1, 2025, 0), "2024-12-31 23:59:30Z" ; "a minute early")]
+    #[test_case(ExternalNullifier::v1(1, 2025, 0), "2025-02-01 00:00:30Z" ; "a minute late")]
+    fn validate_external_nullifier_at_time(external_nullifier: ExternalNullifier, time: &str) {
         let validator = world_chain_validator();
         let date: chrono::DateTime<Utc> = time.parse().unwrap();
 
         let payload = PbhPayload {
-            external_nullifier: external_nullifier.parse().unwrap(),
+            external_nullifier,
             nullifier_hash: Field::ZERO,
             root: Field::ZERO,
             proof: Default::default(),

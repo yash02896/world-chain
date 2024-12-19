@@ -22,17 +22,13 @@ use crate::validator::WorldChainTransactionValidator;
 /// config.
 #[derive(Debug, Clone)]
 pub struct WorldChainPoolBuilder {
-    pub num_pbh_txs: u16,
+    pub num_pbh_txs: u8,
     pub pbh_validator: Address,
     pub pbh_signature_aggregator: Address,
 }
 
 impl WorldChainPoolBuilder {
-    pub fn new(
-        num_pbh_txs: u16,
-        pbh_validator: Address,
-        pbh_signature_aggregator: Address,
-    ) -> Self {
+    pub fn new(num_pbh_txs: u8, pbh_validator: Address, pbh_signature_aggregator: Address) -> Self {
         Self {
             num_pbh_txs,
             pbh_validator,

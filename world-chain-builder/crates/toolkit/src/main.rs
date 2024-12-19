@@ -52,8 +52,8 @@ async fn main() -> eyre::Result<()> {
             let date_marker = DateMarker::from(date);
 
             let external_nullifier =
-                ExternalNullifier::new(prove_args.prefix, date_marker, prove_args.pbh_nonce);
-            let external_nullifier_hash = external_nullifier.hash();
+                ExternalNullifier::with_date_marker(date_marker, prove_args.pbh_nonce);
+            let external_nullifier_hash = external_nullifier.to_word();
 
             let semaphore_proof = semaphore::protocol::generate_proof(
                 &identity,
@@ -66,7 +66,7 @@ async fn main() -> eyre::Result<()> {
                 semaphore::protocol::generate_nullifier_hash(&identity, external_nullifier_hash);
 
             let proof = PbhPayload {
-                external_nullifier: external_nullifier.to_string(),
+                external_nullifier: external_nullifier,
                 nullifier_hash,
                 root: inclusion_proof.root,
                 proof: world_chain_builder_pbh::payload::Proof(semaphore_proof),
