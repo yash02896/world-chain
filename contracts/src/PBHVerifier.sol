@@ -109,7 +109,7 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
     /// @param nonce Transaction/UserOp nonce.
     /// @param callData Transaction/UserOp call data.
     /// @param pbhPayload The PBH payload containing the proof data.
-    function verifyPbhProof(address sender, uint256 nonce, bytes memory callData, PBHPayload memory pbhPayload)
+    function verifyPbhProof(address sender, uint256 nonce, bytes calldata callData, PBHPayload memory pbhPayload)
         public
         virtual
         onlyInitialized
