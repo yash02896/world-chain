@@ -156,6 +156,4 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
             if iszero(eq(tload(_hashedOps.slot), hashedOps)) { revert(0, 0) }
         }
     }
-
-    // TODO: PBH Multicall Entry Point
 }
