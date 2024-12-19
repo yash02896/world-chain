@@ -49,28 +49,4 @@ contract TestUtils {
         uOps[1] = baseUO;
         return uOps;
     }
-
-    function createAggregatedUOTestData(IAggregator aggregator, address sender, bytes memory proofData)
-        public
-        pure
-        returns (PackedUserOperation[] memory)
-    {
-        bytes memory signature = encodeSignature(proofData);
-        PackedUserOperation[] memory uOps = new PackedUserOperation[](2);
-        PackedUserOperation memory baseUO = PackedUserOperation({
-            sender: sender,
-            nonce: 0,
-            initCode: abi.encodePacked("0x"),
-            callData: abi.encodePacked("0x"),
-            accountGasLimits: bytes32("10000"),
-            preVerificationGas: 10000,
-            gasFees: bytes32(0),
-            paymasterAndData: abi.encodePacked("0x"),
-            signature: signature
-        });
-
-        uOps[0] = baseUO;
-        uOps[1] = baseUO;
-        return uOps;
-    }
 }
