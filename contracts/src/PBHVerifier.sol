@@ -88,7 +88,7 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
     //////////////////////////////////////////////////////////////////////////////
 
     /// @dev The World ID group ID (always 1)
-    uint256 internal immutable _GROUP_ID = 1;
+    uint256 internal constant _GROUP_ID = 1;
 
     /// @dev The World ID instance that will be used for verifying proofs
     IWorldIDGroups internal _worldId;
