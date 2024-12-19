@@ -54,6 +54,7 @@ contract PBHSignatureAggregatorTest is Setup {
         uint256 proofLength = proofData.length;
         bytes memory sigBuffer = new bytes(65);
         bytes memory signature = new bytes(65 + proofLength);
+        console.log("Proof Length: ", proofLength);
         assembly {
             mstore(add(signature, 65), sigBuffer)
             mstore(add(signature, add(65, proofLength)), proofData)
