@@ -19,13 +19,10 @@ contract PBHVerifierVerify is Setup {
     using ByteHasher for bytes;
 
     event PBH(
-        uint256 indexed root,
         address indexed sender,
-        uint256 nonce,
+        uint256 indexed nonce,
         bytes callData,
-        uint256 indexed pbhExternalNullifier,
-        uint256 nullifierHash,
-        uint256[8] proof
+        IPBHVerifier.PBHPayload payload
     );
 
     /// @notice Test payload for the PBHVerifier
@@ -57,13 +54,10 @@ contract PBHVerifierVerify is Setup {
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
         vm.expectEmit(true, true, true, true);
         emit PBH(
-            testPayload.root,
             sender,
             nonce,
             testCallData,
-            testPayload.pbhExternalNullifier,
-            testPayload.nullifierHash,
-            testPayload.proof
+            testPayload
         );
         pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
 
@@ -103,13 +97,10 @@ contract PBHVerifierVerify is Setup {
         vm.expectEmit(true, true, true, true);
 
         emit PBH(
-            testPayload.root,
             sender,
             nonce,
             testCallData,
-            testPayload.pbhExternalNullifier,
-            testPayload.nullifierHash,
-            testPayload.proof
+            testPayload
         );
         pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
     }

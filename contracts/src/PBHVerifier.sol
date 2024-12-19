@@ -66,21 +66,15 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
 
     /// @notice Emitted once for each successful PBH verification.
     ///
-    /// @param root The root of the Merkle tree that this proof is valid for.
     /// @param sender The sender of this particular transaction or UserOp.
     /// @param nonce Transaction/UserOp nonce.
     /// @param callData Transaction/UserOp call data.
-    /// @param pbhExternalNullifier External nullifier encoding month, year, and a pbhNonce.
-    /// @param nullifierHash Nullifier hash for this semaphore proof.
-    /// @param proof The zero-knowledge proof that demonstrates the claimer is registered with World ID.
+    /// @param payload The zero-knowledge proof that demonstrates the claimer is registered with World ID.
     event PBH(
-        uint256 indexed root,
         address indexed sender,
-        uint256 nonce,
+        uint256 indexed nonce,
         bytes callData,
-        uint256 indexed pbhExternalNullifier,
-        uint256 nullifierHash,
-        uint256[8] proof
+        PBHPayload payload
     );
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -148,13 +142,10 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
         nullifierHashes[pbhPayload.nullifierHash] = true;
 
         emit PBH(
-            pbhPayload.root,
             sender,
             nonce,
             callData,
-            pbhPayload.pbhExternalNullifier,
-            pbhPayload.nullifierHash,
-            pbhPayload.proof
+            pbhPayload
         );
     }
 
