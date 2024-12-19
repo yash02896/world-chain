@@ -87,9 +87,6 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
     ///                                  Vars                                  ///
     //////////////////////////////////////////////////////////////////////////////
 
-    /// @dev Gap for transient storage.
-    uint256 private __gap;
-
     /// @dev The World ID group ID (always 1)
     uint256 internal immutable _GROUP_ID = 1;
 

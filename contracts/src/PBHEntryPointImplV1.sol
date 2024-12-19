@@ -60,10 +60,10 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
     ///                                  Vars                                  ///
     //////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Transient Storage key used to store Hashed UserOps.
+    /// @notice Transient Storage for the hashed operations.
     /// @dev The PBHSignatureAggregator will cross reference this slot to ensure
     ///     The PBHVerifier is always the proxy to the EntryPoint for PBH Bundles.
-    uint256 internal constant _HASHED_OPS_SLOT = 0;
+    bytes32 internal _hashedOps;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
@@ -86,25 +86,26 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
     /// @dev This function is explicitly not virtual as it does not make sense to override even when
     ///      upgrading. Create a separate initializer function instead.
     ///
-    /// @param __worldId The World ID instance that will be used for verifying proofs. If set to the
+    /// @param worldId The World ID instance that will be used for verifying proofs. If set to the
     ///        0 addess, then it will be assumed that verification will take place off chain.
+    /// @param entryPoint The ERC-4337 Entry Point.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
-    function initialize(IWorldIDGroups __worldId, IEntryPoint __entryPoint, uint8 _numPbhPerMonth)
+    function initialize(IWorldIDGroups worldId, IEntryPoint entryPoint, uint8 _numPbhPerMonth)
         external
         reinitializer(1)
     {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
-        _worldId = __worldId;
-        _entryPoint = __entryPoint;
+        _worldId = worldId;
+        _entryPoint = entryPoint;
         numPbhPerMonth = _numPbhPerMonth;
 
         // Say that the contract is initialized.
         __setInitialized();
-        emit PBHEntryPointImplInitialized(__worldId, __entryPoint, _numPbhPerMonth);
+        emit PBHEntryPointImplInitialized(worldId, entryPoint, _numPbhPerMonth);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -130,7 +131,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
     ) external virtual onlyProxy onlyInitialized {
         bytes32 hashedOps = keccak256(abi.encode(opsPerAggregator));
         assembly ("memory-safe") {
-            tstore(_HASHED_OPS_SLOT, hashedOps)
+            tstore(_hashedOps.slot, hashedOps)
         }
 
         for (uint256 i = 0; i < opsPerAggregator.length; ++i) {
@@ -152,7 +153,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
     /// @param hashedOps The hashed operations to validate.
     function validateSignaturesCallback(bytes32 hashedOps) external view virtual onlyProxy onlyInitialized {
         assembly ("memory-safe") {
-            if iszero(eq(tload(_HASHED_OPS_SLOT), hashedOps)) { revert(0, 0) }
+            if iszero(eq(tload(_hashedOps.slot), hashedOps)) { revert(0, 0) }
         }
     }
 
