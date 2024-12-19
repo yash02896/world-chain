@@ -7,32 +7,38 @@ import {console} from "@forge-std/console.sol";
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 contract PBHSignatureAggregatorTest is Setup {
-    PackedUserOperation[] public uoTestFixture;
-    IPBHVerifier.PBHPayload public proof = IPBHVerifier.PBHPayload({
-        root: 1,
-        pbhExternalNullifier: 1,
-        nullifierHash: 0,
-        proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
-    });
-
     function setUp() public override {
         super.setUp();
-        uoTestFixture = createUOTestData();
     }
 
-    function testAggregateSignatures() public {
+    function testAggregateSignatures(uint256 root, uint256 pbhExternalNullifier, uint256 nullifierHash) public {
+        IPBHVerifier.PBHPayload memory proof = IPBHVerifier.PBHPayload({
+            root: root,
+            pbhExternalNullifier: pbhExternalNullifier,
+            nullifierHash: nullifierHash,
+            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+        });
+
+        PackedUserOperation[] memory uoTestFixture = createUOTestData(proof);
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
         IPBHVerifier.PBHPayload[] memory decodedProofs = abi.decode(aggregatedSignature, (IPBHVerifier.PBHPayload[]));
-        assertEq(decodedProofs.length, 1, "Decoded proof length should be 1");
+        assertEq(decodedProofs.length, 2, "Decoded proof length should be 1");
         assertEq(decodedProofs[0].root, proof.root, "Root should match");
         assertEq(
             decodedProofs[0].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
         );
         assertEq(decodedProofs[0].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
+
+        assertEq(decodedProofs[1].root, proof.root, "Root should match");
+        assertEq(
+            decodedProofs[1].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
+        );
+        assertEq(decodedProofs[1].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
+
     }
 
-    function createUOTestData() public view returns (PackedUserOperation[] memory) {
-        PackedUserOperation[] memory uOps = new PackedUserOperation[](1);
+    function createUOTestData(IPBHVerifier.PBHPayload memory proof) public view returns (PackedUserOperation[] memory) {
+        PackedUserOperation[] memory uOps = new PackedUserOperation[](2);
         bytes memory proofData = abi.encode(proof);
         bytes memory sigBuffer = new bytes(65);
         bytes memory signature = new bytes(417);
@@ -53,7 +59,7 @@ contract PBHSignatureAggregatorTest is Setup {
             mstore(add(add(signature, 65), 320), mload(add(proofData, 320)))
         }
 
-        uOps[0] = PackedUserOperation({
+        PackedUserOperation memory baseUO = PackedUserOperation({
             sender: address(safe),
             nonce: 0,
             initCode: abi.encodePacked("0x"),
@@ -64,6 +70,9 @@ contract PBHSignatureAggregatorTest is Setup {
             paymasterAndData: abi.encodePacked("0x"),
             signature: signature
         });
+
+        uOps[0] = baseUO;
+        uOps[1] = baseUO;
 
         return uOps;
     }
