@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-/// @title PBH Verifier
+/// @title PBH Entry Point
 /// @author Worldcoin
-/// @notice An implementation of an on chain PBH verifier.
+/// @notice An implementation of an on chain PBH Entry Point.
 contract PBHEntryPoint is ERC1967Proxy {
     ///////////////////////////////////////////////////////////////////////////////
     ///                    !!!! DO NOT ADD MEMBERS HERE !!!!                    ///
@@ -15,7 +15,7 @@ contract PBHEntryPoint is ERC1967Proxy {
     ///                             CONSTRUCTION                                ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Constructs a new instance of the PBH Verifier.
+    /// @notice Constructs a new instance of the PBH Entry Point.
     /// @dev This constructor is only called once, and can be called with the encoded call necessary
     ///      to initialize the logic contract.
     ///
