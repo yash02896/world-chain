@@ -4,9 +4,9 @@ pragma solidity ^0.8.21;
 import {Setup} from "./Setup.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
 import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
+import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 
 /// @title PBHVerifier Construction Tests
 /// @notice Contains tests for the PBH Verifier construction

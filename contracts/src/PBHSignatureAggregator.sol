@@ -68,7 +68,7 @@ contract PBHSignatureAggregator is IAggregator {
         for (uint256 i = 0; i < userOps.length; ++i) {
             // Bytes (0:65) - UserOp Signature
             // Bytes (66:66 + 320) - Packed Proof Data
-            bytes memory proofData = userOps[i].signature[66:];
+            bytes memory proofData = userOps[i].signature[65:];
             pbhPayloads[i] = abi.decode(proofData, (IPBHVerifier.PBHPayload));
         }
         aggregatedSignature = abi.encode(pbhPayloads);
