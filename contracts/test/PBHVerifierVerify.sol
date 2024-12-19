@@ -75,4 +75,42 @@ contract PBHVerifierVerify is Setup {
         vm.expectRevert(PBHVerifier.InvalidNullifier.selector);
         pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
     }
+
+    /// @notice Test that setNumPBHPerMonth works as expected
+    function testSetNumPBHPerMonth() public {
+        MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
+        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
+        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
+
+        // Value starts at 30, make sure 30 reverts.
+        uint256 pbhExternalNullifier = PBHExternalNullifier.encode(30, month, year);
+        testPayload.nullifierHash = 0;
+        testPayload.pbhExternalNullifier = pbhExternalNullifier;
+        vm.expectRevert(PBHExternalNullifier.InvalidPbhNonce.selector);
+        pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
+
+        // Increase numPbhPerMonth from non owner, expect revert
+        vm.prank(address(123));
+        vm.expectRevert("Ownable: caller is not the owner");
+        pbhEntryPoint.setNumPbhPerMonth(40);
+
+        // Increase numPbhPerMonth from owner
+        vm.prank(thisAddress);
+        pbhEntryPoint.setNumPbhPerMonth(40);
+
+        // Try again, it should work
+        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(30, month, year);
+        testPayload.nullifierHash = 1;
+        vm.expectEmit(true, true, true, true);
+        emit PBH(
+            testPayload.root,
+            sender,
+            nonce,
+            testCallData,
+            testPayload.pbhExternalNullifier,
+            testPayload.nullifierHash,
+            testPayload.proof
+        );
+        pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
+    }
 }
