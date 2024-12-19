@@ -70,12 +70,7 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
     /// @param nonce Transaction/UserOp nonce.
     /// @param callData Transaction/UserOp call data.
     /// @param payload The zero-knowledge proof that demonstrates the claimer is registered with World ID.
-    event PBH(
-        address indexed sender,
-        uint256 indexed nonce,
-        bytes callData,
-        PBHPayload payload
-    );
+    event PBH(address indexed sender, uint256 indexed nonce, bytes callData, PBHPayload payload);
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Vars                                  ///
@@ -141,12 +136,7 @@ contract PBHVerifier is IPBHVerifier, WorldIDImpl {
         // We now record the user has done this, so they can't do it again (proof of uniqueness)
         nullifierHashes[pbhPayload.nullifierHash] = true;
 
-        emit PBH(
-            sender,
-            nonce,
-            callData,
-            pbhPayload
-        );
+        emit PBH(sender, nonce, callData, pbhPayload);
     }
 
     /// @notice Sets the number of PBH transactions allowed per month.

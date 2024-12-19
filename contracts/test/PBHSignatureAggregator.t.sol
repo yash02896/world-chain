@@ -34,10 +34,13 @@ contract PBHSignatureAggregatorTest is Setup {
             decodedProofs[1].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
         );
         assertEq(decodedProofs[1].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
-
     }
 
-    function createUOTestData(IPBHVerifier.PBHPayload memory proof) public view returns (PackedUserOperation[] memory) {
+    function createUOTestData(IPBHVerifier.PBHPayload memory proof)
+        public
+        view
+        returns (PackedUserOperation[] memory)
+    {
         PackedUserOperation[] memory uOps = new PackedUserOperation[](2);
         bytes memory proofData = abi.encode(proof);
         bytes memory sigBuffer = new bytes(65);

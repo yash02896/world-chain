@@ -18,12 +18,7 @@ import {Setup} from "./Setup.sol";
 contract PBHVerifierVerify is Setup {
     using ByteHasher for bytes;
 
-    event PBH(
-        address indexed sender,
-        uint256 indexed nonce,
-        bytes callData,
-        IPBHVerifier.PBHPayload payload
-    );
+    event PBH(address indexed sender, uint256 indexed nonce, bytes callData, IPBHVerifier.PBHPayload payload);
 
     /// @notice Test payload for the PBHVerifier
     IPBHVerifier.PBHPayload public testPayload = IPBHVerifier.PBHPayload({
@@ -53,12 +48,7 @@ contract PBHVerifierVerify is Setup {
         // Now expect success
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
         vm.expectEmit(true, true, true, true);
-        emit PBH(
-            sender,
-            nonce,
-            testCallData,
-            testPayload
-        );
+        emit PBH(sender, nonce, testCallData, testPayload);
         pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
 
         // Make sure the nullifier hash is marked as used
@@ -96,12 +86,7 @@ contract PBHVerifierVerify is Setup {
         testPayload.nullifierHash = 1;
         vm.expectEmit(true, true, true, true);
 
-        emit PBH(
-            sender,
-            nonce,
-            testCallData,
-            testPayload
-        );
+        emit PBH(sender, nonce, testCallData, testPayload);
         pbhEntryPoint.verifyPbhProof(sender, nonce, testCallData, testPayload);
     }
 }
