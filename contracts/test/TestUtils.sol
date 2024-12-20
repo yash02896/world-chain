@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
+import "@forge-std/console.sol";
 
 contract TestUtils {
     function encodeSignature(bytes memory proofData) public pure returns (bytes memory) {
@@ -26,27 +27,29 @@ contract TestUtils {
         return signature;
     }
 
-    function createUOTestData(address sender, bytes memory proofData)
+    /// @notice Create a test data for UserOperations.
+    function createUOTestData(address sender, bytes[] memory proofs)
         public
         pure
         returns (PackedUserOperation[] memory)
     {
-        bytes memory signature = encodeSignature(proofData);
-        PackedUserOperation[] memory uOps = new PackedUserOperation[](2);
-        PackedUserOperation memory baseUO = PackedUserOperation({
-            sender: sender,
-            nonce: 0,
-            initCode: abi.encodePacked("0x"),
-            callData: abi.encodePacked("0x"),
-            accountGasLimits: bytes32("10000"),
-            preVerificationGas: 10000,
-            gasFees: bytes32(0),
-            paymasterAndData: abi.encodePacked("0x"),
-            signature: signature
-        });
+        PackedUserOperation[] memory uOps = new PackedUserOperation[](proofs.length);
+        for (uint256 i = 0; i < proofs.length; ++i) {
+            bytes memory signature = encodeSignature(proofs[i]);
+            PackedUserOperation memory uo = PackedUserOperation({
+                sender: sender,
+                nonce: i,
+                initCode: new bytes(0),
+                callData: new bytes(0),
+                accountGasLimits: 0x00000000000000000000000000009fd300000000000000000000000000000000,
+                preVerificationGas: 21000,
+                gasFees: 0x0000000000000000000000000000000100000000000000000000000000000001,
+                paymasterAndData: new bytes(0),
+                signature: signature
+            });
+            uOps[i] = uo;
+        }
 
-        uOps[0] = baseUO;
-        uOps[1] = baseUO;
         return uOps;
     }
 }

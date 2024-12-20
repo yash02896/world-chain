@@ -122,19 +122,21 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
     ///                                  Functions                             ///
     //////////////////////////////////////////////////////////////////////////////
 
-    /// Execute a batch of UserOperation with Aggregators
+    /// Execute a batch of PackedUserOperation with Aggregators
     /// @param opsPerAggregator - The operations to execute, grouped by aggregator (or address(0) for no-aggregator accounts).
     /// @param beneficiary      - The address to receive the fees.
     function handleAggregatedOps(
         IEntryPoint.UserOpsPerAggregator[] calldata opsPerAggregator,
         address payable beneficiary
     ) external virtual onlyProxy onlyInitialized {
-        bytes32 hashedOps = keccak256(abi.encode(opsPerAggregator));
-        assembly ("memory-safe") {
-            tstore(_hashedOps.slot, hashedOps)
-        }
-
         for (uint256 i = 0; i < opsPerAggregator.length; ++i) {
+            bytes32 hashedOps = keccak256(abi.encode(opsPerAggregator[i].userOps));
+            assembly ("memory-safe") {
+                if gt(tload(hashedOps), 0) { revert(0, 0) }
+
+                tstore(hashedOps, hashedOps)
+            }
+
             PBHPayload[] memory pbhPayloads = abi.decode(opsPerAggregator[i].signature, (PBHPayload[]));
             for (uint256 j = 0; j < pbhPayloads.length; ++j) {
                 verifyPbh(
@@ -153,7 +155,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, PBHVerifier {
     /// @param hashedOps The hashed operations to validate.
     function validateSignaturesCallback(bytes32 hashedOps) external view virtual onlyProxy onlyInitialized {
         assembly ("memory-safe") {
-            if iszero(eq(tload(_hashedOps.slot), hashedOps)) { revert(0, 0) }
+            if iszero(eq(tload(hashedOps), hashedOps)) { revert(0, 0) }
         }
     }
 }
