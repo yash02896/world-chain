@@ -6,6 +6,7 @@ import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/Pac
 import {ValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
 import {_packValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
 import {ISafe} from "@4337/interfaces/Safe.sol";
+import "forge-std/console.sol";
 
 contract PBHSafe4337Module is Safe4337Module {
     uint256 constant ECDSA_SIGNATURE_LENGTH = 65;
@@ -50,9 +51,9 @@ contract PBHSafe4337Module is Safe4337Module {
         // 1. The bundler simulates the call with the proof appended
         // 2. UserOp execution without proof appended
         if (key == PBH_NONCE_KEY) {
+            console.log("PBH transaction detected");
             isPBH = true;
         }
-
         // Base signature length calculation:
         // TIMESTAMP_BYTES (12) + (threshold * ECDSA_SIGNATURE_LENGTH)
         uint256 expectedLength =
@@ -62,6 +63,8 @@ contract PBHSafe4337Module is Safe4337Module {
         // We need to remove the proof from the signature before validation
         if (key == PBH_NONCE_KEY && userOp.signature.length > expectedLength) {
             // TODO: Check for valid proof size
+            console.log("Removing proof");
+
             signatures = userOp.signature[0:expectedLength];
         }
 
