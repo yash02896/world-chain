@@ -298,7 +298,10 @@ where
 impl<Pool, Client, EvmConfig, Txs> PayloadBuilder<Pool, Client>
     for WorldChainPayloadBuilder<EvmConfig, Txs>
 where
-    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
+    Client: StateProviderFactory
+        + ChainSpecProvider<ChainSpec = OpChainSpec>
+        + BlockReaderIdExt
+        + Clone,
     Pool: TransactionPool<Transaction: WorldChainPoolTransaction<Consensus = TransactionSigned>>,
     EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
     Txs: OpPayloadTransactions,
@@ -326,23 +329,20 @@ where
     // system txs, hence on_missing_payload we return [MissingPayloadBehaviour::AwaitInProgress].
     fn build_empty_payload(
         &self,
-        _client: &Client,
-        _config: PayloadConfig<Self::Attributes>,
+        client: &Client,
+        config: PayloadConfig<Self::Attributes>,
     ) -> Result<OpBuiltPayload, PayloadBuilderError> {
-        // TODO:
-        // let args = BuildArguments {
-        //     client,
-        //     config,
-        //     // we use defaults here because for the empty payload we don't need to execute anything
-        //     pool: NoopWorldChainTransactionPool::default(),
-        //     cached_reads: Default::default(),
-        //     cancel: Default::default(),
-        //     best_payload: None,
-        // };
-        // self.build_payload(args)?
-        //     .into_payload()
-        //     .ok_or_else(|| PayloadBuilderError::MissingPayload)
-        todo!()
+        let args = BuildArguments {
+            client: client.clone(),
+            config,
+            pool: NoopWorldChainTransactionPool::default(),
+            cached_reads: Default::default(),
+            cancel: Default::default(),
+            best_payload: None,
+        };
+        self.build_payload(args)?
+            .into_payload()
+            .ok_or_else(|| PayloadBuilderError::MissingPayload)
     }
 }
 
