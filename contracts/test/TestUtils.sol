@@ -36,7 +36,6 @@ contract TestUtils {
         PackedUserOperation[] memory uOps = new PackedUserOperation[](proofs.length);
         for (uint256 i = 0; i < proofs.length; ++i) {
             bytes memory signature = encodeSignature(proofs[i]);
-            // uint256 preVerificationGas = uint256(100000) << 64 | 100000;
             PackedUserOperation memory uo = PackedUserOperation({
                 sender: sender,
                 nonce: i,
