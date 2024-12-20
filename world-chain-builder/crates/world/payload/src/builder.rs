@@ -36,7 +36,7 @@ use reth_provider::{
 };
 use reth_transaction_pool::error::{InvalidPoolTransactionError, PoolTransactionError};
 use reth_transaction_pool::{BestTransactions, ValidPoolTransaction};
-use revm::{Database, StateBuilder};
+use revm::Database;
 use revm_primitives::{
     BlockEnv, Bytes, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, InvalidTransaction,
     ResultAndState, TxEnv, B256, U256,
