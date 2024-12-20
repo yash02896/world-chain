@@ -39,7 +39,6 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         bytes[] memory proofs = new bytes[](2);
         proofs[0] = abi.encode(proof0);
         proofs[1] = abi.encode(proof1);
-        console.log(entryPoint.getNonce(address(safe), 0));
 
         PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs);
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
