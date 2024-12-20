@@ -24,7 +24,7 @@ contract Setup is Test {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice The 4337 Entry Point on Ethereum Mainnet.
-    IEntryPoint internal entryPoint = IEntryPoint(address(0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789));
+    IEntryPoint internal entryPoint = IEntryPoint(address(0x0000000071727De22E5E9d8BAf0edAc6f37da032));
     /// @notice The PBHEntryPoint contract.
     IPBHEntryPoint public pbhEntryPoint;
     /// @notice The PBHSignatureAggregator contract.
@@ -32,7 +32,7 @@ contract Setup is Test {
     /// @notice No-op account.
     IAccount public safe;
     /// @notice The Mock World ID Groups contract.
-    IWorldIDGroups public worldIDGroups;
+    MockWorldIDGroups public worldIDGroups;
 
     address public pbhEntryPointImpl;
     address public immutable thisAddress = address(this);
@@ -58,7 +58,11 @@ contract Setup is Test {
         vm.label(pbhEntryPointImpl, "PBH Entry Point Impl V1");
 
         vm.deal(address(this), type(uint128).max);
-        vm.deal(address(safe), type(uint128).max);
+        vm.deal(address(safe), type(uint256).max);
+
+        // Deposit some funds into the Entry Point from the Mock Account.
+        vm.prank(address(safe));
+        entryPoint.depositTo{value: 10 ether}(address(safe));
     }
 
     ///////////////////////////////////////////////////////////////////////////////
