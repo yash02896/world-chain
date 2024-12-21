@@ -13,8 +13,8 @@ use reth::revm::witness::ExecutionWitnessRecord;
 use reth::revm::{DatabaseCommit, State};
 use reth::transaction_pool::{BestTransactionsAttributes, TransactionPool};
 use reth_basic_payload_builder::{
-    BuildArguments, BuildOutcome, BuildOutcomeKind, MissingPayloadBehaviour, PayloadBuilder,
-    PayloadConfig,
+    is_better_payload, BuildArguments, BuildOutcome, BuildOutcomeKind, MissingPayloadBehaviour,
+    PayloadBuilder, PayloadConfig,
 };
 use reth_chain_state::ExecutedBlock;
 use reth_evm::{ConfigureEvm, NextBlockEnvAttributes};
@@ -36,7 +36,7 @@ use reth_provider::{
 };
 use reth_transaction_pool::error::{InvalidPoolTransactionError, PoolTransactionError};
 use reth_transaction_pool::{BestTransactions, ValidPoolTransaction};
-use revm::{Database, StateBuilder};
+use revm::Database;
 use revm_primitives::{
     BlockEnv, Bytes, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, InvalidTransaction,
     ResultAndState, TxEnv, B256, U256,
@@ -298,7 +298,10 @@ where
 impl<Pool, Client, EvmConfig, Txs> PayloadBuilder<Pool, Client>
     for WorldChainPayloadBuilder<EvmConfig, Txs>
 where
-    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
+    Client: StateProviderFactory
+        + ChainSpecProvider<ChainSpec = OpChainSpec>
+        + BlockReaderIdExt
+        + Clone,
     Pool: TransactionPool<Transaction: WorldChainPoolTransaction<Consensus = TransactionSigned>>,
     EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
     Txs: OpPayloadTransactions,
@@ -326,23 +329,20 @@ where
     // system txs, hence on_missing_payload we return [MissingPayloadBehaviour::AwaitInProgress].
     fn build_empty_payload(
         &self,
-        _client: &Client,
-        _config: PayloadConfig<Self::Attributes>,
+        client: &Client,
+        config: PayloadConfig<Self::Attributes>,
     ) -> Result<OpBuiltPayload, PayloadBuilderError> {
-        // TODO:
-        // let args = BuildArguments {
-        //     client,
-        //     config,
-        //     // we use defaults here because for the empty payload we don't need to execute anything
-        //     pool: NoopWorldChainTransactionPool::default(),
-        //     cached_reads: Default::default(),
-        //     cancel: Default::default(),
-        //     best_payload: None,
-        // };
-        // self.build_payload(args)?
-        //     .into_payload()
-        //     .ok_or_else(|| PayloadBuilderError::MissingPayload)
-        todo!()
+        let args = BuildArguments {
+            client: client.clone(),
+            config,
+            pool: NoopWorldChainTransactionPool::default(),
+            cached_reads: Default::default(),
+            cancel: Default::default(),
+            best_payload: None,
+        };
+        self.build_payload(args)?
+            .into_payload()
+            .ok_or_else(|| PayloadBuilderError::MissingPayload)
     }
 }
 
@@ -695,10 +695,8 @@ impl<EvmConfig, Client> WorldChainPayloadBuilderCtx<EvmConfig, Client> {
     }
 
     /// Returns true if the fees are higher than the previous payload.
-    /// TODO: PBH
     pub fn is_better_payload(&self, total_fees: U256) -> bool {
-        // self.inner.is_better_payload( total_fees)
-        todo!()
+        is_better_payload(self.inner.best_payload.as_ref(), total_fees)
     }
 
     /// Commits the withdrawals from the payload attributes to the state.

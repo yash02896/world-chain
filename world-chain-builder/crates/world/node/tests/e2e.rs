@@ -312,7 +312,7 @@ async fn test_dup_pbh_nonce() -> eyre::Result<()> {
 
     let raw_tx_0 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
     ctx.node.rpc.inject_tx(raw_tx_0.clone()).await?;
-    let raw_tx_1 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 1).await;
+    let raw_tx_1 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
 
     // Now that the nullifier has successfully been stored in
     // the `ExecutedPbhNullifierTable`, inserting a new tx with the
