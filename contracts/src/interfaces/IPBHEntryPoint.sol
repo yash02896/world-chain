@@ -22,22 +22,13 @@ interface IPBHEntryPoint {
         address payable beneficiary
     ) external;
 
-    function initialize(
-        IWorldIDGroups worldId,
-        IEntryPoint entryPoint,
-        uint8 _numPbhPerMonth
-    ) external;
+    function initialize(IWorldIDGroups worldId, IEntryPoint entryPoint, uint8 _numPbhPerMonth) external;
 
     function validateSignaturesCallback(bytes32 hashedOps) external view;
 
     function nullifierHashes(uint256) external view returns (bool);
 
-    function verifyPbh(
-        address sender,
-        uint256 nonce,
-        bytes memory callData,
-        PBHPayload memory pbhPayload
-    ) external;
+    function verifyPbh(address sender, uint256 nonce, bytes memory callData, PBHPayload memory pbhPayload) external;
 
     function setNumPbhPerMonth(uint8 _numPbhPerMonth) external;
 

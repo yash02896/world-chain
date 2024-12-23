@@ -19,12 +19,7 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         uint256 timestamp = block.timestamp;
         uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(timestamp));
         uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(timestamp));
-        uint256 encoded = PBHExternalNullifier.encode(
-            PBHExternalNullifier.V1,
-            0,
-            month,
-            year
-        );
+        uint256 encoded = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
 
         worldIDGroups.setVerifyProofSuccess(true);
         IPBHEntryPoint.PBHPayload memory proof0 = IPBHEntryPoint.PBHPayload({
@@ -45,35 +40,20 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         proofs[0] = abi.encode(proof0);
         proofs[1] = abi.encode(proof1);
 
-        PackedUserOperation[] memory uoTestFixture = createUOTestData(
-            address(safe),
-            proofs
-        );
-        bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(
-            uoTestFixture
-        );
+        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs);
+        bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
 
-        IEntryPoint.UserOpsPerAggregator[]
-            memory userOpsPerAggregator = new IEntryPoint.UserOpsPerAggregator[](
-                1
-            );
+        IEntryPoint.UserOpsPerAggregator[] memory userOpsPerAggregator = new IEntryPoint.UserOpsPerAggregator[](1);
         userOpsPerAggregator[0] = IEntryPoint.UserOpsPerAggregator({
             aggregator: pbhAggregator,
             userOps: uoTestFixture,
             signature: aggregatedSignature
         });
 
-        pbhEntryPoint.handleAggregatedOps(
-            userOpsPerAggregator,
-            payable(address(this))
-        );
+        pbhEntryPoint.handleAggregatedOps(userOpsPerAggregator, payable(address(this)));
     }
 
-    function testAggregateSignatures(
-        uint256 root,
-        uint256 pbhExternalNullifier,
-        uint256 nullifierHash
-    ) public {
+    function testAggregateSignatures(uint256 root, uint256 pbhExternalNullifier, uint256 nullifierHash) public {
         IPBHEntryPoint.PBHPayload memory proof = IPBHEntryPoint.PBHPayload({
             root: root,
             pbhExternalNullifier: pbhExternalNullifier,
@@ -84,41 +64,22 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         bytes[] memory proofs = new bytes[](2);
         proofs[0] = abi.encode(proof);
         proofs[1] = abi.encode(proof);
-        PackedUserOperation[] memory uoTestFixture = createUOTestData(
-            address(safe),
-            proofs
-        );
-        bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(
-            uoTestFixture
-        );
-        IPBHEntryPoint.PBHPayload[] memory decodedProofs = abi.decode(
-            aggregatedSignature,
-            (IPBHEntryPoint.PBHPayload[])
-        );
+        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs);
+        bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
+        IPBHEntryPoint.PBHPayload[] memory decodedProofs =
+            abi.decode(aggregatedSignature, (IPBHEntryPoint.PBHPayload[]));
         assertEq(decodedProofs.length, 2, "Decoded proof length should be 1");
         assertEq(decodedProofs[0].root, proof.root, "Root should match");
         assertEq(
-            decodedProofs[0].pbhExternalNullifier,
-            proof.pbhExternalNullifier,
-            "PBH External Nullifier should match"
+            decodedProofs[0].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
         );
-        assertEq(
-            decodedProofs[0].nullifierHash,
-            proof.nullifierHash,
-            "Nullifier Hash should match"
-        );
+        assertEq(decodedProofs[0].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
 
         assertEq(decodedProofs[1].root, proof.root, "Root should match");
         assertEq(
-            decodedProofs[1].pbhExternalNullifier,
-            proof.pbhExternalNullifier,
-            "PBH External Nullifier should match"
+            decodedProofs[1].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
         );
-        assertEq(
-            decodedProofs[1].nullifierHash,
-            proof.nullifierHash,
-            "Nullifier Hash should match"
-        );
+        assertEq(decodedProofs[1].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
     }
 
     receive() external payable {}
