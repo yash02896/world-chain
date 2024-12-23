@@ -6,7 +6,6 @@ import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/Pac
 import {ValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
 import {_packValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
 import {ISafe} from "@4337/interfaces/Safe.sol";
-import "forge-std/console.sol";
 
 contract PBHSafe4337Module is Safe4337Module {
     uint256 constant ECDSA_SIGNATURE_LENGTH = 65;
@@ -46,9 +45,6 @@ contract PBHSafe4337Module is Safe4337Module {
         // operationData is not determined by the signature
         (bytes memory operationData, uint48 validAfter, uint48 validUntil, bytes calldata signatures) =
             _getSafeOp(userOp);
-
-        // console.log("operationData during validation", operationData);
-        // console.log("signatures", signatures);
 
         // If it is a PBH transaction, we need to handle two cases with the signature:
         // 1. The bundler simulates the call with the proof appended

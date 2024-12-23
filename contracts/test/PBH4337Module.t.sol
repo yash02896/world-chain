@@ -33,8 +33,6 @@ contract PBHSafe4337ModuleTest is Test {
         ownerKey = 0x1;
         owner = vm.addr(ownerKey);
 
-        console.log("expected owner", owner);
-
         module = new Mock4337Module(owner, PBH_SIGNATURE_AGGREGATOR, PBH_NONCE_KEY);
 
         // Deploy SafeModuleSetup
