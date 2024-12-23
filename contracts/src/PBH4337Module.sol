@@ -14,6 +14,8 @@ contract PBHSafe4337Module is Safe4337Module {
     address public immutable PBH_SIGNATURE_AGGREGATOR;
     uint192 public immutable PBH_NONCE_KEY;
 
+    error InvalidProofSize();
+
     constructor(address entryPoint, address _pbhSignatureAggregator, uint192 _pbhNonceKey) Safe4337Module(entryPoint) {
         PBH_SIGNATURE_AGGREGATOR = _pbhSignatureAggregator;
         PBH_NONCE_KEY = _pbhNonceKey;
@@ -58,8 +60,9 @@ contract PBHSafe4337Module is Safe4337Module {
         // If the signature length is greater than the expected length, then we know that the bundler appended the proof
         // We need to remove the proof from the signature before validation
         if (isPBH && userOp.signature.length > expectedLength) {
-            // 352 bytes is the size of the encoded proof
-            require(userOp.signature.length - expectedLength == 352, "Invalid proof size in signature");
+            if (userOp.signature.length - expectedLength != 352) {
+                revert InvalidProofSize();
+            }
             // Remove the proof from the signature
             signatures = userOp.signature[0:expectedLength];
         }
