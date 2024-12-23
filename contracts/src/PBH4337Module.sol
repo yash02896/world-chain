@@ -38,7 +38,6 @@ contract PBHSafe4337Module is Safe4337Module {
         // Check if the userOp has the specified PBH key
         // https://github.com/eth-infinitism/account-abstraction/blob/develop/contracts/core/NonceManager.sol#L38
         uint192 key = uint192(userOp.nonce >> 64);
-        bool isPBH = false;
 
         // This does NOT validate the proof
         // It removes the first 12 bytes from the signature as it represents the validAfter and validUntil values
@@ -49,9 +48,8 @@ contract PBHSafe4337Module is Safe4337Module {
         // If it is a PBH transaction, we need to handle two cases with the signature:
         // 1. The bundler simulates the call with the proof appended
         // 2. UserOp execution without proof appended
-        if (key == PBH_NONCE_KEY) {
-            isPBH = true;
-        }
+        bool isPBH = (key == PBH_NONCE_KEY) ? true : false;
+
         // Base signature length calculation:
         // TIMESTAMP_BYTES (12) + (threshold * ECDSA_SIGNATURE_LENGTH)
         uint256 expectedLength =
@@ -59,10 +57,10 @@ contract PBHSafe4337Module is Safe4337Module {
 
         // If the signature length is greater than the expected length, then we know that the bundler appended the proof
         // We need to remove the proof from the signature before validation
-        if (key == PBH_NONCE_KEY && userOp.signature.length > expectedLength) {
-            // TODO: Check for valid proof size
-            console.log("Removing proof");
-
+        if (isPBH && userOp.signature.length > expectedLength) {
+            // 352 bytes is the size of the encoded proof
+            require(userOp.signature.length - expectedLength == 352, "Invalid proof size in signature");
+            // Remove the proof from the signature
             signatures = userOp.signature[0:expectedLength];
         }
 
