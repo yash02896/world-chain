@@ -138,7 +138,7 @@ impl WorldChainBuilderTestContext {
         })
     }
 
-    pub async fn raw_pbh_tx_bytes(&self, acc: u32, pbh_nonce: u8, tx_nonce: u64) -> Bytes {
+    pub async fn raw_pbh_tx_bytes(&self, acc: u32, pbh_nonce: u8, tx_nonce: u64, user_op_nonce: U256) -> Bytes {
         let dt = chrono::Utc::now();
         let dt = dt.naive_local();
 
@@ -148,9 +148,10 @@ impl WorldChainBuilderTestContext {
         let ext_nullifier = ExternalNullifier::v1(month, year, pbh_nonce);
         let (uo, proof) = user_op()
             .acc(acc)
+            .nonce(user_op_nonce)
             .external_nullifier(ext_nullifier)
-            .nonce(U256::from(pbh_nonce))
             .call();
+
         let data = pbh_bundle(vec![uo], vec![proof]);
         let encoded = data.abi_encode();
         let tx = tx(
@@ -171,7 +172,7 @@ async fn test_can_build_pbh_payload() -> eyre::Result<()> {
     let mut pbh_tx_hashes = vec![];
     let signers = ctx.signers.clone();
     for signer in signers.into_iter() {
-        let raw_tx = ctx.raw_pbh_tx_bytes(signer, 0, 0).await;
+        let raw_tx = ctx.raw_pbh_tx_bytes(signer, 0, 0, U256::ZERO).await;
         let pbh_hash = ctx.node.rpc.inject_tx(raw_tx.clone()).await?;
         pbh_tx_hashes.push(pbh_hash);
     }
@@ -208,7 +209,7 @@ async fn test_transaction_pool_ordering() -> eyre::Result<()> {
     let mut pbh_tx_hashes = vec![];
     let signers = ctx.signers.clone();
     for signer in signers.into_iter().skip(1) {
-        let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
+        let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0, U256::ZERO).await;
         let pbh_hash = ctx.node.rpc.inject_tx(raw_tx.clone()).await?;
         pbh_tx_hashes.push(pbh_hash);
     }
@@ -239,7 +240,7 @@ async fn test_transaction_pool_ordering() -> eyre::Result<()> {
 async fn test_invalidate_dup_tx_and_nullifier() -> eyre::Result<()> {
     let ctx = WorldChainBuilderTestContext::setup().await?;
     let signer = 0;
-    let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
+    let raw_tx = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0, U256::ZERO).await;
     ctx.node.rpc.inject_tx(raw_tx.clone()).await?;
     let dup_pbh_hash_res = ctx.node.rpc.inject_tx(raw_tx.clone()).await;
     assert!(dup_pbh_hash_res.is_err());
@@ -251,9 +252,9 @@ async fn test_dup_pbh_nonce() -> eyre::Result<()> {
     let mut ctx = WorldChainBuilderTestContext::setup().await?;
     let signer = 0;
 
-    let raw_tx_0 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
+    let raw_tx_0 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0, U256::ZERO).await;
     ctx.node.rpc.inject_tx(raw_tx_0.clone()).await?;
-    let raw_tx_1 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0).await;
+    let raw_tx_1 = ctx.raw_pbh_tx_bytes(signer.clone(), 0, 0, U256::ZERO).await;
 
     // Now that the nullifier has successfully been stored in
     // the `ExecutedPbhNullifierTable`, inserting a new tx with the
