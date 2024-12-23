@@ -1,3 +1,6 @@
+use std::fmt::Display;
+use std::sync::Arc;
+
 use alloy_consensus::EMPTY_OMMER_ROOT_HASH;
 use alloy_eips::eip4895::Withdrawals;
 use alloy_eips::merge::BEACON_NONCE;
@@ -7,12 +10,11 @@ use reth::payload::{PayloadBuilderAttributes, PayloadId};
 use reth::revm::database::StateProviderDatabase;
 use reth::revm::db::states::bundle_state::BundleRetention;
 use reth::revm::witness::ExecutionWitnessRecord;
-use reth::revm::DatabaseCommit;
-use reth::revm::State;
+use reth::revm::{DatabaseCommit, State};
 use reth::transaction_pool::{BestTransactionsAttributes, TransactionPool};
 use reth_basic_payload_builder::{
-    BuildArguments, BuildOutcome, BuildOutcomeKind, MissingPayloadBehaviour, PayloadBuilder,
-    PayloadConfig,
+    is_better_payload, BuildArguments, BuildOutcome, BuildOutcomeKind, MissingPayloadBehaviour,
+    PayloadBuilder, PayloadConfig,
 };
 use reth_chain_state::ExecutedBlock;
 use reth_evm::{ConfigureEvm, NextBlockEnvAttributes};
@@ -25,9 +27,9 @@ use reth_optimism_payload_builder::builder::{
 use reth_optimism_payload_builder::config::OpBuilderConfig;
 use reth_optimism_payload_builder::OpPayloadAttributes;
 use reth_primitives::{
-    proofs, BlockBody, BlockExt, InvalidTransactionError, SealedHeader, TransactionSigned,
+    proofs, Block, BlockBody, BlockExt, Header, InvalidTransactionError, Receipt, SealedHeader,
+    TransactionSigned, TxType,
 };
-use reth_primitives::{Block, Header, Receipt, TxType};
 use reth_provider::{
     BlockReaderIdExt, ChainSpecProvider, ExecutionOutcome, HashedPostStateProvider, ProviderError,
     StateProofProvider, StateProviderFactory, StateRootProvider,
@@ -36,16 +38,12 @@ use reth_transaction_pool::error::{InvalidPoolTransactionError, PoolTransactionE
 use reth_transaction_pool::{BestTransactions, ValidPoolTransaction};
 use revm::Database;
 use revm_primitives::{
-    BlockEnv, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, InvalidTransaction,
-    ResultAndState, U256,
+    BlockEnv, Bytes, CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, InvalidTransaction,
+    ResultAndState, TxEnv, B256, U256,
 };
-use revm_primitives::{Bytes, TxEnv, B256};
-use std::fmt::Display;
-use std::sync::Arc;
 use thiserror::Error;
 use tracing::{debug, trace, warn};
 use world_chain_builder_pool::noop::NoopWorldChainTransactionPool;
-
 use world_chain_builder_pool::tx::WorldChainPoolTransaction;
 use world_chain_builder_rpc::eth::validate_conditional_options;
 
@@ -199,21 +197,24 @@ where
         let state_provider = client.state_by_block_hash(ctx.parent().hash())?;
         let state = StateProviderDatabase::new(state_provider);
 
-        if ctx.attributes().no_tx_pool {
+        let build_outcome = if ctx.attributes().no_tx_pool {
             let db = State::builder()
                 .with_database(state)
                 .with_bundle_update()
                 .build();
-            builder.build(db, ctx)
+
+            builder.build(db, ctx)?
         } else {
             // sequencer mode we can reuse cachedreads from previous runs
             let db = State::builder()
                 .with_database(cached_reads.as_db_mut(state))
                 .with_bundle_update()
                 .build();
-            builder.build(db, ctx)
-        }
-        .map(|out| out.with_cached_reads(cached_reads))
+
+            builder.build(db, ctx)?
+        };
+
+        Ok(build_outcome.with_cached_reads(cached_reads))
     }
 }
 
@@ -297,7 +298,10 @@ where
 impl<Pool, Client, EvmConfig, Txs> PayloadBuilder<Pool, Client>
     for WorldChainPayloadBuilder<EvmConfig, Txs>
 where
-    Client: StateProviderFactory + ChainSpecProvider<ChainSpec = OpChainSpec> + BlockReaderIdExt,
+    Client: StateProviderFactory
+        + ChainSpecProvider<ChainSpec = OpChainSpec>
+        + BlockReaderIdExt
+        + Clone,
     Pool: TransactionPool<Transaction: WorldChainPoolTransaction<Consensus = TransactionSigned>>,
     EvmConfig: ConfigureEvm<Header = Header, Transaction = TransactionSigned>,
     Txs: OpPayloadTransactions,
@@ -325,23 +329,20 @@ where
     // system txs, hence on_missing_payload we return [MissingPayloadBehaviour::AwaitInProgress].
     fn build_empty_payload(
         &self,
-        _client: &Client,
-        _config: PayloadConfig<Self::Attributes>,
+        client: &Client,
+        config: PayloadConfig<Self::Attributes>,
     ) -> Result<OpBuiltPayload, PayloadBuilderError> {
-        // TODO:
-        // let args = BuildArguments {
-        //     client,
-        //     config,
-        //     // we use defaults here because for the empty payload we don't need to execute anything
-        //     pool: NoopWorldChainTransactionPool::default(),
-        //     cached_reads: Default::default(),
-        //     cancel: Default::default(),
-        //     best_payload: None,
-        // };
-        // self.build_payload(args)?
-        //     .into_payload()
-        //     .ok_or_else(|| PayloadBuilderError::MissingPayload)
-        todo!()
+        let args = BuildArguments {
+            client: client.clone(),
+            config,
+            pool: NoopWorldChainTransactionPool::default(),
+            cached_reads: Default::default(),
+            cancel: Default::default(),
+            best_payload: None,
+        };
+        self.build_payload(args)?
+            .into_payload()
+            .ok_or_else(|| PayloadBuilderError::MissingPayload)
     }
 }
 
@@ -694,10 +695,8 @@ impl<EvmConfig, Client> WorldChainPayloadBuilderCtx<EvmConfig, Client> {
     }
 
     /// Returns true if the fees are higher than the previous payload.
-    /// TODO: PBH
     pub fn is_better_payload(&self, total_fees: U256) -> bool {
-        // self.inner.is_better_payload( total_fees)
-        todo!()
+        is_better_payload(self.inner.best_payload.as_ref(), total_fees)
     }
 
     /// Commits the withdrawals from the payload attributes to the state.

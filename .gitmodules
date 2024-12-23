@@ -10,9 +10,15 @@
 [submodule "contracts/lib/safe-modules"]
 	path = contracts/lib/safe-modules
 	url = https://github.com/safe-global/safe-modules
-[submodule "contracts/lib/account-abstraction"]
-	path = contracts/lib/account-abstraction
-	url = https://github.com/eth-infinitism/account-abstraction
 [submodule "contracts/lib/safe-contracts"]
 	path = contracts/lib/safe-contracts
 	url = https://github.com/safe-global/safe-contracts
+[submodule "contracts/lib/openzeppelin-contracts"]
+	path = contracts/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "contracts/lib/account-abstraction"]
+	path = contracts/lib/account-abstraction
+	url = https://github.com/eth-infinitism/account-abstraction
+[submodule "contracts/lib/openzeppelin-contracts-upgradeable"]
+	path = contracts/lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable
