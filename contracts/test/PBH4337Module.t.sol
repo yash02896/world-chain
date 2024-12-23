@@ -79,7 +79,7 @@ contract PBHSafe4337ModuleTest is Test {
         safe = Safe(payable(address(proxy)));
     }
 
-    function testValidateSignaturesWithUserOp() public {
+    function testValidSignature() public {
         bytes memory signatureBefore = abi.encodePacked(uint48(0), uint48(0));
 
         PackedUserOperation memory userOp = PackedUserOperation({
@@ -130,7 +130,7 @@ contract PBHSafe4337ModuleTest is Test {
         assertEq(validAfter, 0, "ValidAfter should be 0");
     }
 
-    function testInvalidSignatures() public {
+    function testInvalidSignature() public {
         bytes memory signatureBefore = abi.encodePacked(uint48(0), uint48(0));
 
         PackedUserOperation memory userOp = PackedUserOperation({
