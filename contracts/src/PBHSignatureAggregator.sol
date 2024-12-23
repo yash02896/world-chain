@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.28;
 
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {IPBHEntryPoint} from "./interfaces/IPBHEntryPoint.sol";
-import {IPBHVerifier} from "./interfaces/IPBHVerifier.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 
 /// @title PBH Signature Aggregator
@@ -64,12 +63,12 @@ contract PBHSignatureAggregator is IAggregator {
         pure
         returns (bytes memory aggregatedSignature)
     {
-        IPBHVerifier.PBHPayload[] memory pbhPayloads = new IPBHVerifier.PBHPayload[](userOps.length);
+        IPBHEntryPoint.PBHPayload[] memory pbhPayloads = new IPBHEntryPoint.PBHPayload[](userOps.length);
         for (uint256 i = 0; i < userOps.length; ++i) {
             // Bytes (0:65) - UserOp Signature
             // Bytes (65:65 + 352) - Packed Proof Data
             bytes memory proofData = userOps[i].signature[65:];
-            pbhPayloads[i] = abi.decode(proofData, (IPBHVerifier.PBHPayload));
+            pbhPayloads[i] = abi.decode(proofData, (IPBHEntryPoint.PBHPayload));
         }
         aggregatedSignature = abi.encode(pbhPayloads);
     }
