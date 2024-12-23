@@ -138,7 +138,13 @@ impl WorldChainBuilderTestContext {
         })
     }
 
-    pub async fn raw_pbh_tx_bytes(&self, acc: u32, pbh_nonce: u8, tx_nonce: u64, user_op_nonce: U256) -> Bytes {
+    pub async fn raw_pbh_tx_bytes(
+        &self,
+        acc: u32,
+        pbh_nonce: u8,
+        tx_nonce: u64,
+        user_op_nonce: U256,
+    ) -> Bytes {
         let dt = chrono::Utc::now();
         let dt = dt.naive_local();
 
