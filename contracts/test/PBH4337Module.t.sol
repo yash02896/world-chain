@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import {Vm} from "forge-std/Vm.sol";
 import {Test} from "forge-std/Test.sol";
-
 import "forge-std/console.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
@@ -34,14 +33,9 @@ contract PBHSafe4337ModuleTest is Test {
         ownerKey = 0x1;
         owner = vm.addr(ownerKey);
 
-        module = new Mock4337Module(owner, PBH_SIGNATURE_AGGREGATOR, PBH_NONCE_KEY);
+        console.log("expected owner", owner);
 
-        // module = new PBHSafe4337Module(
-        //     // TODO: Find transaction broadcaster in forge test
-        //     owner,
-        //     PBH_SIGNATURE_AGGREGATOR,
-        //     PBH_NONCE_KEY
-        // );
+        module = new Mock4337Module(owner, PBH_SIGNATURE_AGGREGATOR, PBH_NONCE_KEY);
 
         // Deploy SafeModuleSetup
         moduleSetup = new SafeModuleSetup();
@@ -85,30 +79,16 @@ contract PBHSafe4337ModuleTest is Test {
 
         // Cast proxy to Safe for easier interaction
         safe = Safe(payable(address(proxy)));
-
-        console.log("Is module enabled:", safe.isModuleEnabled(address(module)));
     }
 
     function testValidateSignaturesWithUserOp() public {
+        bytes memory signatureBefore = abi.encodePacked(uint48(0), uint48(0));
+
         PackedUserOperation memory userOp = PackedUserOperation({
             sender: address(safe),
             nonce: uint256(PBH_NONCE_KEY) << 64, // Keep the nonce key format
             initCode: "", // Empty for already deployed safe
-            callData: abi.encodeCall( // Actual call the Safe will make
-                    Safe.execTransaction,
-                    (
-                        address(0xdead), // target address
-                        1 ether, // value
-                        bytes(""), // data
-                        Enum.Operation.Call,
-                        0, // safeTxGas
-                        0, // baseGas
-                        0, // gasPrice
-                        address(0), // gasToken
-                        payable(address(0)), // refundReceiver
-                        bytes("") // signatures - empty for user op
-                    )
-                ),
+            callData: "",
             accountGasLimits: bytes32(
                 abi.encode( // Pack verification and call gas limits
                     uint128(100000), // verification gas limit
@@ -123,89 +103,32 @@ contract PBHSafe4337ModuleTest is Test {
                 )
             ),
             paymasterAndData: "", // No paymaster
-            signature: "" // Will be filled after signing
+            signature: signatureBefore
         });
 
         bytes32 operationHash = module.getOperationHash(userOp);
 
-        // // First create the userOp in memory
-        // PackedUserOperation memory userOp = PackedUserOperation({
-        //     sender: address(safe),
-        //     nonce: uint256(PBH_NONCE_KEY) << 64,
-        //     initCode: "",
-        //     callData: "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf",
-        //     accountGasLimits: bytes32(0),
-        //     preVerificationGas: 0,
-        //     gasFees: bytes32(0),
-        //     paymasterAndData: "",
-        //     signature: ""
-        // });
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, operationHash);
 
-        // // Encode it to bytes
-        // bytes memory encodedUserOp = abi.encode(userOp);
+        bytes memory signature = abi.encodePacked(
+            uint48(0),
+            uint48(0),
+            r,
+            s,
+            v // The raw signature components
+        );
+        userOp.signature = signature;
 
-        // // Make the call using a raw call to handle the calldata requirement
-        // (bool success, bytes memory returnData) = address(module).call(
-        //     abi.encodeCall(Safe4337Module.getOperationHash, (abi.decode(encodedUserOp, (PackedUserOperation))))
-        // );
-        // require(success, "getOperationHash failed");
+        uint256 validationData = module.validateSignaturesExternal(userOp);
 
-        // bytes32 operationHash = abi.decode(returnData, (bytes32));
+        // // Extract validation components
+        address authorizer = address(uint160(validationData));
+        uint48 validUntil = uint48(validationData >> 160);
+        uint48 validAfter = uint48(validationData >> 208);
 
-        // // Sign the operation hash
-        // (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, operationHash);
-
-        // // Pack the signature with just time bounds and r,s,v
-        // bytes memory signature = abi.encodePacked(
-        //     uint48(0), // uint48 (6 bytes)
-        //     uint48(0), // uint48 (6 bytes)
-        //     r,
-        //     s,
-        //     v // The raw signature components
-        // );
-        // // Update userOp with signature
-        // userOp.signature = signature;
-
-        // // Encode the function call using abi.encodeCall
-        // // bytes memory callData = abi.encodeCall(
-        // //     Mock4337Module.validateSignaturesExternal,
-        // //     (userOp)
-        // // );
-
-        // // module.validateSignaturesExternal(userOp);
-
-        // // bytes memory callData = abi.encodeCall(
-        // //     // Safe4337Module.getOperationHash,
-        // //     Mock4337Module.validateSignaturesExternal2,
-        // //     (userOp)
-        // // );
-
-        // // // Make the raw call
-        // // (bool success2, bytes memory returnData) = address(safe).call(callData);
-        // // require(success2, "validateSignaturesExternal call failed");
-
-        // // console.log("Success:", success2);
-        // // console.log("Return data length:", returnData.length);
-        // // console.logBytes(returnData);
-
-        // // // // Decode the return value
-        // // // uint256 validationData = abi.decode(returnData, (uint256));
-        // // // console.log("validationData", returnData);
-
-        // // uint256 validationData = uint256(returnData);
-
-        // // // // Extract validation components
-        // // address authorizer = address(uint160(returnData));
-        // // uint48 validUntil = uint48(validationData >> 160);
-        // // uint48 validAfter = uint48(validationData >> 208);
-
-        // // console.log("authorizer", authorizer);
-        // // console.log("validUntil", validUntil);
-        // // console.log("validAfter", validAfter);
-
-        // // // Verify signature was valid (authorizer should be address(0) for valid non-PBH signature)
-        // // assertEq(authorizer, PBH_SIGNATURE_AGGREGATOR, "PBH Aggregator address not returned");
-        // // assertEq(validUntil, 0, "ValidUntil should be 0");
-        // // assertEq(validAfter, 0, "ValidAfter should be 0");
+        // Verify signature was valid (authorizer should be address(0) for valid non-PBH signature)
+        assertEq(authorizer, PBH_SIGNATURE_AGGREGATOR, "PBH Aggregator address not returned");
+        assertEq(validUntil, 0, "ValidUntil should be 0");
+        assertEq(validAfter, 0, "ValidAfter should be 0");
     }
 }

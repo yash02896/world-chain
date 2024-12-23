@@ -47,11 +47,13 @@ contract PBHSafe4337Module is Safe4337Module {
         (bytes memory operationData, uint48 validAfter, uint48 validUntil, bytes calldata signatures) =
             _getSafeOp(userOp);
 
+        // console.log("operationData during validation", operationData);
+        // console.log("signatures", signatures);
+
         // If it is a PBH transaction, we need to handle two cases with the signature:
         // 1. The bundler simulates the call with the proof appended
         // 2. UserOp execution without proof appended
         if (key == PBH_NONCE_KEY) {
-            console.log("PBH transaction detected");
             isPBH = true;
         }
         // Base signature length calculation:

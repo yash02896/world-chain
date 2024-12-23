@@ -19,7 +19,6 @@ contract Mock4337Module is PBHSafe4337Module {
         view
         returns (uint256 validationData)
     {
-        console.log("validateSignaturesExternal");
         return _validateSignatures(userOp);
     }
 }
