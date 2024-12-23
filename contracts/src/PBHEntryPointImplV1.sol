@@ -7,14 +7,13 @@ import {IPBHEntryPoint} from "./interfaces/IPBHEntryPoint.sol";
 import {ByteHasher} from "./helpers/ByteHasher.sol";
 import {PBHExternalNullifier} from "./helpers/PBHExternalNullifier.sol";
 import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDImpl.sol";
-import {IPBHVerifier} from "./interfaces/IPBHVerifier.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
 /// @title PBH Entry Point Implementation V1
 /// @dev This contract is an implementation of the PBH Entry Point.
 ///      It is used to verify the signature of a Priority User Operation, and Relaying Priority Bundles to the EIP-4337 Entry Point.
 /// @author Worldcoin
-contract PBHEntryPointImplV1 is IPBHEntryPoint, IPBHVerifier, WorldIDImpl {
+contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////

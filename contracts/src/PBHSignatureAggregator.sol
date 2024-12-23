@@ -3,7 +3,6 @@ pragma solidity ^0.8.28;
 
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {IPBHEntryPoint} from "./interfaces/IPBHEntryPoint.sol";
-import {IPBHVerifier} from "./interfaces/IPBHVerifier.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 
 /// @title PBH Signature Aggregator
@@ -29,10 +28,14 @@ contract PBHSignatureAggregator is IAggregator {
      * Revert if the aggregated signature does not match the given list of operations.
      * @param userOps   - Array of UserOperations to validate the signature for.
      */
-    function validateSignatures(PackedUserOperation[] calldata userOps, bytes calldata) external view {
+    function validateSignatures(
+        PackedUserOperation[] calldata userOps,
+        bytes calldata
+    ) external view {
         bytes memory encoded = abi.encode(userOps);
-        try pbhEntryPoint.validateSignaturesCallback(keccak256(encoded)) {}
-        catch {
+        try
+            pbhEntryPoint.validateSignaturesCallback(keccak256(encoded))
+        {} catch {
             revert InvalidUserOperations();
         }
     }
@@ -46,11 +49,9 @@ contract PBHSignatureAggregator is IAggregator {
      * @return sigForUserOp - The value to put into the signature field of the userOp when calling handleOps.
      *                        (usually empty, unless account and aggregator support some kind of "multisig".
      */
-    function validateUserOpSignature(PackedUserOperation calldata userOp)
-        external
-        pure
-        returns (bytes memory sigForUserOp)
-    {}
+    function validateUserOpSignature(
+        PackedUserOperation calldata userOp
+    ) external pure returns (bytes memory sigForUserOp) {}
 
     /**
      * Aggregate multiple signatures into a single value.
@@ -59,17 +60,18 @@ contract PBHSignatureAggregator is IAggregator {
      * @param userOps              - Array of UserOperations to collect the signatures from.
      * @return aggregatedSignature - The aggregated signature.
      */
-    function aggregateSignatures(PackedUserOperation[] calldata userOps)
-        external
-        pure
-        returns (bytes memory aggregatedSignature)
-    {
-        IPBHVerifier.PBHPayload[] memory pbhPayloads = new IPBHVerifier.PBHPayload[](userOps.length);
+    function aggregateSignatures(
+        PackedUserOperation[] calldata userOps
+    ) external pure returns (bytes memory aggregatedSignature) {
+        IPBHEntryPoint.PBHPayload[]
+            memory pbhPayloads = new IPBHEntryPoint.PBHPayload[](
+                userOps.length
+            );
         for (uint256 i = 0; i < userOps.length; ++i) {
             // Bytes (0:65) - UserOp Signature
             // Bytes (65:65 + 352) - Packed Proof Data
             bytes memory proofData = userOps[i].signature[65:];
-            pbhPayloads[i] = abi.decode(proofData, (IPBHVerifier.PBHPayload));
+            pbhPayloads[i] = abi.decode(proofData, (IPBHEntryPoint.PBHPayload));
         }
         aggregatedSignature = abi.encode(pbhPayloads);
     }
