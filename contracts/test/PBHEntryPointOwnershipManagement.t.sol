@@ -10,8 +10,6 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDImpl.sol";
 
-import {PBHVerifier} from "../src/PBHVerifier.sol";
-
 /// @title World ID PBHEntryPoint Routing Tests
 /// @notice Contains tests for the WorldID pbhVerifier
 /// @author Worldcoin

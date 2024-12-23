@@ -2,10 +2,10 @@
 pragma solidity ^0.8.21;
 
 import {Setup} from "./Setup.sol";
-import {IPBHVerifier} from "../src/interfaces/IPBHVerifier.sol";
 import {console} from "@forge-std/console.sol";
 import {TestUtils} from "./TestUtils.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 import "../src/helpers/PBHExternalNullifier.sol";
@@ -22,14 +22,14 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         uint256 encoded = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
 
         worldIDGroups.setVerifyProofSuccess(true);
-        IPBHVerifier.PBHPayload memory proof0 = IPBHVerifier.PBHPayload({
+        IPBHEntryPoint.PBHPayload memory proof0 = IPBHEntryPoint.PBHPayload({
             root: 1,
             pbhExternalNullifier: encoded,
             nullifierHash: 0,
             proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
         });
 
-        IPBHVerifier.PBHPayload memory proof1 = IPBHVerifier.PBHPayload({
+        IPBHEntryPoint.PBHPayload memory proof1 = IPBHEntryPoint.PBHPayload({
             root: 2,
             pbhExternalNullifier: encoded,
             nullifierHash: 1,
@@ -54,7 +54,7 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
     }
 
     function testAggregateSignatures(uint256 root, uint256 pbhExternalNullifier, uint256 nullifierHash) public {
-        IPBHVerifier.PBHPayload memory proof = IPBHVerifier.PBHPayload({
+        IPBHEntryPoint.PBHPayload memory proof = IPBHEntryPoint.PBHPayload({
             root: root,
             pbhExternalNullifier: pbhExternalNullifier,
             nullifierHash: nullifierHash,
@@ -66,7 +66,8 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         proofs[1] = abi.encode(proof);
         PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs);
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
-        IPBHVerifier.PBHPayload[] memory decodedProofs = abi.decode(aggregatedSignature, (IPBHVerifier.PBHPayload[]));
+        IPBHEntryPoint.PBHPayload[] memory decodedProofs =
+            abi.decode(aggregatedSignature, (IPBHEntryPoint.PBHPayload[]));
         assertEq(decodedProofs.length, 2, "Decoded proof length should be 1");
         assertEq(decodedProofs[0].root, proof.root, "Root should match");
         assertEq(
