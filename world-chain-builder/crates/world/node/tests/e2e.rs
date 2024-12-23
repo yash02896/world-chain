@@ -4,6 +4,7 @@ use alloy_network::eip2718::Encodable2718;
 use alloy_network::{Ethereum, EthereumWallet, TransactionBuilder};
 use alloy_rpc_types::{TransactionInput, TransactionRequest, Withdrawals};
 use alloy_sol_types::SolCall;
+use chrono::Datelike;
 use reth::api::{FullNodeTypesAdapter, NodeTypesWithDBAdapter};
 use reth::builder::components::Components;
 use reth::builder::{NodeAdapter, NodeBuilder, NodeConfig, NodeHandle};
@@ -29,6 +30,7 @@ use std::ops::Range;
 use std::sync::Arc;
 use world_chain_builder_node::args::{ExtArgs, WorldChainBuilderArgs};
 use world_chain_builder_node::node::WorldChainBuilder;
+use world_chain_builder_pbh::external_nullifier::ExternalNullifier;
 use world_chain_builder_pool::ordering::WorldChainOrdering;
 use world_chain_builder_pool::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
 use world_chain_builder_pool::test_utils::{
@@ -109,7 +111,7 @@ impl WorldChainBuilderTestContext {
                 builder_args: WorldChainBuilderArgs {
                     num_pbh_txs: 30,
                     verified_blockspace_capacity: 70,
-                    pbh_validator: PBH_TEST_VALIDATOR.into(),
+                    pbh_validator: PBH_TEST_VALIDATOR,
                     signature_aggregator: PBH_TEST_SIGNATURE_AGGREGATOR,
                 },
                 ..Default::default()
@@ -137,7 +139,18 @@ impl WorldChainBuilderTestContext {
     }
 
     pub async fn raw_pbh_tx_bytes(&self, acc: u32, pbh_nonce: u8, tx_nonce: u64) -> Bytes {
-        let (uo, proof) = user_op().acc(acc).nonce(U256::from(pbh_nonce)).call();
+        let dt = chrono::Utc::now();
+        let dt = dt.naive_local();
+
+        let month = dt.month() as u8;
+        let year = dt.year() as u16;
+
+        let ext_nullifier = ExternalNullifier::v1(month, year, pbh_nonce);
+        let (uo, proof) = user_op()
+            .acc(acc)
+            .external_nullifier(ext_nullifier)
+            .nonce(U256::from(pbh_nonce))
+            .call();
         let data = pbh_bundle(vec![uo], vec![proof]);
         let encoded = data.abi_encode();
         let tx = tx(
