@@ -48,7 +48,7 @@ contract PBHSafe4337Module is Safe4337Module {
         // If it is a PBH transaction, we need to handle two cases with the signature:
         // 1. The bundler simulates the call with the proof appended
         // 2. UserOp execution without proof appended
-        bool isPBH = (key == PBH_NONCE_KEY) ? true : false;
+        bool isPBH = (key == PBH_NONCE_KEY);
 
         // Base signature length calculation:
         // TIMESTAMP_BYTES (12) + (threshold * ECDSA_SIGNATURE_LENGTH)
