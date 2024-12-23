@@ -6,10 +6,11 @@ import {MockWorldIDGroups} from "./mocks/MockWorldIDGroups.sol";
 import {CheckInitialized} from "@world-id-contracts/utils/CheckInitialized.sol";
 import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDImpl.sol";
 import {ByteHasher} from "@helpers/ByteHasher.sol";
+import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
+import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
+
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 import "@helpers/PBHExternalNullifier.sol";
-import {PBHVerifier} from "../src/PBHVerifier.sol";
-import {IPBHVerifier} from "../src/interfaces/IPBHVerifier.sol";
 import {Setup} from "./Setup.sol";
 
 /// @title PBHVerifer Verify Tests
@@ -18,12 +19,12 @@ import {Setup} from "./Setup.sol";
 contract PBHVerifierTest is Setup {
     using ByteHasher for bytes;
 
-    event PBH(address indexed sender, uint256 indexed nonce, IPBHVerifier.PBHPayload payload);
+    event PBH(address indexed sender, uint256 indexed nonce, IPBHEntryPoint.PBHPayload payload);
     event NumPbhPerMonthSet(uint8 indexed numPbhPerMonth);
     event WorldIdSet(address indexed worldId);
 
     /// @notice Test payload for the PBHVerifier
-    IPBHVerifier.PBHPayload public testPayload = IPBHVerifier.PBHPayload({
+    IPBHEntryPoint.PBHPayload public testPayload = IPBHEntryPoint.PBHPayload({
         root: 1,
         pbhExternalNullifier: getValidPBHExternalNullifier(),
         nullifierHash: 1,
@@ -58,7 +59,7 @@ contract PBHVerifierTest is Setup {
         assertTrue(used, "Nullifier hash should be marked as used");
 
         // Now try to use the same nullifier hash again
-        vm.expectRevert(PBHVerifier.InvalidNullifier.selector);
+        vm.expectRevert(PBHEntryPointImplV1.InvalidNullifier.selector);
         pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
     }
 
