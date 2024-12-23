@@ -27,6 +27,7 @@ interface IPBHEntryPoint {
         IEntryPoint entryPoint,
         uint8 _numPbhPerMonth
     ) external;
+
     function validateSignaturesCallback(bytes32 hashedOps) external view;
 
     function nullifierHashes(uint256) external view returns (bool);
