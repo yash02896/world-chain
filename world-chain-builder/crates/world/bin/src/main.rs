@@ -38,11 +38,7 @@ fn main() {
                         .sequencer_http
                         .map(SequencerClient::new);
                     let eth_api_ext = WorldChainEthApiExt::new(pool, provider, sequencer_client);
-                    // Remove the `eth_sendRawTransaction` method from the configured modules
-                    ctx.modules
-                        .remove_method_from_configured("eth_sendRawTransaction");
-                    // Merge the `eth_sendRawTransaction` and `eth_sendRawTransactionConditional` RPC methods
-                    ctx.modules.merge_configured(eth_api_ext.into_rpc())?;
+                    ctx.modules.replace_configured(eth_api_ext.into_rpc())?;
                     Ok(())
                 })
                 .launch()

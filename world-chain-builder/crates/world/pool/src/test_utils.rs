@@ -136,13 +136,13 @@ pub async fn eth_tx(acc: u32, mut tx: TxEip1559) -> EthPooledTransaction {
 pub fn user_op(
     acc: u32,
     #[builder(into, default = U256::ZERO)] nonce: U256,
-    #[builder(default = ExternalNullifier::v1(1, 2025, 0))] external_nullifier: ExternalNullifier,
+    #[builder(default = ExternalNullifier::v1(12, 2024, 0))] external_nullifier: ExternalNullifier,
 ) -> (IEntryPoint::PackedUserOperation, PbhPayload) {
     let sender = account(acc);
 
     let user_op = PackedUserOperation {
         sender,
-        nonce: nonce,
+        nonce,
         ..Default::default()
     };
 
@@ -178,7 +178,7 @@ pub fn pbh_bundle(
             signature: signature_buff.into(),
             aggregator: PBH_TEST_SIGNATURE_AGGREGATOR,
         }],
-        _1: Address::ZERO,
+        _1: PBH_TEST_VALIDATOR,
     }
 }
 
