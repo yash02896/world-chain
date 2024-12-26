@@ -8,13 +8,14 @@ import {IMulticall3} from "./interfaces/IMulticall3.sol";
 import {ByteHasher} from "./helpers/ByteHasher.sol";
 import {PBHExternalNullifier} from "./helpers/PBHExternalNullifier.sol";
 import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDImpl.sol";
+import {RentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
 /// @title PBH Entry Point Implementation V1
 /// @dev This contract is an implementation of the PBH Entry Point.
 ///      It is used to verify the signature of a Priority User Operation, and Relaying Priority Bundles to the EIP-4337 Entry Point.
 /// @author Worldcoin
-contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
+contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -183,7 +184,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
     function handleAggregatedOps(
         IEntryPoint.UserOpsPerAggregator[] calldata opsPerAggregator,
         address payable beneficiary
-    ) external virtual onlyProxy onlyInitialized {
+    ) external virtual onlyProxy onlyInitialized nonReentrant {
         for (uint256 i = 0; i < opsPerAggregator.length; ++i) {
             bytes32 hashedOps = keccak256(
                 abi.encode(opsPerAggregator[i].userOps)
@@ -233,7 +234,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
     function pbhMulticall(
         IMulticall3.Call3[] calldata calls,
         PBHPayload calldata pbhPayload
-    ) external {
+    ) external nonReentrant onlyProxy onlyInitialized {
         uint256 signalHash = abi.encode(msg.sender, calls).hashToField();
         verifyPbh(msg.sender, signalHash, pbhPayload);
         IMulticall3(multicall3).aggregate3(calls);

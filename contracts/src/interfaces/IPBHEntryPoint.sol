@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {IMulticall3} from "./IMulticall3.sol";
 
 interface IPBHEntryPoint {
     /// @notice The Packed World ID Proof data.
@@ -20,6 +21,11 @@ interface IPBHEntryPoint {
     function handleAggregatedOps(
         IEntryPoint.UserOpsPerAggregator[] calldata opsPerAggregator,
         address payable beneficiary
+    ) external;
+
+    function pbhMulticall(
+        IMulticall3.Call3[] calldata calls,
+        PBHPayload calldata pbhPayload
     ) external;
 
     function initialize(
