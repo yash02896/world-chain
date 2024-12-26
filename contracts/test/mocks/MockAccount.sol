@@ -26,4 +26,8 @@ contract MockAccount is IAccount, IAccountExecute {
     function executeUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash) external {
         // Do nothing
     }
+
+    function getThreshold() external pure returns (uint256) {
+        return 1;
+    }
 }
