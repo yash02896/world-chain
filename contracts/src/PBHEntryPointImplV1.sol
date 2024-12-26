@@ -74,13 +74,8 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
     /// @notice Emitted once for each successful PBH verification.
     ///
     /// @param sender The sender of this particular transaction or UserOp.
-    /// @param nonce Transaction/UserOp nonce.
     /// @param payload The zero-knowledge proof that demonstrates the claimer is registered with World ID.
-    event PBH(
-        address indexed sender,
-        uint256 indexed nonce,
-        PBHPayload payload
-    );
+    event PBH(address indexed sender, PBHPayload payload);
 
     /// @notice Emitted when the World ID address is set.
     ///
@@ -206,12 +201,17 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
                 (PBHPayload[])
             );
             for (uint256 j = 0; j < pbhPayloads.length; ++j) {
-                verifyPbh(
-                    opsPerAggregator[i].userOps[j].sender,
-                    opsPerAggregator[i].userOps[j].nonce,
-                    opsPerAggregator[i].userOps[j].callData,
-                    pbhPayloads[j]
-                );
+                address sender = opsPerAggregator[i].userOps[j].sender;
+                // We now generate the signal hash from the sender, nonce, and calldata
+                uint256 signalHash = abi
+                    .encodePacked(
+                        sender,
+                        opsPerAggregator[i].userOps[j].nonce,
+                        opsPerAggregator[i].userOps[j].callData
+                    )
+                    .hashToField();
+
+                verifyPbh(sender, signalHash, pbhPayloads[j]);
             }
         }
 
@@ -234,20 +234,18 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
         IMulticall3.Call3[] calldata calls,
         PBHPayload calldata pbhPayload
     ) external {
+        uint256 signalHash = abi.encode(msg.sender, calls).hashToField();
+        verifyPbh(msg.sender, signalHash, pbhPayload);
         IMulticall3(multicall3).aggregate3(calls);
     }
 
-    // TODO: consider making this internal
     /// @param sender The sender of this particular transaction or UserOp.
-    /// @param nonce Transaction/UserOp nonce.
-    /// @param callData Transaction/UserOp call data.
     /// @param pbhPayload The PBH payload containing the proof data.
     function verifyPbh(
         address sender,
-        uint256 nonce,
-        bytes calldata callData,
+        uint256 signalHash,
         PBHPayload memory pbhPayload
-    ) public virtual onlyInitialized onlyProxy {
+    ) internal {
         // First, we make sure this nullifier has not been used before.
         if (nullifierHashes[pbhPayload.nullifierHash]) {
             revert InvalidNullifier();
@@ -262,11 +260,6 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
         // If worldId address is set, proceed with on chain verification,
         // otherwise assume verification has been done off chain by the builder.
         if (address(worldId) != address(0)) {
-            // We now generate the signal hash from the sender, nonce, and calldata
-            uint256 signalHash = abi
-                .encodePacked(sender, nonce, callData)
-                .hashToField();
-
             // We now verify the provided proof is valid and the user is verified by World ID
             worldId.verifyProof(
                 pbhPayload.root,
@@ -281,7 +274,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
         // We now record the user has done this, so they can't do it again (proof of uniqueness)
         nullifierHashes[pbhPayload.nullifierHash] = true;
 
-        emit PBH(sender, nonce, pbhPayload);
+        emit PBH(sender, pbhPayload);
     }
 
     /// @notice Sets the number of PBH transactions allowed per month.
