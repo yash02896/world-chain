@@ -67,9 +67,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     //////////////////////////////////////////////////////////////////////////////
 
     event PBHEntryPointImplInitialized(
-        IWorldIDGroups indexed worldId,
-        IEntryPoint indexed entryPoint,
-        uint8 indexed numPbhPerMonth
+        IWorldIDGroups indexed worldId, IEntryPoint indexed entryPoint, uint8 indexed numPbhPerMonth
     );
 
     /// @notice Emitted once for each successful PBH verification.
@@ -143,11 +141,10 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
-    function initialize(
-        IWorldIDGroups _worldId,
-        IEntryPoint _entryPoint,
-        uint8 _numPbhPerMonth
-    ) external reinitializer(1) {
+    function initialize(IWorldIDGroups _worldId, IEntryPoint _entryPoint, uint8 _numPbhPerMonth)
+        external
+        reinitializer(1)
+    {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
@@ -157,11 +154,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
 
         // Say that the contract is initialized.
         __setInitialized();
-        emit PBHEntryPointImplInitialized(
-            _worldId,
-            _entryPoint,
-            _numPbhPerMonth
-        );
+        emit PBHEntryPointImplInitialized(_worldId, _entryPoint, _numPbhPerMonth);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -186,31 +179,20 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         address payable beneficiary
     ) external virtual onlyProxy onlyInitialized nonReentrant {
         for (uint256 i = 0; i < opsPerAggregator.length; ++i) {
-            bytes32 hashedOps = keccak256(
-                abi.encode(opsPerAggregator[i].userOps)
-            );
+            bytes32 hashedOps = keccak256(abi.encode(opsPerAggregator[i].userOps));
             assembly ("memory-safe") {
-                if gt(tload(hashedOps), 0) {
-                    revert(0, 0)
-                }
+                if gt(tload(hashedOps), 0) { revert(0, 0) }
 
                 tstore(hashedOps, hashedOps)
             }
 
-            PBHPayload[] memory pbhPayloads = abi.decode(
-                opsPerAggregator[i].signature,
-                (PBHPayload[])
-            );
+            PBHPayload[] memory pbhPayloads = abi.decode(opsPerAggregator[i].signature, (PBHPayload[]));
             for (uint256 j = 0; j < pbhPayloads.length; ++j) {
                 address sender = opsPerAggregator[i].userOps[j].sender;
                 // We now generate the signal hash from the sender, nonce, and calldata
-                uint256 signalHash = abi
-                    .encodePacked(
-                        sender,
-                        opsPerAggregator[i].userOps[j].nonce,
-                        opsPerAggregator[i].userOps[j].callData
-                    )
-                    .hashToField();
+                uint256 signalHash = abi.encodePacked(
+                    sender, opsPerAggregator[i].userOps[j].nonce, opsPerAggregator[i].userOps[j].callData
+                ).hashToField();
 
                 verifyPbh(sender, signalHash, pbhPayloads[j]);
             }
@@ -221,20 +203,19 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
 
     /// @notice Validates the hashed operations is the same as the hash transiently stored.
     /// @param hashedOps The hashed operations to validate.
-    function validateSignaturesCallback(
-        bytes32 hashedOps
-    ) external view virtual onlyProxy onlyInitialized {
+    function validateSignaturesCallback(bytes32 hashedOps) external view virtual onlyProxy onlyInitialized {
         assembly ("memory-safe") {
-            if iszero(eq(tload(hashedOps), hashedOps)) {
-                revert(0, 0)
-            }
+            if iszero(eq(tload(hashedOps), hashedOps)) { revert(0, 0) }
         }
     }
 
-    function pbhMulticall(
-        IMulticall3.Call3[] calldata calls,
-        PBHPayload calldata pbhPayload
-    ) external nonReentrant onlyProxy onlyInitialized {
+    function pbhMulticall(IMulticall3.Call3[] calldata calls, PBHPayload calldata pbhPayload)
+        external
+        virtual
+        onlyProxy
+        onlyInitialized
+        nonReentrant
+    {
         uint256 signalHash = abi.encode(msg.sender, calls).hashToField();
         verifyPbh(msg.sender, signalHash, pbhPayload);
         IMulticall3(multicall3).aggregate3(calls);
@@ -242,21 +223,14 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
 
     /// @param sender The sender of this particular transaction or UserOp.
     /// @param pbhPayload The PBH payload containing the proof data.
-    function verifyPbh(
-        address sender,
-        uint256 signalHash,
-        PBHPayload memory pbhPayload
-    ) internal {
+    function verifyPbh(address sender, uint256 signalHash, PBHPayload memory pbhPayload) internal {
         // First, we make sure this nullifier has not been used before.
         if (nullifierHashes[pbhPayload.nullifierHash]) {
             revert InvalidNullifier();
         }
 
         // Verify the external nullifier
-        PBHExternalNullifier.verify(
-            pbhPayload.pbhExternalNullifier,
-            numPbhPerMonth
-        );
+        PBHExternalNullifier.verify(pbhPayload.pbhExternalNullifier, numPbhPerMonth);
 
         // If worldId address is set, proceed with on chain verification,
         // otherwise assume verification has been done off chain by the builder.
@@ -280,9 +254,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
 
     /// @notice Sets the number of PBH transactions allowed per month.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
-    function setNumPbhPerMonth(
-        uint8 _numPbhPerMonth
-    ) external virtual onlyOwner onlyProxy onlyInitialized {
+    function setNumPbhPerMonth(uint8 _numPbhPerMonth) external virtual onlyOwner onlyProxy onlyInitialized {
         numPbhPerMonth = _numPbhPerMonth;
         emit NumPbhPerMonthSet(_numPbhPerMonth);
     }
@@ -290,9 +262,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @dev If the World ID address is set to 0, then it is assumed that verification will take place off chain.
     /// @notice Sets the World ID instance that will be used for verifying proofs.
     /// @param _worldId The World ID instance that will be used for verifying proofs.
-    function setWorldId(
-        address _worldId
-    ) external virtual onlyOwner onlyProxy onlyInitialized {
+    function setWorldId(address _worldId) external virtual onlyOwner onlyProxy onlyInitialized {
         worldId = IWorldIDGroups(_worldId);
         emit WorldIdSet(_worldId);
     }
