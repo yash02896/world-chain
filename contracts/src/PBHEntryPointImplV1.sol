@@ -114,6 +114,9 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
     ///         World ID in a given month.
     uint8 public numPbhPerMonth;
 
+    /// @notice Address of the Multicall3 implementation.
+    address immutable multicall3;
+
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) public nullifierHashes;
 
@@ -230,7 +233,9 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
     function pbhMulticall(
         IMulticall3.Call3[] calldata calls,
         PBHPayload calldata pbhPayload
-    ) external {}
+    ) external {
+        IMulticall3(multicall3).aggregate3(calls);
+    }
 
     // TODO: consider making this internal
     /// @param sender The sender of this particular transaction or UserOp.
