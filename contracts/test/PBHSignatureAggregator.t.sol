@@ -135,8 +135,8 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         proofs[1] = abi.encode(proof);
         PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs, 1);
         uoTestFixture[0].signature = new bytes(12);
-        pbhAggregator.aggregateSignatures(uoTestFixture);
         vm.expectRevert(PBHSignatureAggregator.InvalidSignatureLength.selector);
+        pbhAggregator.aggregateSignatures(uoTestFixture);
     }
 
     receive() external payable {}
