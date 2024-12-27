@@ -23,12 +23,24 @@ interface IPBHEntryPoint {
         address payable beneficiary
     ) external;
 
-    function pbhMulticall(IMulticall3.Call3[] calldata calls, PBHPayload calldata pbhPayload) external;
+    function pbhMulticall(
+        IMulticall3.Call3[] calldata calls,
+        PBHPayload calldata pbhPayload
+    ) external;
 
-    function initialize(IWorldIDGroups worldId, IEntryPoint entryPoint, uint8 _numPbhPerMonth, address _multicall3)
-        external;
+    function initialize(
+        IWorldIDGroups worldId,
+        IEntryPoint entryPoint,
+        uint8 _numPbhPerMonth,
+        address _multicall3
+    ) external;
 
     function validateSignaturesCallback(bytes32 hashedOps) external view;
+
+    function verifyPbh(
+        uint256 signalHash,
+        PBHPayload calldata pbhPayload
+    ) external view;
 
     function nullifierHashes(uint256) external view returns (bool);
 
