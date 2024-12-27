@@ -54,12 +54,24 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         pbhEntryPoint.handleAggregatedOps(userOpsPerAggregator, payable(address(this)));
     }
 
-    function testAggregateSignatures(uint256 root, uint256 pbhExternalNullifier, uint256 nullifierHash) public {
+    function testAggregateSignatures(
+        uint256 root,
+        uint256 pbhExternalNullifier,
+        uint256 nullifierHash,
+        uint256 p0,
+        uint256 p1,
+        uint256 p2,
+        uint256 p3,
+        uint256 p4,
+        uint256 p5,
+        uint256 p6,
+        uint256 p7
+    ) public {
         IPBHEntryPoint.PBHPayload memory proof = IPBHEntryPoint.PBHPayload({
             root: root,
             pbhExternalNullifier: pbhExternalNullifier,
             nullifierHash: nullifierHash,
-            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+            proof: [p0, p1, p2, p3, p4, p5, p6, p7]
         });
 
         bytes[] memory proofs = new bytes[](2);
@@ -87,14 +99,22 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         uint256 root,
         uint256 pbhExternalNullifier,
         uint256 nullifierHash,
-        uint8 threshold
+        uint8 threshold,
+        uint256 p0,
+        uint256 p1,
+        uint256 p2,
+        uint256 p3,
+        uint256 p4,
+        uint256 p5,
+        uint256 p6,
+        uint256 p7
     ) public {
         deploySafeAccount(address(pbhAggregator), threshold);
         IPBHEntryPoint.PBHPayload memory proof = IPBHEntryPoint.PBHPayload({
             root: root,
             pbhExternalNullifier: pbhExternalNullifier,
             nullifierHash: nullifierHash,
-            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+            proof: [p0, p1, p2, p3, p4, p5, p6, p7]
         });
 
         bytes[] memory proofs = new bytes[](2);
@@ -118,16 +138,12 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         assertEq(decodedProofs[1].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
     }
 
-    function testFailAggregateSignatures_InvalidSignatureLength(
-        uint256 root,
-        uint256 pbhExternalNullifier,
-        uint256 nullifierHash
-    ) public {
+    function testFailAggregateSignatures_InvalidSignatureLength() public {
         IPBHEntryPoint.PBHPayload memory proof = IPBHEntryPoint.PBHPayload({
-            root: root,
-            pbhExternalNullifier: pbhExternalNullifier,
-            nullifierHash: nullifierHash,
-            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+            root: 0,
+            pbhExternalNullifier: 0,
+            nullifierHash: 0,
+            proof: [uint256(1), 0, 0, 0, 0, 0, 0, 0]
         });
 
         bytes[] memory proofs = new bytes[](2);
