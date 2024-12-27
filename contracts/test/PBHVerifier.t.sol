@@ -55,7 +55,7 @@ contract PBHVerifierTest is Setup {
     /// @notice Test that a valid proof is verified correctly.
     function testverifyPbhSuccess() public {
         uint256 signalHash = abi
-            .encodePacked(address(this), nonce, testCallData)
+            .encodePacked(sender, nonce, testCallData)
             .hashToField();
 
         pbhEntryPoint.verifyPbh(signalHash, testPayload);
@@ -68,7 +68,7 @@ contract PBHVerifierTest is Setup {
         // Now expect success
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
         vm.expectEmit(true, true, true, true);
-        emit PBH(msg.sender, testPayload);
+        emit PBH(sender, testPayload);
         pbhEntryPoint.verifyPbh(signalHash, testPayload);
 
         // Make sure the nullifier hash is marked as used
@@ -77,11 +77,15 @@ contract PBHVerifierTest is Setup {
 
         // Now try to use the same nullifier hash again
         vm.expectRevert(PBHEntryPointImplV1.InvalidNullifier.selector);
-        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
     }
 
     /// @notice Test that setNumPBHPerMonth works as expected
     function testSetNumPBHPerMonth() public {
+        uint256 signalHash = abi
+            .encodePacked(sender, nonce, testCallData)
+            .hashToField();
+
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
         uint8 month = uint8(
             BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp)
@@ -100,7 +104,7 @@ contract PBHVerifierTest is Setup {
 
         testPayload.nullifierHash = 0;
         vm.expectRevert(PBHExternalNullifier.InvalidPbhNonce.selector);
-        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
 
         // Increase numPbhPerMonth from non owner, expect revert
         vm.prank(address(123));
@@ -123,8 +127,8 @@ contract PBHVerifierTest is Setup {
         testPayload.nullifierHash = 1;
         vm.expectEmit(true, true, true, true);
 
-        emit PBH(sender, nonce, testPayload);
-        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
+        emit PBH(sender, testPayload);
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
     }
 
     function testSetWorldId() public {
