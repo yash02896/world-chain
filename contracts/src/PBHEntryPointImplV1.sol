@@ -70,7 +70,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         IWorldIDGroups indexed worldId,
         IEntryPoint indexed entryPoint,
         uint8 indexed numPbhPerMonth,
-        address indexed multicall3
+        address multicall3
     );
 
     /// @notice Emitted once for each successful PBH verification.

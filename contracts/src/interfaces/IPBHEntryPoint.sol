@@ -31,7 +31,8 @@ interface IPBHEntryPoint {
     function initialize(
         IWorldIDGroups worldId,
         IEntryPoint entryPoint,
-        uint8 _numPbhPerMonth
+        uint8 _numPbhPerMonth,
+        address _multicall3
     ) external;
 
     function validateSignaturesCallback(bytes32 hashedOps) external view;
