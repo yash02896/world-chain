@@ -24,39 +24,26 @@ contract PBHVerifierTest is Setup {
     event WorldIdSet(address indexed worldId);
 
     /// @notice Test payload for the PBHVerifier
-    IPBHEntryPoint.PBHPayload public testPayload =
-        IPBHEntryPoint.PBHPayload({
-            root: 1,
-            pbhExternalNullifier: getValidPBHExternalNullifier(),
-            nullifierHash: 1,
-            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
-        });
+    IPBHEntryPoint.PBHPayload public testPayload = IPBHEntryPoint.PBHPayload({
+        root: 1,
+        pbhExternalNullifier: getValidPBHExternalNullifier(),
+        nullifierHash: 1,
+        proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+    });
 
     uint256 internal nonce = 1;
     address internal sender = address(0x123);
     bytes internal testCallData = hex"deadbeef";
 
     function getValidPBHExternalNullifier() public view returns (uint256) {
-        uint8 month = uint8(
-            BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp)
-        );
-        uint16 year = uint16(
-            BokkyPooBahsDateTimeLibrary.getYear(block.timestamp)
-        );
-        return
-            PBHExternalNullifier.encode(
-                PBHExternalNullifier.V1,
-                0,
-                month,
-                year
-            );
+        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
+        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
+        return PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
     }
 
     /// @notice Test that a valid proof is verified correctly.
     function testverifyPbhSuccess() public {
-        uint256 signalHash = abi
-            .encodePacked(sender, nonce, testCallData)
-            .hashToField();
+        uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
 
         pbhEntryPoint.verifyPbh(signalHash, testPayload);
 
@@ -72,25 +59,14 @@ contract PBHVerifierTest is Setup {
 
     /// @notice Test that setNumPBHPerMonth works as expected
     function testSetNumPBHPerMonth() public {
-        uint256 signalHash = abi
-            .encodePacked(sender, nonce, testCallData)
-            .hashToField();
+        uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
 
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
-        uint8 month = uint8(
-            BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp)
-        );
-        uint16 year = uint16(
-            BokkyPooBahsDateTimeLibrary.getYear(block.timestamp)
-        );
+        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
+        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
 
         // Value starts at 30, make sure 30 reverts.
-        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(
-            PBHExternalNullifier.V1,
-            30,
-            month,
-            year
-        );
+        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 30, month, year);
 
         testPayload.nullifierHash = 0;
         vm.expectRevert(PBHExternalNullifier.InvalidPbhNonce.selector);
@@ -108,12 +84,7 @@ contract PBHVerifierTest is Setup {
         pbhEntryPoint.setNumPbhPerMonth(40);
 
         // Try again, it should work
-        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(
-            PBHExternalNullifier.V1,
-            30,
-            month,
-            year
-        );
+        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 30, month, year);
         testPayload.nullifierHash = 1;
         pbhEntryPoint.verifyPbh(signalHash, testPayload);
     }
