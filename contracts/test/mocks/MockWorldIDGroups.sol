@@ -19,14 +19,7 @@ contract MockWorldIDGroups is IWorldIDGroups {
         verifyProofSuccess = _success;
     }
 
-    function verifyProof(
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        uint256,
-        uint256[8] memory
-    ) external view override {
+    function verifyProof(uint256, uint256, uint256, uint256, uint256, uint256[8] memory) external view override {
         if (!verifyProofSuccess) {
             revert("Proof verification failed");
         }
