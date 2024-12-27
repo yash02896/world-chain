@@ -9,6 +9,7 @@ import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 import "../src/helpers/PBHExternalNullifier.sol";
+import {PBHSignatureAggregator} from "../src/PBHSignatureAggregator.sol";
 
 contract PBHSignatureAggregatorTest is TestUtils, Setup {
     function setUp() public override {
@@ -40,7 +41,7 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         proofs[0] = abi.encode(proof0);
         proofs[1] = abi.encode(proof1);
 
-        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs);
+        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs, 1);
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
 
         IEntryPoint.UserOpsPerAggregator[] memory userOpsPerAggregator = new IEntryPoint.UserOpsPerAggregator[](1);
@@ -64,7 +65,7 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
         bytes[] memory proofs = new bytes[](2);
         proofs[0] = abi.encode(proof);
         proofs[1] = abi.encode(proof);
-        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs);
+        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs, 1);
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
         IPBHEntryPoint.PBHPayload[] memory decodedProofs =
             abi.decode(aggregatedSignature, (IPBHEntryPoint.PBHPayload[]));
@@ -80,6 +81,62 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
             decodedProofs[1].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
         );
         assertEq(decodedProofs[1].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
+    }
+
+    function testAggregateSignatures_VariableThreshold(
+        uint256 root,
+        uint256 pbhExternalNullifier,
+        uint256 nullifierHash,
+        uint8 threshold
+    ) public {
+        deploySafeAccount(address(pbhAggregator), threshold);
+        IPBHEntryPoint.PBHPayload memory proof = IPBHEntryPoint.PBHPayload({
+            root: root,
+            pbhExternalNullifier: pbhExternalNullifier,
+            nullifierHash: nullifierHash,
+            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+        });
+
+        bytes[] memory proofs = new bytes[](2);
+        proofs[0] = abi.encode(proof);
+        proofs[1] = abi.encode(proof);
+        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs, threshold);
+        bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
+        IPBHEntryPoint.PBHPayload[] memory decodedProofs =
+            abi.decode(aggregatedSignature, (IPBHEntryPoint.PBHPayload[]));
+        assertEq(decodedProofs.length, 2, "Decoded proof length should be 1");
+        assertEq(decodedProofs[0].root, proof.root, "Root should match");
+        assertEq(
+            decodedProofs[0].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
+        );
+        assertEq(decodedProofs[0].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
+
+        assertEq(decodedProofs[1].root, proof.root, "Root should match");
+        assertEq(
+            decodedProofs[1].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
+        );
+        assertEq(decodedProofs[1].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
+    }
+
+    function testFailAggregateSignatures_InvalidSignatureLength(
+        uint256 root,
+        uint256 pbhExternalNullifier,
+        uint256 nullifierHash
+    ) public {
+        IPBHEntryPoint.PBHPayload memory proof = IPBHEntryPoint.PBHPayload({
+            root: root,
+            pbhExternalNullifier: pbhExternalNullifier,
+            nullifierHash: nullifierHash,
+            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+        });
+
+        bytes[] memory proofs = new bytes[](2);
+        proofs[0] = abi.encode(proof);
+        proofs[1] = abi.encode(proof);
+        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs, 1);
+        uoTestFixture[0].signature = new bytes(12);
+        pbhAggregator.aggregateSignatures(uoTestFixture);
+        vm.expectRevert(PBHSignatureAggregator.InvalidSignatureLength.selector);
     }
 
     receive() external payable {}

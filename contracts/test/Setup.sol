@@ -47,7 +47,7 @@ contract Setup is Test {
         deployWorldIDGroups();
         deployPBHEntryPoint(worldIDGroups, entryPoint);
         deployPBHSignatureAggregator(address(pbhEntryPoint));
-        deploySafeAccount(address(pbhAggregator));
+        deploySafeAccount(address(pbhAggregator), 1);
 
         // Label the addresses for better errors.
         vm.label(address(entryPoint), "ERC-4337 Entry Point");
@@ -91,8 +91,8 @@ contract Setup is Test {
 
     /// @notice Initializes a new safe account.
     /// @dev It is constructed in the globals.
-    function deploySafeAccount(address _pbhSignatureAggregator) public {
-        safe = new MockAccount(_pbhSignatureAggregator);
+    function deploySafeAccount(address _pbhSignatureAggregator, uint256 threshold) public {
+        safe = new MockAccount(_pbhSignatureAggregator, threshold);
     }
 
     /// @notice Initializes a new World ID Groups contract.

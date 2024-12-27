@@ -8,9 +8,11 @@ import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 contract MockAccount is IAccount, IAccountExecute {
     address public pbhAggregator;
+    uint256 public immutable threshold;
 
-    constructor(address _pbhAggregator) {
+    constructor(address _pbhAggregator, uint256 _threshold) {
         pbhAggregator = _pbhAggregator;
+        threshold = _threshold;
     }
 
     function validateUserOp(PackedUserOperation calldata, bytes32, uint256)
@@ -27,7 +29,7 @@ contract MockAccount is IAccount, IAccountExecute {
         // Do nothing
     }
 
-    function getThreshold() external pure returns (uint256) {
-        return 1;
+    function getThreshold() external view returns (uint256) {
+        return threshold;
     }
 }
