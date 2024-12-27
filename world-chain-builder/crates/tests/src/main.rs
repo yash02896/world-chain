@@ -5,6 +5,7 @@
 //! NOTE: This binary assumes that the Kurtosis Devnet is not running, and the `world-chain` enclave has been cleaned.
 
 use std::{
+    env,
     path::Path,
     sync::Arc,
     time::{self, Duration, Instant},
@@ -34,9 +35,6 @@ async fn main() -> Result<()> {
         .init();
 
     let (builder_rpc, sequencer_rpc) = start_devnet().await?;
-    deploy_contracts(builder_rpc.clone()).await?;
-
-    generate_test_fixture().await?;
 
     let sequencer_provider =
         Arc::new(ProviderBuilder::default().on_http(sequencer_rpc.parse().unwrap()));
@@ -45,6 +43,8 @@ async fn main() -> Result<()> {
 
     let timeout = std::time::Duration::from_secs(30);
 
+    info!("Waiting for the devnet to be ready");
+
     let f = async {
         let wait_0 = wait(sequencer_provider.clone(), timeout);
         let wait_1 = wait(builder_provider.clone(), timeout);
@@ -52,8 +52,13 @@ async fn main() -> Result<()> {
     };
     f.await;
 
-    info!("Devnet is ready");
+    info!("Deploying contracts");
+    deploy_contracts(builder_rpc.clone()).await?;
 
+    info!("Generating test fixtures");
+    generate_test_fixture().await?;
+
+    info!("Running test cases");
     cases::assert_build(builder_provider.clone()).await?;
     cases::assert_fallback(sequencer_provider.clone()).await?;
 
@@ -61,18 +66,13 @@ async fn main() -> Result<()> {
 }
 
 async fn start_devnet() -> Result<(String, String)> {
-    run_command(
-        &"kurtosis run",
-        &[
-            ".",
-            "--args-file",
-            "network_params.yaml",
-            "--enclave",
-            "world-chain",
-        ],
-        "../../../../devnet/",
-    )
-    .await?;
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(3)
+        .unwrap()
+        .canonicalize()?;
+
+    run_command(&"just", &["devnet-up"], path).await?;
     print!("Devnet is running");
     let builder_socket = run_command(
         "kurtosis",
@@ -83,7 +83,7 @@ async fn start_devnet() -> Result<(String, String)> {
             "wc-admin-world-chain-builder",
             "rpc",
         ],
-        "../../../../devnet/",
+        env!("CARGO_MANIFEST_DIR"),
     )
     .await?;
 
@@ -95,7 +95,7 @@ async fn start_devnet() -> Result<(String, String)> {
     let sequencer_socket = run_command(
         "kurtosis",
         &["port", "print", "world-chain", "wc-admin-op-geth", "rpc"],
-        "../../../../devnet/",
+        env!("CARGO_MANIFEST_DIR"),
     )
     .await?;
 
@@ -117,6 +117,15 @@ async fn deploy_contracts(builder_rpc: String) -> Result<()> {
     if std::env::var("PRIVATE_KEY").is_err() {
         std::env::set_var("PRIVATE_KEY", DEPLOYER_DEV);
     }
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(3)
+        .unwrap()
+        .join("contracts/")
+        .canonicalize()?;
+
+    info!("Deploying PBH 4337 contracts at {:?}", builder_rpc);
+
     run_command(
         "forge",
         &[
@@ -126,7 +135,7 @@ async fn deploy_contracts(builder_rpc: String) -> Result<()> {
             &builder_rpc,
             "--broadcast",
         ],
-        "../../../../devnet/",
+        path,
     )
     .await?;
     Ok(())
@@ -154,7 +163,7 @@ where
 }
 
 pub async fn run_command(cmd: &str, args: &[&str], ctx: impl AsRef<Path>) -> Result<String> {
-    let output = Command::new(cmd).args(args).current_dir(ctx).output()?;
+    let output = Command::new(cmd).current_dir(ctx).args(args).output()?;
     if output.status.success() {
         Ok(String::from_utf8(output.stdout)?)
     } else {

@@ -79,7 +79,7 @@ where
             "world-chain",
             "wc-admin-world-chain-builder",
         ],
-        ".",
+        env!("CARGO_MANIFEST_DIR"),
     )
     .await?;
     sleep(Duration::from_secs(5)).await;
