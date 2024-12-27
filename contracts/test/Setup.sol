@@ -64,8 +64,8 @@ contract Setup is Test {
         vm.deal(address(safe), type(uint256).max);
 
         // Deposit some funds into the Entry Point from the Mock Account.
-        vm.prank(address(safe));
         entryPoint.depositTo{value: 10 ether}(address(safe));
+        require(false, "here");
     }
 
     ///////////////////////////////////////////////////////////////////////////////
