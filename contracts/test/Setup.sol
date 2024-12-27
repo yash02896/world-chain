@@ -38,6 +38,8 @@ contract Setup is Test {
     address public pbhEntryPointImpl;
     address public immutable thisAddress = address(this);
     address public constant nullAddress = address(0);
+    address public constant MULTICALL3 =
+        0xcA11bde05977b3631167028862bE2a173976CA11;
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -80,20 +82,17 @@ contract Setup is Test {
         IEntryPoint initialEntryPoint
     ) public {
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
+
         bytes memory initCallData = abi.encodeCall(
             PBHEntryPointImplV1.initialize,
-            (
-                initialGroupAddress,
-                initialEntryPoint,
-                30,
-                0xcA11bde05977b3631167028862bE2a173976CA11
-            )
+            (initialGroupAddress, initialEntryPoint, 30, MULTICALL3)
         );
         vm.expectEmit(true, true, true, true);
         emit PBHEntryPointImplV1.PBHEntryPointImplInitialized(
             initialGroupAddress,
             initialEntryPoint,
-            30
+            30,
+            MULTICALL3
         );
         pbhEntryPoint = IPBHEntryPoint(
             address(new PBHEntryPoint(pbhEntryPointImpl, initCallData))

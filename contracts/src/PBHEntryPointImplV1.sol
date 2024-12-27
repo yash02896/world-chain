@@ -112,7 +112,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     uint8 public numPbhPerMonth;
 
     /// @notice Address of the Multicall3 implementation.
-    address immutable MULTICALL3;
+    address multicall3;
 
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) public nullifierHashes;
@@ -156,7 +156,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         worldId = _worldId;
         entryPoint = _entryPoint;
         numPbhPerMonth = _numPbhPerMonth;
-        MULTICALL3 = _multicall3;
+        multicall3 = _multicall3;
 
         // Say that the contract is initialized.
         __setInitialized();
@@ -246,7 +246,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         verifyPbh(signalHash, pbhPayload);
         nullifierHashes[pbhPayload.nullifierHash] = true;
 
-        IMulticall3(MULTICALL3).aggregate3(calls);
+        IMulticall3(multicall3).aggregate3(calls);
 
         emit PBH(msg.sender, pbhPayload);
     }

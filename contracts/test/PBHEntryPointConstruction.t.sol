@@ -28,14 +28,23 @@ contract PBHEntryPointConstruction is Setup {
     }
 
     /// @notice Tests that it is possible to properly construct and initialise a router.
-    function testCanConstructRouterWithDelegate(IWorldIDGroups dummy, IEntryPoint entryPoint) public {
+    function testCanConstructRouterWithDelegate(
+        IWorldIDGroups dummy,
+        IEntryPoint entryPoint
+    ) public {
         // Setup
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
-        bytes memory callData = abi.encodeCall(IPBHEntryPoint.initialize, (dummy, entryPoint, 30));
+
+        bytes memory callData = abi.encodeCall(
+            IPBHEntryPoint.initialize,
+            (dummy, entryPoint, 30, this.MULTICALL3())
+        );
 
         // Test
-        pbhEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(address(pbhEntryPointImpl), callData)));
+        pbhEntryPoint = IPBHEntryPoint(
+            address(new PBHEntryPoint(address(pbhEntryPointImpl), callData))
+        );
     }
 }
