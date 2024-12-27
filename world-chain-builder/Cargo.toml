@@ -9,16 +9,18 @@ repository = "https://github.com/worldcoin/world-chain/"
 [workspace]
 resolver = "2"
 members = [
-    "crates/assertor",
+    "crates/tests",
     "crates/toolkit",
-    "crates/world/node",
     "crates/world/bin",
+    "crates/world/node",
     "crates/world/payload",
     "crates/world/rpc",
     "crates/world/pbh",
     "crates/world/primitives",
     "crates/world/pool",
 ]
+
+default-members = ["crates/world/bin"]
 
 [workspace.lints]
 

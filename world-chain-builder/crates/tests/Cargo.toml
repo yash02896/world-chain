@@ -1,13 +1,15 @@
 [package]
-name = "assertor"
+name = "tests"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+world-chain-builder-node = { path = "../world/node", features = ["test"] }
+
 tracing = "0.1"
 tracing-subscriber = {version = "0.3.18", features = ["env-filter"]}
 clap = { version = "4", features = ["derive", "env"] }
-alloy-primitives = "0.8"
+alloy-primitives.workspace = true
 alloy-provider = "0.4"
 alloy-transport = "0.4"
 alloy-network = "0.4"
