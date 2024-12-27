@@ -19,26 +19,41 @@ import {Setup} from "./Setup.sol";
 contract PBHVerifierTest is Setup {
     using ByteHasher for bytes;
 
-    event PBH(address indexed sender, uint256 indexed nonce, IPBHEntryPoint.PBHPayload payload);
+    event PBH(
+        address indexed sender,
+        uint256 indexed nonce,
+        IPBHEntryPoint.PBHPayload payload
+    );
     event NumPbhPerMonthSet(uint8 indexed numPbhPerMonth);
     event WorldIdSet(address indexed worldId);
 
     /// @notice Test payload for the PBHVerifier
-    IPBHEntryPoint.PBHPayload public testPayload = IPBHEntryPoint.PBHPayload({
-        root: 1,
-        pbhExternalNullifier: getValidPBHExternalNullifier(),
-        nullifierHash: 1,
-        proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
-    });
+    IPBHEntryPoint.PBHPayload public testPayload =
+        IPBHEntryPoint.PBHPayload({
+            root: 1,
+            pbhExternalNullifier: getValidPBHExternalNullifier(),
+            nullifierHash: 1,
+            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+        });
 
     uint256 internal nonce = 1;
     address internal sender = address(0x123);
     bytes internal testCallData = hex"deadbeef";
 
     function getValidPBHExternalNullifier() public view returns (uint256) {
-        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
-        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
-        return PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
+        uint8 month = uint8(
+            BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp)
+        );
+        uint16 year = uint16(
+            BokkyPooBahsDateTimeLibrary.getYear(block.timestamp)
+        );
+        return
+            PBHExternalNullifier.encode(
+                PBHExternalNullifier.V1,
+                0,
+                month,
+                year
+            );
     }
 
     // TODO: Update test to call verifyPbh as an internal function

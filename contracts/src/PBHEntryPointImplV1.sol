@@ -69,7 +69,8 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     event PBHEntryPointImplInitialized(
         IWorldIDGroups indexed worldId,
         IEntryPoint indexed entryPoint,
-        uint8 indexed numPbhPerMonth
+        uint8 indexed numPbhPerMonth,
+        address indexed multicall3
     );
 
     /// @notice Emitted once for each successful PBH verification.
@@ -111,7 +112,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     uint8 public numPbhPerMonth;
 
     /// @notice Address of the Multicall3 implementation.
-    address immutable multicall3;
+    address immutable MULTICALL3;
 
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) public nullifierHashes;
@@ -146,7 +147,8 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     function initialize(
         IWorldIDGroups _worldId,
         IEntryPoint _entryPoint,
-        uint8 _numPbhPerMonth
+        uint8 _numPbhPerMonth,
+        address _multicall3
     ) external reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
@@ -154,13 +156,15 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         worldId = _worldId;
         entryPoint = _entryPoint;
         numPbhPerMonth = _numPbhPerMonth;
+        MULTICALL3 = _multicall3;
 
         // Say that the contract is initialized.
         __setInitialized();
         emit PBHEntryPointImplInitialized(
             _worldId,
             _entryPoint,
-            _numPbhPerMonth
+            _numPbhPerMonth,
+            _multicall3
         );
     }
 
@@ -242,7 +246,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         verifyPbh(signalHash, pbhPayload);
         nullifierHashes[pbhPayload.nullifierHash] = true;
 
-        IMulticall3(multicall3).aggregate3(calls);
+        IMulticall3(MULTICALL3).aggregate3(calls);
 
         emit PBH(msg.sender, pbhPayload);
     }
