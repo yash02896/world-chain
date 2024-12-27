@@ -87,12 +87,27 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
             decodedProofs[0].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
         );
         assertEq(decodedProofs[0].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
-
+        assertEq(decodedProofs[0].proof[0], proof.proof[0], "Proof should match");
+        assertEq(decodedProofs[0].proof[1], proof.proof[1], "Proof should match");
+        assertEq(decodedProofs[0].proof[2], proof.proof[2], "Proof should match");
+        assertEq(decodedProofs[0].proof[3], proof.proof[3], "Proof should match");
+        assertEq(decodedProofs[0].proof[4], proof.proof[4], "Proof should match");
+        assertEq(decodedProofs[0].proof[5], proof.proof[5], "Proof should match");
+        assertEq(decodedProofs[0].proof[6], proof.proof[6], "Proof should match");
+        assertEq(decodedProofs[0].proof[7], proof.proof[7], "Proof should match");
         assertEq(decodedProofs[1].root, proof.root, "Root should match");
         assertEq(
             decodedProofs[1].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
         );
         assertEq(decodedProofs[1].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
+        assertEq(decodedProofs[1].proof[0], proof.proof[0], "Proof should match");
+        assertEq(decodedProofs[1].proof[1], proof.proof[1], "Proof should match");
+        assertEq(decodedProofs[1].proof[2], proof.proof[2], "Proof should match");
+        assertEq(decodedProofs[1].proof[3], proof.proof[3], "Proof should match");
+        assertEq(decodedProofs[1].proof[4], proof.proof[4], "Proof should match");
+        assertEq(decodedProofs[1].proof[5], proof.proof[5], "Proof should match");
+        assertEq(decodedProofs[1].proof[6], proof.proof[6], "Proof should match");
+        assertEq(decodedProofs[1].proof[7], proof.proof[7], "Proof should match");
     }
 
     function testAggregateSignatures_VariableThreshold(
@@ -130,12 +145,27 @@ contract PBHSignatureAggregatorTest is TestUtils, Setup {
             decodedProofs[0].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
         );
         assertEq(decodedProofs[0].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
-
+        assertEq(decodedProofs[0].proof[0], proof.proof[0], "Proof should match");
+        assertEq(decodedProofs[0].proof[1], proof.proof[1], "Proof should match");
+        assertEq(decodedProofs[0].proof[2], proof.proof[2], "Proof should match");
+        assertEq(decodedProofs[0].proof[3], proof.proof[3], "Proof should match");
+        assertEq(decodedProofs[0].proof[4], proof.proof[4], "Proof should match");
+        assertEq(decodedProofs[0].proof[5], proof.proof[5], "Proof should match");
+        assertEq(decodedProofs[0].proof[6], proof.proof[6], "Proof should match");
+        assertEq(decodedProofs[0].proof[7], proof.proof[7], "Proof should match");
         assertEq(decodedProofs[1].root, proof.root, "Root should match");
         assertEq(
             decodedProofs[1].pbhExternalNullifier, proof.pbhExternalNullifier, "PBH External Nullifier should match"
         );
         assertEq(decodedProofs[1].nullifierHash, proof.nullifierHash, "Nullifier Hash should match");
+        assertEq(decodedProofs[1].proof[0], proof.proof[0], "Proof should match");
+        assertEq(decodedProofs[1].proof[1], proof.proof[1], "Proof should match");
+        assertEq(decodedProofs[1].proof[2], proof.proof[2], "Proof should match");
+        assertEq(decodedProofs[1].proof[3], proof.proof[3], "Proof should match");
+        assertEq(decodedProofs[1].proof[4], proof.proof[4], "Proof should match");
+        assertEq(decodedProofs[1].proof[5], proof.proof[5], "Proof should match");
+        assertEq(decodedProofs[1].proof[6], proof.proof[6], "Proof should match");
+        assertEq(decodedProofs[1].proof[7], proof.proof[7], "Proof should match");
     }
 
     function testFailAggregateSignatures_InvalidSignatureLength() public {
