@@ -23,9 +23,16 @@ interface IPBHEntryPoint {
         address payable beneficiary
     ) external;
 
-    function pbhMulticall(IMulticall3.Call3[] calldata calls, PBHPayload calldata pbhPayload) external;
+    function pbhMulticall(
+        IMulticall3.Call3[] calldata calls,
+        PBHPayload calldata pbhPayload
+    ) external;
 
-    function initialize(IWorldIDGroups worldId, IEntryPoint entryPoint, uint8 _numPbhPerMonth) external;
+    function initialize(
+        IWorldIDGroups worldId,
+        IEntryPoint entryPoint,
+        uint8 _numPbhPerMonth
+    ) external;
 
     function validateSignaturesCallback(bytes32 hashedOps) external view;
 
