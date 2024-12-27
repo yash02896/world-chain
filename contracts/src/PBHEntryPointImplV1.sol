@@ -8,7 +8,7 @@ import {IMulticall3} from "./interfaces/IMulticall3.sol";
 import {ByteHasher} from "./helpers/ByteHasher.sol";
 import {PBHExternalNullifier} from "./helpers/PBHExternalNullifier.sol";
 import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDImpl.sol";
-import {RentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
 /// @title PBH Entry Point Implementation V1
