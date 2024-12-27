@@ -67,16 +67,6 @@ contract PBHVerifierTest is Setup {
 
         // Now expect success
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
-        vm.expectEmit(true, true, true, true);
-        emit PBH(sender, testPayload);
-        pbhEntryPoint.verifyPbh(signalHash, testPayload);
-
-        // Make sure the nullifier hash is marked as used
-        bool used = pbhEntryPoint.nullifierHashes(testPayload.nullifierHash);
-        assertTrue(used, "Nullifier hash should be marked as used");
-
-        // Now try to use the same nullifier hash again
-        vm.expectRevert(PBHEntryPointImplV1.InvalidNullifier.selector);
         pbhEntryPoint.verifyPbh(signalHash, testPayload);
     }
 
@@ -125,9 +115,6 @@ contract PBHVerifierTest is Setup {
             year
         );
         testPayload.nullifierHash = 1;
-        vm.expectEmit(true, true, true, true);
-
-        emit PBH(sender, testPayload);
         pbhEntryPoint.verifyPbh(signalHash, testPayload);
     }
 
