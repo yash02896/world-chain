@@ -212,9 +212,9 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
                     )
                     .hashToField();
 
-                verifyPbh(sender, signalHash, pbhPayloads[j]);
+                verifyPbh(signalHash, pbhPayloads[j]);
                 nullifierHashes[pbhPayloads[j].nullifierHash] = true;
-                emit PBH(sender, pbhPayload);
+                emit PBH(sender, pbhPayloads[j]);
             }
         }
 
@@ -239,7 +239,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     ) external virtual onlyProxy onlyInitialized nonReentrant {
         uint256 signalHash = abi.encode(msg.sender, calls).hashToField();
 
-        verifyPbh(msg.sender, signalHash, pbhPayload);
+        verifyPbh(signalHash, pbhPayload);
         nullifierHashes[pbhPayload.nullifierHash] = true;
 
         IMulticall3(multicall3).aggregate3(calls);

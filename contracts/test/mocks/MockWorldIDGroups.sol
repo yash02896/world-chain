@@ -26,8 +26,15 @@ contract MockWorldIDGroups is IWorldIDGroups {
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] memory proof
-    ) external override {
-        emit VerifyProofCalled(root, groupId, signalHash, nullifierHash, externalNullifierHash, proof);
+    ) external view override {
+        emit VerifyProofCalled(
+            root,
+            groupId,
+            signalHash,
+            nullifierHash,
+            externalNullifierHash,
+            proof
+        );
         if (!verifyProofSuccess) {
             revert("Proof verification failed");
         }
