@@ -214,6 +214,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
 
                 verifyPbh(sender, signalHash, pbhPayloads[j]);
                 nullifierHashes[pbhPayloads[j].nullifierHash] = true;
+                emit PBH(sender, pbhPayload);
             }
         }
 
@@ -243,7 +244,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
 
         IMulticall3(multicall3).aggregate3(calls);
 
-        emit PBH(sender, pbhPayload);
+        emit PBH(msg.sender, pbhPayload);
     }
 
     /// @param pbhPayload The PBH payload containing the proof data.
