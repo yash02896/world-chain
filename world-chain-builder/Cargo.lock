@@ -13757,7 +13757,6 @@ dependencies = [
  "world-chain-builder-payload",
  "world-chain-builder-pbh",
  "world-chain-builder-pool",
- "world-chain-builder-primitives",
  "world-chain-builder-rpc",
 ]
 
@@ -13841,22 +13840,6 @@ dependencies = [
  "test-case",
  "thiserror 1.0.69",
  "tokio",
- "tracing",
- "world-chain-builder-pbh",
-]
-
-[[package]]
-name = "world-chain-builder-primitives"
-version = "0.1.0"
-dependencies = [
- "alloy-consensus 0.7.3",
- "alloy-eips 0.7.3",
- "alloy-primitives",
- "alloy-rlp",
- "bytes",
- "reth",
- "reth-primitives",
- "revm-primitives",
  "tracing",
  "world-chain-builder-pbh",
 ]
