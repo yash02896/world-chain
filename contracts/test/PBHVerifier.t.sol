@@ -19,7 +19,7 @@ import {Setup} from "./Setup.sol";
 contract PBHVerifierTest is Setup {
     using ByteHasher for bytes;
 
-    event PBH(address indexed sender, uint256 indexed nonce, IPBHEntryPoint.PBHPayload payload);
+    event PBH(address indexed sender, IPBHEntryPoint.PBHPayload payload);
     event NumPbhPerMonthSet(uint8 indexed numPbhPerMonth);
     event WorldIdSet(address indexed worldId);
 
@@ -43,37 +43,34 @@ contract PBHVerifierTest is Setup {
 
     /// @notice Test that a valid proof is verified correctly.
     function testverifyPbhSuccess() public {
+        uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
+
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
+
         // Expect revert when proof verification fails
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(false);
         vm.expectRevert("Proof verification failed");
-        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
 
         // Now expect success
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
-        vm.expectEmit(true, true, true, true);
-        emit PBH(sender, nonce, testPayload);
-        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
-
-        // Make sure the nullifier hash is marked as used
-        bool used = pbhEntryPoint.nullifierHashes(testPayload.nullifierHash);
-        assertTrue(used, "Nullifier hash should be marked as used");
-
-        // Now try to use the same nullifier hash again
-        vm.expectRevert(PBHEntryPointImplV1.InvalidNullifier.selector);
-        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
     }
 
     /// @notice Test that setNumPBHPerMonth works as expected
     function testSetNumPBHPerMonth() public {
+        uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
+
         MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
         uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
         uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
 
         // Value starts at 30, make sure 30 reverts.
         testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 30, month, year);
+
         testPayload.nullifierHash = 0;
         vm.expectRevert(PBHExternalNullifier.InvalidPbhNonce.selector);
-        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
 
         // Increase numPbhPerMonth from non owner, expect revert
         vm.prank(address(123));
@@ -89,10 +86,7 @@ contract PBHVerifierTest is Setup {
         // Try again, it should work
         testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 30, month, year);
         testPayload.nullifierHash = 1;
-        vm.expectEmit(true, true, true, true);
-
-        emit PBH(sender, nonce, testPayload);
-        pbhEntryPoint.verifyPbh(sender, nonce, testCallData, testPayload);
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
     }
 
     function testSetWorldId() public {
