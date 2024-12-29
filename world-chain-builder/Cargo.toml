@@ -16,7 +16,6 @@ members = [
     "crates/world/payload",
     "crates/world/rpc",
     "crates/world/pbh",
-    "crates/world/primitives",
     "crates/world/pool",
 ]
 

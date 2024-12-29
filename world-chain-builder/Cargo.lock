@@ -13845,22 +13845,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "world-chain-builder-primitives"
-version = "0.1.0"
-dependencies = [
- "alloy-consensus 0.7.3",
- "alloy-eips 0.7.3",
- "alloy-primitives",
- "alloy-rlp",
- "bytes",
- "reth",
- "reth-primitives",
- "revm-primitives",
- "tracing",
- "world-chain-builder-pbh",
-]
-
-[[package]]
 name = "world-chain-builder-rpc"
 version = "0.1.0"
 dependencies = [
