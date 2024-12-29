@@ -9,3 +9,4 @@ openzeppelin-contracts/=lib/world-id-contracts/lib/openzeppelin-contracts/contra
 @safe-global/safe-contracts/contracts/=lib/safe-contracts/contracts/
 @forge-std/=lib/forge-std/src/
 forge-std/=lib/forge-std/src/
+@solady=lib/solady/src/utils/
