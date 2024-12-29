@@ -13757,7 +13757,6 @@ dependencies = [
  "world-chain-builder-payload",
  "world-chain-builder-pbh",
  "world-chain-builder-pool",
- "world-chain-builder-primitives",
  "world-chain-builder-rpc",
 ]
 
