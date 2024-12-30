@@ -55,8 +55,7 @@ where
         tx: Bytes,
         options: ConditionalOptions,
     ) -> Result<B256, Self::Error> {
-        validate_conditional_options(&options, self.provider())
-            .map_err(Self::Error::other)?;
+        validate_conditional_options(&options, self.provider()).map_err(Self::Error::other)?;
 
         let recovered = recover_raw_transaction(&tx)?;
         let mut pool_transaction: WorldChainPooledTransaction =

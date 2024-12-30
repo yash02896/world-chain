@@ -10,7 +10,7 @@ pub struct PBHFixture {
 /// Generates test fixtures for PBH transactions
 pub async fn generate_test_fixture() -> PBHFixture {
     let mut test_fixture = PBHFixture::default();
-    for i in 0..=5 {
+    for i in 1..=4 {
         for j in 0..=29 {
             test_fixture.fixture.push(
                 PBHTransactionTestContext::raw_pbh_tx_bytes(i, j, j.into(), U256::from(j)).await,

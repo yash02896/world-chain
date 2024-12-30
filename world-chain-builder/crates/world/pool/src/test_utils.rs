@@ -39,6 +39,14 @@ pub fn signer(index: u32) -> PrivateKeySigner {
     signer
 }
 
+#[cfg(test)]
+#[test]
+fn test_signer() {
+    let signer = signer(0);
+
+    println!("Signer: {:?}", signer);
+}
+
 pub fn account(index: u32) -> Address {
     let signer = signer(index);
 
@@ -225,5 +233,10 @@ mod tests {
         let exp: Address = exp_address.parse().unwrap();
 
         assert_eq!(exp, account(index));
+    }
+
+    #[test]
+    fn treeroot() {
+        println!("Tree Root: {:?}", tree_root());
     }
 }

@@ -26,35 +26,37 @@ where
     let num_transactions = fixture.fixture.len();
     let half = num_transactions / 2;
     let builder_provider_clone = builder_provider.clone();
-    stream::iter(fixture.fixture.iter().enumerate())
+    stream::iter(fixture.fixture.chunks(30).enumerate())
         .map(Ok)
-        .try_for_each_concurrent(CONCURRENCY_LIMIT, move |(index, transaction)| {
+        .try_for_each_concurrent(CONCURRENCY_LIMIT, move |(index, transactions)| {
             let builder_provider = builder_provider_clone.clone();
             async move {
-                let tx = if index < half {
-                    // First half, use eth_sendRawTransaction
-                    builder_provider.send_raw_transaction(transaction).await?
-                } else {
-                    // Second half, use eth_sendRawTransactionConditional
-                    let rlp_hex = hex::encode_prefixed(transaction);
-                    let tx_hash = builder_provider
-                        .client()
-                        .request(
-                            "eth_sendRawTransactionConditional",
-                            (rlp_hex, ConditionalOptions::default()),
-                        )
-                        .await?;
-                    PendingTransactionBuilder::new(&builder_provider.root(), tx_hash)
-                };
-                let hash = *tx.tx_hash();
-                let receipt = tx.get_receipt().await;
-                assert!(receipt.is_ok());
-                debug!(
-                    receipt = ?receipt.unwrap(),
-                    hash = ?hash,
-                    index = index,
-                    "Transaction Receipt Received"
-                );
+                for transaction in transactions {
+                    let tx = if index < half {
+                        // First half, use eth_sendRawTransaction
+                        builder_provider.send_raw_transaction(transaction).await?
+                    } else {
+                        // Second half, use eth_sendRawTransactionConditional
+                        let rlp_hex = hex::encode_prefixed(transaction);
+                        let tx_hash = builder_provider
+                            .client()
+                            .request(
+                                "eth_sendRawTransactionConditional",
+                                (rlp_hex, ConditionalOptions::default()),
+                            )
+                            .await?;
+                        PendingTransactionBuilder::new(&builder_provider.root(), tx_hash)
+                    };
+                    let hash = *tx.tx_hash();
+                    let receipt = tx.get_receipt().await;
+                    assert!(receipt.is_ok());
+                    debug!(
+                        receipt = ?receipt.unwrap(),
+                        hash = ?hash,
+                        index = index,
+                        "Transaction Receipt Received"
+                    );
+                }
                 Ok::<(), eyre::Report>(())
             }
         })
