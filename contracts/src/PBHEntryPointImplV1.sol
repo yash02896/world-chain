@@ -263,6 +263,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @notice Sets the number of PBH transactions allowed per month.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     function setNumPbhPerMonth(uint8 _numPbhPerMonth) external virtual onlyOwner onlyProxy onlyInitialized {
+        // TODO: require(_numPbhPerMonth > 0, "PBHEntryPointImplV1: numPbhPerMonth must be greater than 0");
         numPbhPerMonth = _numPbhPerMonth;
         emit NumPbhPerMonthSet(_numPbhPerMonth);
     }

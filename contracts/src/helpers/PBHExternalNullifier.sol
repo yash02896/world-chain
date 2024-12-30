@@ -15,6 +15,7 @@ import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 ///      - Bits 0-7: Version
 
 //TODO: move this to a lib dir
+// TODO:
 library PBHExternalNullifier {
     /// @notice Thrown when the provided external nullifier doesn't
     /// contain the correct leading zeros
@@ -48,6 +49,8 @@ library PBHExternalNullifier {
         return (uint256(year) << 24) | (uint256(month) << 16) | (uint256(pbhNonce) << 8) | uint256(version);
     }
 
+    // TODO: should we provide an encodeV1 helper function?
+
     /// @notice Decodes an encoded PBHExternalNullifier into its constituent components.
     /// @param externalNullifier The encoded external nullifier to decode.
     /// @return version The 8-bit version extracted from the external nullifier.
@@ -64,6 +67,8 @@ library PBHExternalNullifier {
         pbhNonce = uint8((externalNullifier >> 8) & 0xFF);
         version = uint8(externalNullifier & 0xFF);
     }
+
+    // TODO: revisit, maybe move this function or update the PBH Entrypoint to update the ext nullifier lib for forward compatibility
 
     /// @notice Verifies the validity of a PBHExternalNullifier by checking its components.
     /// @param externalNullifier The external nullifier to verify.
