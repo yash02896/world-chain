@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
+import {IWorldID} from "./IWorldID.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IMulticall3} from "./IMulticall3.sol";
 
@@ -25,7 +25,7 @@ interface IPBHEntryPoint {
 
     function pbhMulticall(IMulticall3.Call3[] calldata calls, PBHPayload calldata pbhPayload) external;
 
-    function initialize(IWorldIDGroups worldId, IEntryPoint entryPoint, uint8 _numPbhPerMonth, address _multicall3)
+    function initialize(IWorldID worldId, IEntryPoint entryPoint, uint8 _numPbhPerMonth, address _multicall3)
         external;
 
     function validateSignaturesCallback(bytes32 hashedOps) external view;

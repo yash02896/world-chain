@@ -13,6 +13,8 @@ import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 ///      - Bits 16-31: Month
 ///      - Bits 8-15: Nonce
 ///      - Bits 0-7: Version
+
+//TODO: move this to a lib dir
 library PBHExternalNullifier {
     /// @notice Thrown when the provided external nullifier doesn't
     /// contain the correct leading zeros
@@ -46,6 +48,8 @@ library PBHExternalNullifier {
         return (uint256(year) << 24) | (uint256(month) << 16) | (uint256(pbhNonce) << 8) | uint256(version);
     }
 
+    // TODO: should we provide an encodeV1 helper function?
+
     /// @notice Decodes an encoded PBHExternalNullifier into its constituent components.
     /// @param externalNullifier The encoded external nullifier to decode.
     /// @return version The 8-bit version extracted from the external nullifier.
@@ -63,6 +67,8 @@ library PBHExternalNullifier {
         version = uint8(externalNullifier & 0xFF);
     }
 
+    // TODO: revisit, maybe move this function or update the PBH Entrypoint to update the ext nullifier lib for forward compatibility
+
     /// @notice Verifies the validity of a PBHExternalNullifier by checking its components.
     /// @param externalNullifier The external nullifier to verify.
     /// @param numPbhPerMonth The maximum allowed value for the `pbhNonce` in the nullifier.
@@ -76,6 +82,6 @@ library PBHExternalNullifier {
         require(version == V1, InvalidExternalNullifierVersion());
         require(year == BokkyPooBahsDateTimeLibrary.getYear(block.timestamp), InvalidExternalNullifierYear());
         require(month == BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp), InvalidExternalNullifierMonth());
-        require(pbhNonce < numPbhPerMonth, InvalidPbhNonce());
+        require(pbhNonce <= numPbhPerMonth, InvalidPbhNonce());
     }
 }

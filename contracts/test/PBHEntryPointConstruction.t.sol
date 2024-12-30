@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import {Setup} from "./Setup.sol";
-import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
+import {TestSetup} from "./TestSetup.sol";
+import {IWorldID} from "../src/interfaces/IWorldID.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
 import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
@@ -13,7 +13,7 @@ import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract PBHEntryPointConstruction is Setup {
+contract PBHEntryPointConstruction is TestSetup {
     /// @notice Taken from Initializable.sol
     event Initialized(uint8 version);
 
@@ -28,7 +28,7 @@ contract PBHEntryPointConstruction is Setup {
     }
 
     /// @notice Tests that it is possible to properly construct and initialise a router.
-    function testCanConstructRouterWithDelegate(IWorldIDGroups dummy, IEntryPoint entryPoint) public {
+    function testCanConstructRouterWithDelegate(IWorldID dummy, IEntryPoint entryPoint) public {
         // Setup
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
