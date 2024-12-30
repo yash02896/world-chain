@@ -1,6 +1,8 @@
 pub mod args;
 pub mod node;
 
-// TODO: Conditional compilation?
-// #[cfg(test)]
+#[cfg(any(feature = "test", test))]
 pub mod test_utils;
+
+#[cfg(test)]
+pub mod test;

@@ -190,7 +190,7 @@ where
                 .try_for_each(|(payload, op)| {
                     let signal = crate::eip4337::hash_user_op(&op);
 
-                    self.validate_pbh_payload(&payload, signal)?;
+                    self.validate_pbh_payload(payload, signal)?;
 
                     Ok::<(), TransactionValidationError>(())
                 })?;

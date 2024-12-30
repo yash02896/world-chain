@@ -9,6 +9,6 @@ RUN apt-get update && apt-get install -y libclang-dev gcc
 RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/root/.cargo/git \
     --mount=type=cache,target=/world-chain-builder/target \
-    cargo install --path . --locked
+    cargo install --path crates/world/bin --locked
 
 ENTRYPOINT [ "world-chain-builder" ]

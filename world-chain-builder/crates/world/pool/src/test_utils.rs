@@ -39,6 +39,14 @@ pub fn signer(index: u32) -> PrivateKeySigner {
     signer
 }
 
+#[cfg(test)]
+#[test]
+fn test_signer() {
+    let signer = signer(0);
+
+    println!("Signer: {:?}", signer);
+}
+
 pub fn account(index: u32) -> Address {
     let signer = signer(index);
 
@@ -183,9 +191,9 @@ pub fn pbh_bundle(
 }
 
 pub const PBH_TEST_SIGNATURE_AGGREGATOR: Address =
-    address!("dEAD000000000000000042069420694206942069");
+    address!("09635F643e140090A9A8Dcd712eD6285858ceBef");
 
-pub const PBH_TEST_VALIDATOR: Address = address!("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef");
+pub const PBH_TEST_VALIDATOR: Address = address!("7a2088a1bFc9d81c55368AE168C2C02570cB814F");
 
 pub fn world_chain_validator(
 ) -> WorldChainTransactionValidator<MockEthProvider, WorldChainPooledTransaction> {
@@ -225,5 +233,10 @@ mod tests {
         let exp: Address = exp_address.parse().unwrap();
 
         assert_eq!(exp, account(index));
+    }
+
+    #[test]
+    fn treeroot() {
+        println!("Tree Root: {:?}", tree_root());
     }
 }
