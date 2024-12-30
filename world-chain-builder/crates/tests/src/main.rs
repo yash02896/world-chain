@@ -30,9 +30,7 @@ async fn main() -> Result<()> {
         std::env::set_var("RUST_LOG", "info");
     }
 
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+    tracing_subscriber::fmt::init();
 
     let (builder_rpc, sequencer_rpc) = start_devnet().await?;
 
@@ -56,10 +54,10 @@ async fn main() -> Result<()> {
     deploy_contracts(builder_rpc.clone()).await?;
 
     info!("Generating test fixtures");
-    generate_test_fixture().await?;
+    let fixture = generate_test_fixture().await;
 
     info!("Running test cases");
-    cases::assert_build(builder_provider.clone()).await?;
+    cases::assert_build(builder_provider.clone(), fixture).await?;
     cases::assert_fallback(sequencer_provider.clone()).await?;
 
     Ok(())
@@ -73,7 +71,7 @@ async fn start_devnet() -> Result<(String, String)> {
         .canonicalize()?;
 
     run_command(&"just", &["devnet-up"], path).await?;
-    print!("Devnet is running");
+
     let builder_socket = run_command(
         "kurtosis",
         &[
@@ -165,11 +163,13 @@ where
 pub async fn run_command(cmd: &str, args: &[&str], ctx: impl AsRef<Path>) -> Result<String> {
     let output = Command::new(cmd).current_dir(ctx).args(args).output()?;
     if output.status.success() {
-        Ok(String::from_utf8(output.stdout)?)
+        let stdout = String::from_utf8(output.stdout)?;
+        info!("{:?}", stdout.trim_end_matches("/n"));
+        Ok(stdout)
     } else {
         Err(eyre!(
             "Command failed: {:?}",
-            String::from_utf8(output.stdout).unwrap(),
+            String::from_utf8(output.stdout)?.trim_end_matches("/n"),
         ))
     }
 }

@@ -33,7 +33,7 @@ use world_chain_builder_pool::test_utils::{
 };
 use world_chain_builder_pool::tx::WorldChainPooledTransaction;
 use world_chain_builder_pool::validator::WorldChainTransactionValidator;
-use world_chain_builder_rpc::{EthTransactionsExtServer, WorldChainEthApiExt};
+use world_chain_builder_rpc::{EthApiExtServer, WorldChainEthApiExt};
 
 use crate::args::{ExtArgs, WorldChainBuilderArgs};
 use crate::node::WorldChainBuilder;

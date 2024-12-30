@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 world-chain-builder-node = { path = "../world/node", features = ["test"] }
-
 tracing = "0.1"
 tracing-subscriber = {version = "0.3.18", features = ["env-filter"]}
 clap = { version = "4", features = ["derive", "env"] }

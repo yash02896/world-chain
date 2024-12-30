@@ -15,17 +15,14 @@ use futures::TryStreamExt;
 use tokio::time::sleep;
 use tracing::debug;
 
-const PBH_FIXTURE: &str = include_str!("../../../../devnet/fixtures/fixture.json");
-
 const CONCURRENCY_LIMIT: usize = 50;
 
 /// Asserts that the world-chain-builder payload is built correctly with a set of PBH transactions.
-pub async fn assert_build<T, P>(builder_provider: Arc<P>) -> Result<()>
+pub async fn assert_build<T, P>(builder_provider: Arc<P>, fixture: PBHFixture) -> Result<()>
 where
     T: Transport + Clone,
     P: Provider<T>,
 {
-    let fixture = serde_json::from_str::<PBHFixture>(PBH_FIXTURE)?;
     let num_transactions = fixture.fixture.len();
     let half = num_transactions / 2;
     let builder_provider_clone = builder_provider.clone();

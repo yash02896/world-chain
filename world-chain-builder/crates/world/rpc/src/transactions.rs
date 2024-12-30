@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use alloy_consensus::BlockHeader;
 use alloy_eips::BlockId;
 use alloy_primitives::{map::HashMap, StorageKey};
@@ -8,27 +10,53 @@ use jsonrpsee::{
 };
 use reth::{
     api::Block,
-    rpc::server_types::eth::utils::recover_raw_transaction,
+    rpc::{
+        api::eth::{AsEthApiError, FromEthApiError, FromEvmError},
+        server_types::eth::{utils::recover_raw_transaction, EthApiError},
+    },
     transaction_pool::{EthPooledTransaction, PoolTransaction, TransactionOrigin, TransactionPool},
 };
 use reth_provider::{BlockReaderIdExt, StateProviderFactory};
 use revm_primitives::{map::FbBuildHasher, Address, Bytes, FixedBytes, B256};
 use world_chain_builder_pool::tx::WorldChainPooledTransaction;
 
-use crate::{sequencer::SequencerClient, EthTransactionsExtServer, WorldChainEthApiExt};
+use crate::{core::WorldChainEthApiExt, sequencer::SequencerClient};
 
 #[async_trait]
-impl<Pool, Client> EthTransactionsExtServer for WorldChainEthApiExt<Pool, Client>
-where
-    Pool: TransactionPool<Transaction = WorldChainPooledTransaction> + Clone + 'static,
-    Client: BlockReaderIdExt + StateProviderFactory + 'static,
-{
+pub trait EthTransactionsExt {
+    /// Extension of [`FromEthApiError`], with network specific errors.
+    type Error: Into<jsonrpsee_types::error::ErrorObject<'static>>
+        + FromEthApiError
+        + AsEthApiError
+        + FromEvmError
+        + Error
+        + Send
+        + Sync;
+
     async fn send_raw_transaction_conditional(
         &self,
         tx: Bytes,
         options: ConditionalOptions,
-    ) -> RpcResult<B256> {
-        validate_conditional_options(&options, self.provider())?;
+    ) -> Result<B256, Self::Error>;
+
+    async fn send_raw_transaction(&self, tx: Bytes) -> Result<B256, Self::Error>;
+}
+
+#[async_trait]
+impl<Pool, Client> EthTransactionsExt for WorldChainEthApiExt<Pool, Client>
+where
+    Pool: TransactionPool<Transaction = WorldChainPooledTransaction> + Clone + 'static,
+    Client: BlockReaderIdExt + StateProviderFactory + 'static,
+{
+    type Error = EthApiError;
+
+    async fn send_raw_transaction_conditional(
+        &self,
+        tx: Bytes,
+        options: ConditionalOptions,
+    ) -> Result<B256, Self::Error> {
+        validate_conditional_options(&options, self.provider())
+            .map_err(Self::Error::other)?;
 
         let recovered = recover_raw_transaction(&tx)?;
         let mut pool_transaction: WorldChainPooledTransaction =
@@ -40,7 +68,7 @@ where
             .pool()
             .add_transaction(TransactionOrigin::Local, pool_transaction)
             .await
-            .map_err(|_| ErrorObjectOwned::from(ErrorCode::InternalError))?;
+            .map_err(Self::Error::from_eth_err)?;
 
         if let Some(client) = self.raw_tx_forwarder().as_ref() {
             tracing::debug!( target: "rpc::eth",  "forwarding raw conditional transaction to");
@@ -51,7 +79,7 @@ where
         Ok(hash)
     }
 
-    async fn send_raw_transaction(&self, tx: Bytes) -> RpcResult<B256> {
+    async fn send_raw_transaction(&self, tx: Bytes) -> Result<B256, Self::Error> {
         let recovered = recover_raw_transaction(&tx)?;
         let pool_transaction: WorldChainPooledTransaction =
             EthPooledTransaction::from_pooled(recovered).into();
@@ -61,7 +89,7 @@ where
             .pool()
             .add_transaction(TransactionOrigin::Local, pool_transaction)
             .await
-            .map_err(|_| ErrorObjectOwned::from(ErrorCode::InternalError))?;
+            .map_err(Self::Error::from_eth_err)?;
 
         if let Some(client) = self.raw_tx_forwarder().as_ref() {
             tracing::debug!( target: "rpc::eth",  "forwarding raw transaction to");

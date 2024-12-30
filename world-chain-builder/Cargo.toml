@@ -117,8 +117,11 @@ alloy-sol-types = "0.8.15"
 revm = { version = "18.0.0", features = ["std"], default-features = false }
 revm-primitives = { version = "14.0.0", default-features = false }
 
-# 3rd party
+# rpc
 jsonrpsee = { version = "0.24", features = ["server", "client", "macros"] }
+jsonrpsee-types = "0.24"
+
+# 3rd party
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 chrono = "0.4"

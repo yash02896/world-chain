@@ -1,11 +1,6 @@
-use std::fs::File;
-
 use alloy_primitives::{Bytes, U256};
-use eyre::eyre::Result;
 use serde::{Deserialize, Serialize};
 use world_chain_builder_node::test_utils::PBHTransactionTestContext;
-
-pub const FIXTURES_DIR: &str = "../../../../devnet/fixtures/fixture.json";
 
 #[derive(Deserialize, Serialize, Clone, Default)]
 pub struct PBHFixture {
@@ -13,7 +8,7 @@ pub struct PBHFixture {
 }
 
 /// Generates test fixtures for PBH transactions
-pub async fn generate_test_fixture() -> Result<()> {
+pub async fn generate_test_fixture() -> PBHFixture {
     let mut test_fixture = PBHFixture::default();
     for i in 0..=5 {
         for j in 0..=29 {
@@ -23,6 +18,5 @@ pub async fn generate_test_fixture() -> Result<()> {
         }
     }
 
-    serde_json::to_writer(File::create(FIXTURES_DIR)?, &test_fixture)?;
-    Ok(())
+    test_fixture
 }

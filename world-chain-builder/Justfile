@@ -13,6 +13,6 @@ fmt-fix:
 fmt-check:
   cargo +nightly fmt --all -- --check
 
-# Runs the block building assertions
-assertor *args='':
-    cargo run --package assertor -- $@
+e2e-test:
+    RUST_LOG=info cargo run -p tests --release 
+
