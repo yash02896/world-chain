@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {IMulticall3} from "./IMulticall3.sol";
 
 interface IPBHEntryPoint {
     /// @notice The Packed World ID Proof data.
@@ -22,13 +23,16 @@ interface IPBHEntryPoint {
         address payable beneficiary
     ) external;
 
-    function initialize(IWorldIDGroups worldId, IEntryPoint entryPoint, uint8 _numPbhPerMonth) external;
+    function pbhMulticall(IMulticall3.Call3[] calldata calls, PBHPayload calldata pbhPayload) external;
+
+    function initialize(IWorldIDGroups worldId, IEntryPoint entryPoint, uint8 _numPbhPerMonth, address _multicall3)
+        external;
 
     function validateSignaturesCallback(bytes32 hashedOps) external view;
 
-    function nullifierHashes(uint256) external view returns (bool);
+    function verifyPbh(uint256 signalHash, PBHPayload calldata pbhPayload) external view;
 
-    function verifyPbh(address sender, uint256 nonce, bytes memory callData, PBHPayload memory pbhPayload) external;
+    function nullifierHashes(uint256) external view returns (bool);
 
     function setNumPbhPerMonth(uint8 _numPbhPerMonth) external;
 

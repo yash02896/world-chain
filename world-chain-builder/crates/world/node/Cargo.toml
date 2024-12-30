@@ -46,7 +46,6 @@ chrono = { workspace = true, optional = true }
 
 [dev-dependencies]
 world-chain-builder-pbh.workspace = true
-world-chain-builder-primitives.workspace = true
 world-chain-builder-rpc.workspace = true
 world-chain-builder-pool = { workspace = true, features = ["test"] }
 

@@ -37,6 +37,7 @@ contract Setup is Test {
     address public pbhEntryPointImpl;
     address public immutable thisAddress = address(this);
     address public constant nullAddress = address(0);
+    address public constant MULTICALL3 = 0xcA11bde05977b3631167028862bE2a173976CA11;
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -47,7 +48,7 @@ contract Setup is Test {
         deployWorldIDGroups();
         deployPBHEntryPoint(worldIDGroups, entryPoint);
         deployPBHSignatureAggregator(address(pbhEntryPoint));
-        deploySafeAccount(address(pbhAggregator));
+        deploySafeAccount(address(pbhAggregator), 1);
 
         // Label the addresses for better errors.
         vm.label(address(entryPoint), "ERC-4337 Entry Point");
@@ -61,7 +62,6 @@ contract Setup is Test {
         vm.deal(address(safe), type(uint256).max);
 
         // Deposit some funds into the Entry Point from the Mock Account.
-        vm.prank(address(safe));
         entryPoint.depositTo{value: 10 ether}(address(safe));
     }
 
@@ -76,10 +76,11 @@ contract Setup is Test {
     /// @param initialEntryPoint The initial entry point.
     function deployPBHEntryPoint(IWorldIDGroups initialGroupAddress, IEntryPoint initialEntryPoint) public {
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
+
         bytes memory initCallData =
-            abi.encodeCall(PBHEntryPointImplV1.initialize, (initialGroupAddress, initialEntryPoint, 30));
+            abi.encodeCall(PBHEntryPointImplV1.initialize, (initialGroupAddress, initialEntryPoint, 30, MULTICALL3));
         vm.expectEmit(true, true, true, true);
-        emit PBHEntryPointImplV1.PBHEntryPointImplInitialized(initialGroupAddress, initialEntryPoint, 30);
+        emit PBHEntryPointImplV1.PBHEntryPointImplInitialized(initialGroupAddress, initialEntryPoint, 30, MULTICALL3);
         pbhEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, initCallData)));
     }
 
@@ -91,8 +92,8 @@ contract Setup is Test {
 
     /// @notice Initializes a new safe account.
     /// @dev It is constructed in the globals.
-    function deploySafeAccount(address _pbhSignatureAggregator) public {
-        safe = new MockAccount(_pbhSignatureAggregator);
+    function deploySafeAccount(address _pbhSignatureAggregator, uint256 threshold) public {
+        safe = new MockAccount(_pbhSignatureAggregator, threshold);
     }
 
     /// @notice Initializes a new World ID Groups contract.

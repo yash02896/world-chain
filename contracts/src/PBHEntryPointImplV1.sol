@@ -4,16 +4,18 @@ pragma solidity ^0.8.28;
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IPBHEntryPoint} from "./interfaces/IPBHEntryPoint.sol";
+import {IMulticall3} from "./interfaces/IMulticall3.sol";
 import {ByteHasher} from "./helpers/ByteHasher.sol";
 import {PBHExternalNullifier} from "./helpers/PBHExternalNullifier.sol";
 import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDImpl.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 
 /// @title PBH Entry Point Implementation V1
 /// @dev This contract is an implementation of the PBH Entry Point.
 ///      It is used to verify the signature of a Priority User Operation, and Relaying Priority Bundles to the EIP-4337 Entry Point.
 /// @author Worldcoin
-contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
+contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -65,15 +67,14 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
     //////////////////////////////////////////////////////////////////////////////
 
     event PBHEntryPointImplInitialized(
-        IWorldIDGroups indexed worldId, IEntryPoint indexed entryPoint, uint8 indexed numPbhPerMonth
+        IWorldIDGroups indexed worldId, IEntryPoint indexed entryPoint, uint8 indexed numPbhPerMonth, address multicall3
     );
 
     /// @notice Emitted once for each successful PBH verification.
     ///
     /// @param sender The sender of this particular transaction or UserOp.
-    /// @param nonce Transaction/UserOp nonce.
     /// @param payload The zero-knowledge proof that demonstrates the claimer is registered with World ID.
-    event PBH(address indexed sender, uint256 indexed nonce, PBHPayload payload);
+    event PBH(address indexed sender, PBHPayload payload);
 
     /// @notice Emitted when the World ID address is set.
     ///
@@ -107,6 +108,9 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
     ///         World ID in a given month.
     uint8 public numPbhPerMonth;
 
+    /// @notice Address of the Multicall3 implementation.
+    address internal multicall3;
+
     /// @dev Whether a nullifier hash has been used already. Used to guarantee an action is only performed once by a single person
     mapping(uint256 => bool) public nullifierHashes;
 
@@ -137,7 +141,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
-    function initialize(IWorldIDGroups _worldId, IEntryPoint _entryPoint, uint8 _numPbhPerMonth)
+    function initialize(IWorldIDGroups _worldId, IEntryPoint _entryPoint, uint8 _numPbhPerMonth, address _multicall3)
         external
         reinitializer(1)
     {
@@ -147,10 +151,11 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
         worldId = _worldId;
         entryPoint = _entryPoint;
         numPbhPerMonth = _numPbhPerMonth;
+        multicall3 = _multicall3;
 
         // Say that the contract is initialized.
         __setInitialized();
-        emit PBHEntryPointImplInitialized(_worldId, _entryPoint, _numPbhPerMonth);
+        emit PBHEntryPointImplInitialized(_worldId, _entryPoint, _numPbhPerMonth, _multicall3);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -173,7 +178,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
     function handleAggregatedOps(
         IEntryPoint.UserOpsPerAggregator[] calldata opsPerAggregator,
         address payable beneficiary
-    ) external virtual onlyProxy onlyInitialized {
+    ) external virtual onlyProxy onlyInitialized nonReentrant {
         for (uint256 i = 0; i < opsPerAggregator.length; ++i) {
             bytes32 hashedOps = keccak256(abi.encode(opsPerAggregator[i].userOps));
             assembly ("memory-safe") {
@@ -184,12 +189,15 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
 
             PBHPayload[] memory pbhPayloads = abi.decode(opsPerAggregator[i].signature, (PBHPayload[]));
             for (uint256 j = 0; j < pbhPayloads.length; ++j) {
-                verifyPbh(
-                    opsPerAggregator[i].userOps[j].sender,
-                    opsPerAggregator[i].userOps[j].nonce,
-                    opsPerAggregator[i].userOps[j].callData,
-                    pbhPayloads[j]
-                );
+                address sender = opsPerAggregator[i].userOps[j].sender;
+                // We now generate the signal hash from the sender, nonce, and calldata
+                uint256 signalHash = abi.encodePacked(
+                    sender, opsPerAggregator[i].userOps[j].nonce, opsPerAggregator[i].userOps[j].callData
+                ).hashToField();
+
+                verifyPbh(signalHash, pbhPayloads[j]);
+                nullifierHashes[pbhPayloads[j].nullifierHash] = true;
+                emit PBH(sender, pbhPayloads[j]);
             }
         }
 
@@ -204,12 +212,27 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
         }
     }
 
-    /// @param sender The sender of this particular transaction or UserOp.
-    /// @param nonce Transaction/UserOp nonce.
-    /// @param callData Transaction/UserOp call data.
+    function pbhMulticall(IMulticall3.Call3[] calldata calls, PBHPayload calldata pbhPayload)
+        external
+        virtual
+        onlyProxy
+        onlyInitialized
+        nonReentrant
+    {
+        uint256 signalHash = abi.encode(msg.sender, calls).hashToField();
+
+        verifyPbh(signalHash, pbhPayload);
+        nullifierHashes[pbhPayload.nullifierHash] = true;
+
+        IMulticall3(multicall3).aggregate3(calls);
+
+        emit PBH(msg.sender, pbhPayload);
+    }
+
     /// @param pbhPayload The PBH payload containing the proof data.
-    function verifyPbh(address sender, uint256 nonce, bytes calldata callData, PBHPayload memory pbhPayload)
+    function verifyPbh(uint256 signalHash, PBHPayload memory pbhPayload)
         public
+        view
         virtual
         onlyInitialized
         onlyProxy
@@ -225,9 +248,6 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
         // If worldId address is set, proceed with on chain verification,
         // otherwise assume verification has been done off chain by the builder.
         if (address(worldId) != address(0)) {
-            // We now generate the signal hash from the sender, nonce, and calldata
-            uint256 signalHash = abi.encodePacked(sender, nonce, callData).hashToField();
-
             // We now verify the provided proof is valid and the user is verified by World ID
             worldId.verifyProof(
                 pbhPayload.root,
@@ -238,11 +258,6 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl {
                 pbhPayload.proof
             );
         }
-
-        // We now record the user has done this, so they can't do it again (proof of uniqueness)
-        nullifierHashes[pbhPayload.nullifierHash] = true;
-
-        emit PBH(sender, nonce, pbhPayload);
     }
 
     /// @notice Sets the number of PBH transactions allowed per month.

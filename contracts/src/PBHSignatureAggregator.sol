@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {IPBHEntryPoint} from "./interfaces/IPBHEntryPoint.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
+import {ISafe} from "@4337/interfaces/Safe.sol";
 
 /// @title PBH Signature Aggregator
 /// @author Worldcoin
@@ -12,9 +13,19 @@ import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator
 ///         Smart Accounts that return the `PBHSignatureAggregator` as the authorizer in `validationData`
 ///         will be considered as Priority User Operations, and will need to pack a World ID proof in the signature field.
 contract PBHSignatureAggregator is IAggregator {
+    /// @notice The length of an ECDSA signature.
+    uint256 constant ECDSA_SIGNATURE_LENGTH = 65;
+    /// @notice The length of the timestamp bytes.
+    uint256 constant TIMESTAMP_BYTES = 12; // 6 bytes each for validAfter and validUntil
+    /// @notice The length of the encoded proof data.
+    uint256 constant PROOF_DATA_LENGTH = 352;
+
     /// @notice Thrown when the Hash of the UserOperations is not
     ///         in transient storage of the `PBHVerifier`.
     error InvalidUserOperations();
+
+    /// @notice Thrown when the length of the signature is invalid.
+    error InvalidSignatureLength(uint256 expected, uint256 actual);
 
     /// @notice The PBHVerifier contract.
     IPBHEntryPoint public immutable pbhEntryPoint;
@@ -60,14 +71,18 @@ contract PBHSignatureAggregator is IAggregator {
      */
     function aggregateSignatures(PackedUserOperation[] calldata userOps)
         external
-        pure
+        view
         returns (bytes memory aggregatedSignature)
     {
         IPBHEntryPoint.PBHPayload[] memory pbhPayloads = new IPBHEntryPoint.PBHPayload[](userOps.length);
         for (uint256 i = 0; i < userOps.length; ++i) {
-            // Bytes (0:65) - UserOp Signature
-            // Bytes (65:65 + 352) - Packed Proof Data
-            bytes memory proofData = userOps[i].signature[65:];
+            uint256 expectedLength =
+                TIMESTAMP_BYTES + (ISafe(payable(userOps[i].sender)).getThreshold() * ECDSA_SIGNATURE_LENGTH);
+            require(
+                userOps[i].signature.length == expectedLength + PROOF_DATA_LENGTH,
+                InvalidSignatureLength(expectedLength + PROOF_DATA_LENGTH, userOps[i].signature.length)
+            );
+            bytes memory proofData = userOps[i].signature[expectedLength:];
             pbhPayloads[i] = abi.decode(proofData, (IPBHEntryPoint.PBHPayload));
         }
         aggregatedSignature = abi.encode(pbhPayloads);
