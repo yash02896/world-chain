@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
+import {IWorldID} from "./interfaces/IWorldID.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IPBHEntryPoint} from "./interfaces/IPBHEntryPoint.sol";
 import {IMulticall3} from "./interfaces/IMulticall3.sol";
@@ -67,7 +67,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     //////////////////////////////////////////////////////////////////////////////
 
     event PBHEntryPointImplInitialized(
-        IWorldIDGroups indexed worldId, IEntryPoint indexed entryPoint, uint8 indexed numPbhPerMonth, address multicall3
+        IWorldID indexed worldId, IEntryPoint indexed entryPoint, uint8 indexed numPbhPerMonth, address multicall3
     );
 
     /// @notice Emitted once for each successful PBH verification.
@@ -99,7 +99,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     uint256 internal constant _GROUP_ID = 1;
 
     /// @dev The World ID instance that will be used for verifying proofs
-    IWorldIDGroups public worldId;
+    IWorldID public worldId;
 
     /// @dev The EntryPoint where Aggregated PBH Bundles will be proxied to.
     IEntryPoint public entryPoint;
@@ -141,7 +141,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
-    function initialize(IWorldIDGroups _worldId, IEntryPoint _entryPoint, uint8 _numPbhPerMonth, address _multicall3)
+    function initialize(IWorldID _worldId, IEntryPoint _entryPoint, uint8 _numPbhPerMonth, address _multicall3)
         external
         reinitializer(1)
     {
@@ -271,7 +271,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @notice Sets the World ID instance that will be used for verifying proofs.
     /// @param _worldId The World ID instance that will be used for verifying proofs.
     function setWorldId(address _worldId) external virtual onlyOwner onlyProxy onlyInitialized {
-        worldId = IWorldIDGroups(_worldId);
+        worldId = IWorldID(_worldId);
         emit WorldIdSet(_worldId);
     }
 }

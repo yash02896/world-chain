@@ -8,7 +8,7 @@ import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
 import {PBHSignatureAggregator} from "../src/PBHSignatureAggregator.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
-import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
+import {IWorldID} from "../src/interfaces/IWorldID.sol";
 import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
 import {MockAccount} from "./mocks/MockAccount.sol";
 import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
@@ -74,7 +74,7 @@ contract Setup is Test {
     ///
     /// @param initialGroupAddress The initial group's identity manager.
     /// @param initialEntryPoint The initial entry point.
-    function deployPBHEntryPoint(IWorldIDGroups initialGroupAddress, IEntryPoint initialEntryPoint) public {
+    function deployPBHEntryPoint(IWorldID initialGroupAddress, IEntryPoint initialEntryPoint) public {
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
 
         bytes memory initCallData =
