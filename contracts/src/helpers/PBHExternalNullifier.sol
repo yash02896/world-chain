@@ -13,6 +13,8 @@ import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 ///      - Bits 16-31: Month
 ///      - Bits 8-15: Nonce
 ///      - Bits 0-7: Version
+
+//TODO: move this to a lib dir
 library PBHExternalNullifier {
     /// @notice Thrown when the provided external nullifier doesn't
     /// contain the correct leading zeros
@@ -76,6 +78,8 @@ library PBHExternalNullifier {
         require(version == V1, InvalidExternalNullifierVersion());
         require(year == BokkyPooBahsDateTimeLibrary.getYear(block.timestamp), InvalidExternalNullifierYear());
         require(month == BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp), InvalidExternalNullifierMonth());
+
+        //TODO: this should be <=?
         require(pbhNonce < numPbhPerMonth, InvalidPbhNonce());
     }
 }

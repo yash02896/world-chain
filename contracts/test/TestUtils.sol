@@ -8,28 +8,24 @@ import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 
 contract TestUtils {
-    function encodeSignature(
-        bytes memory proofData,
-        uint256 signatureThreshold
-    ) public pure returns (bytes memory res) {
+    function encodeSignature(bytes memory proofData, uint256 signatureThreshold)
+        public
+        pure
+        returns (bytes memory res)
+    {
         bytes memory sigBuffer = new bytes(65 * signatureThreshold + 12);
         res = LibBytes.concat(sigBuffer, proofData);
     }
 
     /// @notice Create a test data for UserOperations.
-    function createUOTestData(
-        address sender,
-        bytes[] memory proofs,
-        uint256 signatureThreshold
-    ) public pure returns (PackedUserOperation[] memory) {
-        PackedUserOperation[] memory uOps = new PackedUserOperation[](
-            proofs.length
-        );
+    function createUOTestData(address sender, bytes[] memory proofs, uint256 signatureThreshold)
+        public
+        pure
+        returns (PackedUserOperation[] memory)
+    {
+        PackedUserOperation[] memory uOps = new PackedUserOperation[](proofs.length);
         for (uint256 i = 0; i < proofs.length; i++) {
-            bytes memory signature = encodeSignature(
-                proofs[i],
-                signatureThreshold
-            );
+            bytes memory signature = encodeSignature(proofs[i], signatureThreshold);
             PackedUserOperation memory uo = PackedUserOperation({
                 sender: sender,
                 nonce: i,
