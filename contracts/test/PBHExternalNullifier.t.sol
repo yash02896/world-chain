@@ -43,8 +43,11 @@ contract PBHExternalNullifierTest is Test {
         PBHExternalNullifier.verify(encoded, maxPbh);
     }
 
-    // TODO:
-    function testFuzz_verify_RevertIf_InvalidNullifierLeadingZeros() public {}
+    function testFuzz_verify_RevertIf_InvalidNullifierLeadingZeros(uint256 encoded) public {
+        vm.assume(encoded > type(uint40).max);
+        vm.expectRevert(PBHExternalNullifier.InvalidExternalNullifierLeadingZeros.selector);
+        PBHExternalNullifier.verify(encoded, 30);
+    }
 
     function testFuzz_verify_RevertIf_InvalidExternalNullifierVersion(uint8 pbhVersion) public {
         vm.assume(pbhVersion != PBHExternalNullifier.V1);

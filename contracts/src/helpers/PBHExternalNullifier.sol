@@ -15,7 +15,6 @@ import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 ///      - Bits 0-7: Version
 
 //TODO: move this to a lib dir
-// TODO:
 library PBHExternalNullifier {
     /// @notice Thrown when the provided external nullifier doesn't
     /// contain the correct leading zeros
