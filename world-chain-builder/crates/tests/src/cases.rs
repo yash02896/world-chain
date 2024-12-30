@@ -70,6 +70,9 @@ where
     T: Transport + Clone,
     P: Provider<T>,
 {
+    // Grab the latest block number
+    let block_number = sequencer_provider.get_block_number().await?;
+    
     run_command(
         "kurtosis",
         &[
@@ -83,8 +86,6 @@ where
     .await?;
     sleep(Duration::from_secs(5)).await;
 
-    // Grab the latest block number
-    let block_number = sequencer_provider.get_block_number().await?;
     let retries = 3;
     let mut tries = 0;
     loop {
