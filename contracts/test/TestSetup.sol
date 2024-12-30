@@ -18,13 +18,14 @@ import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract Setup is Test {
+contract TestSetup is Test {
     ///////////////////////////////////////////////////////////////////////////////
     ///                                TEST DATA                                ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice The 4337 Entry Point on Ethereum Mainnet.
-    IEntryPoint internal entryPoint = IEntryPoint(address(0x0000000071727De22E5E9d8BAf0edAc6f37da032));
+    IEntryPoint internal entryPoint =
+        IEntryPoint(address(0x0000000071727De22E5E9d8BAf0edAc6f37da032));
     /// @notice The PBHEntryPoint contract.
     IPBHEntryPoint public pbhEntryPoint;
     /// @notice The PBHSignatureAggregator contract.
@@ -37,7 +38,8 @@ contract Setup is Test {
     address public pbhEntryPointImpl;
     address public immutable thisAddress = address(this);
     address public constant nullAddress = address(0);
-    address public constant MULTICALL3 = 0xcA11bde05977b3631167028862bE2a173976CA11;
+    address public constant MULTICALL3 =
+        0xcA11bde05977b3631167028862bE2a173976CA11;
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -74,14 +76,26 @@ contract Setup is Test {
     ///
     /// @param initialGroupAddress The initial group's identity manager.
     /// @param initialEntryPoint The initial entry point.
-    function deployPBHEntryPoint(IWorldID initialGroupAddress, IEntryPoint initialEntryPoint) public {
+    function deployPBHEntryPoint(
+        IWorldID initialGroupAddress,
+        IEntryPoint initialEntryPoint
+    ) public {
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
 
-        bytes memory initCallData =
-            abi.encodeCall(PBHEntryPointImplV1.initialize, (initialGroupAddress, initialEntryPoint, 30, MULTICALL3));
+        bytes memory initCallData = abi.encodeCall(
+            PBHEntryPointImplV1.initialize,
+            (initialGroupAddress, initialEntryPoint, 30, MULTICALL3)
+        );
         vm.expectEmit(true, true, true, true);
-        emit PBHEntryPointImplV1.PBHEntryPointImplInitialized(initialGroupAddress, initialEntryPoint, 30, MULTICALL3);
-        pbhEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, initCallData)));
+        emit PBHEntryPointImplV1.PBHEntryPointImplInitialized(
+            initialGroupAddress,
+            initialEntryPoint,
+            30,
+            MULTICALL3
+        );
+        pbhEntryPoint = IPBHEntryPoint(
+            address(new PBHEntryPoint(pbhEntryPointImpl, initCallData))
+        );
     }
 
     /// @notice Initializes a new PBHSignatureAggregator.
@@ -92,7 +106,10 @@ contract Setup is Test {
 
     /// @notice Initializes a new safe account.
     /// @dev It is constructed in the globals.
-    function deploySafeAccount(address _pbhSignatureAggregator, uint256 threshold) public {
+    function deploySafeAccount(
+        address _pbhSignatureAggregator,
+        uint256 threshold
+    ) public {
         safe = new MockAccount(_pbhSignatureAggregator, threshold);
     }
 
@@ -106,15 +123,22 @@ contract Setup is Test {
     /// @dev It is constructed in the globals.
     function makeUninitPBHEntryPoint() public {
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
-        pbhEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, new bytes(0x0))));
+        pbhEntryPoint = IPBHEntryPoint(
+            address(new PBHEntryPoint(pbhEntryPointImpl, new bytes(0x0)))
+        );
     }
+
+    // TODO: remove these
 
     /// @notice Asserts that making the external call using `callData` on `target` succeeds.
     ///
     /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
-    function assertCallSucceedsOn(address target, bytes memory callData) public {
-        (bool status,) = target.call(callData);
+    function assertCallSucceedsOn(
+        address target,
+        bytes memory callData
+    ) public {
+        (bool status, ) = target.call(callData);
         assert(status);
     }
 
@@ -123,7 +147,11 @@ contract Setup is Test {
     /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
     /// @param expectedReturnData The expected return data from the function.
-    function assertCallSucceedsOn(address target, bytes memory callData, bytes memory expectedReturnData) public {
+    function assertCallSucceedsOn(
+        address target,
+        bytes memory callData,
+        bytes memory expectedReturnData
+    ) public {
         (bool status, bytes memory returnData) = target.call(callData);
         assert(status);
         assertEq(expectedReturnData, returnData);
@@ -134,7 +162,7 @@ contract Setup is Test {
     /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
     function assertCallFailsOn(address target, bytes memory callData) public {
-        (bool status,) = target.call(callData);
+        (bool status, ) = target.call(callData);
         assert(!status);
     }
 
@@ -143,7 +171,11 @@ contract Setup is Test {
     /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
     /// @param expectedReturnData The expected return data from the function.
-    function assertCallFailsOn(address target, bytes memory callData, bytes memory expectedReturnData) public {
+    function assertCallFailsOn(
+        address target,
+        bytes memory callData,
+        bytes memory expectedReturnData
+    ) public {
         (bool status, bytes memory returnData) = target.call(callData);
         assert(!status);
         assertEq(expectedReturnData, returnData);
@@ -155,7 +187,9 @@ contract Setup is Test {
     /// @param reason The string reason for the revert.
     ///
     /// @return data The ABI encoding of the revert.
-    function encodeStringRevert(string memory reason) public pure returns (bytes memory data) {
+    function encodeStringRevert(
+        string memory reason
+    ) public pure returns (bytes memory data) {
         return abi.encodeWithSignature("Error(string)", reason);
     }
 }
