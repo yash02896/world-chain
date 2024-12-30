@@ -16,7 +16,7 @@ import {TestSetup} from "./TestSetup.sol";
 /// @title PBHVerifer Verify Tests
 /// @notice Contains tests for the pbhVerifier
 /// @author Worldcoin
-contract PBHVerifierTest is TestSetup {
+contract PBHEntryPointImplV1Test is TestSetup {
     using ByteHasher for bytes;
 
     event PBH(address indexed sender, IPBHEntryPoint.PBHPayload payload);
@@ -35,6 +35,7 @@ contract PBHVerifierTest is TestSetup {
     address internal sender = address(0x123);
     bytes internal testCallData = hex"deadbeef";
 
+    // TODO: move this to test utils
     function getValidPBHExternalNullifier() public view returns (uint256) {
         uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
         uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));

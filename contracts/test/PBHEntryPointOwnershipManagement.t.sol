@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import {Setup} from "./Setup.sol";
+import {TestSetup} from "./TestSetup.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 
 import {CheckInitialized} from "@world-id-contracts/utils/CheckInitialized.sol";
@@ -15,7 +15,7 @@ import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDImpl.sol";
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract PBHVerifierRouting is Setup {
+contract PBHVerifierRouting is TestSetup {
     address internal pbhEntryPointAddress;
 
     function setUp() public override {

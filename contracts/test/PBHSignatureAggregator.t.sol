@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import {Setup} from "./Setup.sol";
+import {TestSetup} from "./TestSetup.sol";
 import {console} from "@forge-std/console.sol";
 import {TestUtils} from "./TestUtils.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
@@ -11,7 +11,7 @@ import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 import "../src/helpers/PBHExternalNullifier.sol";
 import {PBHSignatureAggregator} from "../src/PBHSignatureAggregator.sol";
 
-contract PBHSignatureAggregatorTest is TestUtils, Setup {
+contract PBHSignatureAggregatorTest is TestUtils, TestSetup {
     function setUp() public override {
         super.setUp();
     }
