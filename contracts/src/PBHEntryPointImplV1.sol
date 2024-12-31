@@ -62,6 +62,12 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
 
+    /// @notice Thrown when transient storage slot collides with another set slot
+    error StorageCollision();
+
+    /// @notice Thrown when the hash of the user operations is invalid
+    error InvalidHashedOps();
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Events                                ///
     //////////////////////////////////////////////////////////////////////////////
@@ -89,11 +95,6 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Vars                                  ///
     //////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Transient Storage for the hashed operations.
-    /// @dev The PBHSignatureAggregator will cross reference this slot to ensure
-    ///     The PBHVerifier is always the proxy to the EntryPoint for PBH Bundles.
-    bytes32 internal _hashedOps;
 
     /// @dev The World ID group ID (always 1)
     uint256 internal constant _GROUP_ID = 1;
@@ -213,7 +214,10 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         for (uint256 i = 0; i < opsPerAggregator.length; ++i) {
             bytes32 hashedOps = keccak256(abi.encode(opsPerAggregator[i].userOps));
             assembly ("memory-safe") {
-                if gt(tload(hashedOps), 0) { revert(0, 0) }
+                if gt(tload(hashedOps), 0) {
+                    mstore(0x00, 0x5e75ad06) // StorageCollision()
+                    revert(0x00, 0x04)
+                }
 
                 tstore(hashedOps, hashedOps)
             }
@@ -239,7 +243,10 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @param hashedOps The hashed operations to validate.
     function validateSignaturesCallback(bytes32 hashedOps) external view virtual onlyProxy onlyInitialized {
         assembly ("memory-safe") {
-            if iszero(eq(tload(hashedOps), hashedOps)) { revert(0, 0) }
+            if iszero(eq(tload(hashedOps), hashedOps)) {
+                mstore(0x00, 0xf5806179) // InvalidHashedOps()
+                revert(0x00, 0x04)
+            }
         }
     }
 
