@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-// import {CheckInitialized} from "../../utils/CheckInitialized.sol";
 import {TestSetup} from "./TestSetup.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
-
 import {CheckInitialized} from "@world-id-contracts/utils/CheckInitialized.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDImpl.sol";
-
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
@@ -19,9 +16,8 @@ import {IMulticall3} from "../src/interfaces/IMulticall3.sol";
 import {IWorldID} from "../src/interfaces/IWorldID.sol";
 
 /// @title PBHEntryPointImplV1InitTest
-/// @notice Contains logic asserting the correct initialization of the PBHEntryPointImplV1 contract
+/// @notice Contains tests asserting the correct initialization of the PBHEntryPointImplV1 contract
 /// @author Worldcoin
-
 contract PBHEntryPointImplV1InitTest is TestSetup {
     IPBHEntryPoint uninitializedPBHEntryPoint;
 
