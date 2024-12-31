@@ -9,9 +9,9 @@ import {ByteHasher} from "@helpers/ByteHasher.sol";
 import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
 import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
 
-import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 import "@helpers/PBHExternalNullifier.sol";
 import {TestSetup} from "./TestSetup.sol";
+import {TestUtils} from "./TestUtils.sol";
 
 /// @title PBHVerifer Verify Tests
 /// @notice Contains tests for the pbhVerifier
@@ -26,7 +26,7 @@ contract PBHEntryPointImplV1Test is TestSetup {
     /// @notice Test payload for the PBHVerifier
     IPBHEntryPoint.PBHPayload public testPayload = IPBHEntryPoint.PBHPayload({
         root: 1,
-        pbhExternalNullifier: getValidPBHExternalNullifier(),
+        pbhExternalNullifier: TestUtils.getValidPBHExternalNullifier(),
         nullifierHash: 1,
         proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
     });
@@ -34,13 +34,6 @@ contract PBHEntryPointImplV1Test is TestSetup {
     uint256 internal nonce = 1;
     address internal sender = address(0x123);
     bytes internal testCallData = hex"deadbeef";
-
-    // TODO: move this to test utils
-    function getValidPBHExternalNullifier() public view returns (uint256) {
-        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
-        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
-        return PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
-    }
 
     // TODO:
     function test_initialize() public {}

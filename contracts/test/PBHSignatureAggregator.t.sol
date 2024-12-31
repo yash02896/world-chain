@@ -11,7 +11,7 @@ import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 import "../src/helpers/PBHExternalNullifier.sol";
 import {PBHSignatureAggregator} from "../src/PBHSignatureAggregator.sol";
 
-contract PBHSignatureAggregatorTest is TestUtils, TestSetup {
+contract PBHSignatureAggregatorTest is TestSetup {
     function setUp() public override {
         super.setUp();
     }
@@ -41,7 +41,7 @@ contract PBHSignatureAggregatorTest is TestUtils, TestSetup {
         proofs[0] = abi.encode(proof0);
         proofs[1] = abi.encode(proof1);
 
-        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs, 1);
+        PackedUserOperation[] memory uoTestFixture = TestUtils.createUOTestData(address(safe), proofs, 1);
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
 
         IEntryPoint.UserOpsPerAggregator[] memory userOpsPerAggregator = new IEntryPoint.UserOpsPerAggregator[](1);
@@ -77,7 +77,7 @@ contract PBHSignatureAggregatorTest is TestUtils, TestSetup {
         bytes[] memory proofs = new bytes[](2);
         proofs[0] = abi.encode(proof);
         proofs[1] = abi.encode(proof);
-        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs, 1);
+        PackedUserOperation[] memory uoTestFixture = TestUtils.createUOTestData(address(safe), proofs, 1);
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
         IPBHEntryPoint.PBHPayload[] memory decodedProofs =
             abi.decode(aggregatedSignature, (IPBHEntryPoint.PBHPayload[]));
@@ -135,7 +135,7 @@ contract PBHSignatureAggregatorTest is TestUtils, TestSetup {
         bytes[] memory proofs = new bytes[](2);
         proofs[0] = abi.encode(proof);
         proofs[1] = abi.encode(proof);
-        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs, threshold);
+        PackedUserOperation[] memory uoTestFixture = TestUtils.createUOTestData(address(safe), proofs, threshold);
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
         IPBHEntryPoint.PBHPayload[] memory decodedProofs =
             abi.decode(aggregatedSignature, (IPBHEntryPoint.PBHPayload[]));
@@ -179,7 +179,7 @@ contract PBHSignatureAggregatorTest is TestUtils, TestSetup {
         bytes[] memory proofs = new bytes[](2);
         proofs[0] = abi.encode(proof);
         proofs[1] = abi.encode(proof);
-        PackedUserOperation[] memory uoTestFixture = createUOTestData(address(safe), proofs, 1);
+        PackedUserOperation[] memory uoTestFixture = TestUtils.createUOTestData(address(safe), proofs, 1);
         uoTestFixture[0].signature = new bytes(12);
         vm.expectRevert(PBHSignatureAggregator.InvalidSignatureLength.selector);
         pbhAggregator.aggregateSignatures(uoTestFixture);
