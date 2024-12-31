@@ -62,6 +62,12 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
 
+    /// @notice Error thrown when the address is 0
+    error AddressZero();
+
+    /// @notice Error thrown when the number of PBH transactions allowed per month is 0
+    error InvalidNumPbhPerMonth();
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Events                                ///
     //////////////////////////////////////////////////////////////////////////////
@@ -145,11 +151,21 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         external
         reinitializer(1)
     {
+        if (address(_worldId) == address(0) || address(_entryPoint) == address(0) || _multicall3 == address(0)) {
+            revert AddressZero();
+        }
+
+        if (_numPbhPerMonth == 0) {
+            revert InvalidNumPbhPerMonth();
+        }
+
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
+        // TODO: add address zero checks?
         worldId = _worldId;
         entryPoint = _entryPoint;
+        // TODO: ensure num pbh is not 0
         numPbhPerMonth = _numPbhPerMonth;
         multicall3 = _multicall3;
 
@@ -263,7 +279,10 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @notice Sets the number of PBH transactions allowed per month.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
     function setNumPbhPerMonth(uint8 _numPbhPerMonth) external virtual onlyOwner onlyProxy onlyInitialized {
-        // TODO: require(_numPbhPerMonth > 0, "PBHEntryPointImplV1: numPbhPerMonth must be greater than 0");
+        if (_numPbhPerMonth == 0) {
+            revert InvalidNumPbhPerMonth();
+        }
+
         numPbhPerMonth = _numPbhPerMonth;
         emit NumPbhPerMonthSet(_numPbhPerMonth);
     }
@@ -272,6 +291,10 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @notice Sets the World ID instance that will be used for verifying proofs.
     /// @param _worldId The World ID instance that will be used for verifying proofs.
     function setWorldId(address _worldId) external virtual onlyOwner onlyProxy onlyInitialized {
+        if (_worldId == address(0)) {
+            revert AddressZero();
+        }
+
         worldId = IWorldID(_worldId);
         emit WorldIdSet(_worldId);
     }
