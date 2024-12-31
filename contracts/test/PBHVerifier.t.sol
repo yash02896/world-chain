@@ -59,7 +59,7 @@ contract PBHVerifierTest is TestSetup {
     }
 
     // TODO:
-    function test_verifyPbh_RevertIfInvalidNullifier() public {}
+    function test_verifyPbh_RevertIf_InvalidNullifier() public {}
 
     /// @notice Test that setNumPBHPerMonth works as expected
     function testSetNumPBHPerMonth() public {

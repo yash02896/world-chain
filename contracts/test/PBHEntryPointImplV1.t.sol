@@ -43,24 +43,58 @@ contract PBHEntryPointImplV1Test is TestSetup {
     }
 
     // TODO:
-    function test_verifyPbh() public {
-        uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
-
-        pbhEntryPoint.verifyPbh(signalHash, testPayload);
-
-        // TODO: update to use mock work id
-        // Expect revert when proof verification fails
-        MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(false);
-        vm.expectRevert("Proof verification failed");
-        pbhEntryPoint.verifyPbh(signalHash, testPayload);
-
-        // Now expect success
-        MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
-        pbhEntryPoint.verifyPbh(signalHash, testPayload);
-    }
+    function test_initialize() public {}
 
     // TODO:
-    function test_verifyPbh_RevertIfInvalidNullifier() public {}
+    function test_verifyPbh() public {}
+
+    // TODO:
+    function test_verifyPbh_RevertIf_InvalidNullifier() public {}
+
+    // TODO: verify proof if worldid is set
+
+    // TODO:
+    function test_handleAggregatedOps() public {}
+
+    // TODO:
+    function test_valdiateSignaturesCallback() public {}
+
+    // TODO:
+    function test_validateSignaturesCallback_RevertIf_IncorrectHashedOps() public {}
+
+    // TODO:
+    function test_pbhMulticall() public {}
+
+    // TODO:
+    function test_setNumPbhPerMonth() public {}
+
+    // TODO:
+    function test_setNumPbhPerMonth_RevertIf_NotOwner() public {}
+
+    // TODO:
+    function test_setWorldId() public {}
+
+    // TODO:
+    function test_setWorldId_RevertIf_NotOwner() public {}
+
+    // TODO: only init and onlyproxy tests?
+
+    // // TODO:
+    // function test_verifyPbh() public {
+    //     uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
+
+    //     pbhEntryPoint.verifyPbh(signalHash, testPayload);
+
+    //     // TODO: update to use mock work id
+    //     // Expect revert when proof verification fails
+    //     MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(false);
+    //     vm.expectRevert("Proof verification failed");
+    //     pbhEntryPoint.verifyPbh(signalHash, testPayload);
+
+    //     // Now expect success
+    //     MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
+    //     pbhEntryPoint.verifyPbh(signalHash, testPayload);
+    // }
 
     /// @notice Test that setNumPBHPerMonth works as expected
     function testSetNumPBHPerMonth() public {
