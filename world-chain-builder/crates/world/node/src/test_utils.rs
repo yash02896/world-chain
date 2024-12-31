@@ -3,7 +3,8 @@ use alloy_primitives::{
     map::{HashMap, HashSet},
     Address, BlockHash, BlockNumber, Bytes, StorageKey, StorageValue, TxHash, TxNumber, B256, U256,
 };
-use alloy_rpc_types::{Withdrawal, Withdrawals};
+use alloy_rpc_types::{TransactionInput, TransactionRequest, Withdrawal, Withdrawals};
+use alloy_sol_types::SolCall;
 use futures::future::join_all;
 use reth::api::ConfigureEvmEnv;
 use reth::chainspec::{ChainInfo, MAINNET};
@@ -17,6 +18,7 @@ use reth_chain_state::{
     ForkChoiceSubscriptions,
 };
 use reth_db::models::{AccountBeforeTx, StoredBlockBodyIndices};
+use reth_e2e_test_utils::transaction::TransactionTestContext;
 use reth_optimism_chainspec::OpChainSpec;
 use reth_primitives::{
     Account, Block, BlockWithSenders, Bytecode, EthPrimitives, Header, Receipt, SealedBlock,
@@ -36,17 +38,74 @@ use reth_trie::{
     updates::TrieUpdates, AccountProof, HashedPostState, HashedStorage, MultiProof,
     StorageMultiProof, StorageProof, TrieInput,
 };
+use revm_primitives::TxKind;
 use std::{
     ops::{RangeBounds, RangeInclusive},
     path::PathBuf,
     sync::Arc,
 };
 use tokio::sync::{broadcast, watch};
+use world_chain_builder_pbh::external_nullifier::ExternalNullifier;
 
+use alloy_eips::eip2718::Encodable2718;
+use chrono::Datelike;
 use world_chain_builder_pool::{
+    test_utils::{pbh_bundle, signer, user_op, PBH_TEST_VALIDATOR},
     tx::{WorldChainPoolTransaction, WorldChainPooledTransaction},
     validator::WorldChainTransactionValidator,
 };
+
+pub const DEV_CHAIN_ID: u64 = 2151908;
+
+#[derive(Default)]
+pub struct PBHTransactionTestContext;
+
+impl PBHTransactionTestContext {
+    pub async fn raw_pbh_tx_bytes(
+        acc: u32,
+        pbh_nonce: u8,
+        tx_nonce: u64,
+        user_op_nonce: U256,
+    ) -> Bytes {
+        let dt = chrono::Utc::now();
+        let dt = dt.naive_local();
+        let month = dt.month() as u8;
+        let year = dt.year() as u16;
+
+        let ext_nullifier = ExternalNullifier::v1(month, year, pbh_nonce);
+        let (uo, proof) = user_op()
+            .acc(acc)
+            .nonce(user_op_nonce)
+            .external_nullifier(ext_nullifier)
+            .call();
+
+        let data = pbh_bundle(vec![uo], vec![proof]);
+        let encoded = data.abi_encode();
+        let tx = tx(
+            DEV_CHAIN_ID,
+            Some(Bytes::from(encoded)),
+            tx_nonce,
+            PBH_TEST_VALIDATOR,
+        );
+        let envelope = TransactionTestContext::sign_tx(signer(acc), tx).await;
+        let raw_tx = envelope.encoded_2718();
+        raw_tx.into()
+    }
+}
+
+pub fn tx(chain_id: u64, data: Option<Bytes>, nonce: u64, to: Address) -> TransactionRequest {
+    TransactionRequest {
+        nonce: Some(nonce),
+        value: Some(U256::from(100)),
+        to: Some(TxKind::Call(to)),
+        gas: Some(210000),
+        max_fee_per_gas: Some(20e10 as u128),
+        max_priority_fee_per_gas: Some(20e10 as u128),
+        chain_id: Some(chain_id),
+        input: TransactionInput { input: None, data },
+        ..Default::default()
+    }
+}
 
 /// Supports various api interfaces for testing purposes.
 #[derive(Debug, Clone, Default, Copy)]

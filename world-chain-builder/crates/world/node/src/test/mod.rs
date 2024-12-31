@@ -2,9 +2,7 @@
 use alloy_genesis::{Genesis, GenesisAccount};
 use alloy_network::eip2718::Encodable2718;
 use alloy_network::{Ethereum, EthereumWallet, TransactionBuilder};
-use alloy_rpc_types::{TransactionInput, TransactionRequest, Withdrawals};
-use alloy_sol_types::SolCall;
-use chrono::Datelike;
+use alloy_rpc_types::{TransactionRequest, Withdrawals};
 use reth::api::{FullNodeTypesAdapter, NodeTypesWithDBAdapter};
 use reth::builder::components::Components;
 use reth::builder::{NodeAdapter, NodeBuilder, NodeConfig, NodeHandle};
@@ -15,7 +13,6 @@ use reth::transaction_pool::{Pool, TransactionValidationTaskExecutor};
 use reth_db::test_utils::TempDatabase;
 use reth_db::DatabaseEnv;
 use reth_e2e_test_utils::node::NodeTestContext;
-use reth_e2e_test_utils::transaction::TransactionTestContext;
 use reth_evm::execute::BasicBlockExecutorProvider;
 use reth_node_core::args::RpcServerArgs;
 use reth_optimism_chainspec::{OpChainSpec, OpChainSpecBuilder};
@@ -24,21 +21,23 @@ use reth_optimism_evm::{OpEvmConfig, OpExecutionStrategyFactory};
 use reth_optimism_node::node::OpAddOns;
 use reth_optimism_node::OpPayloadBuilderAttributes;
 use reth_provider::providers::BlockchainProvider;
-use revm_primitives::{Address, Bytes, FixedBytes, TxKind, B256, U256};
+use revm_primitives::{Address, Bytes, FixedBytes, B256, U256};
 use std::collections::BTreeMap;
 use std::ops::Range;
 use std::sync::Arc;
-use world_chain_builder_node::args::{ExtArgs, WorldChainBuilderArgs};
-use world_chain_builder_node::node::WorldChainBuilder;
-use world_chain_builder_pbh::external_nullifier::ExternalNullifier;
+
 use world_chain_builder_pool::ordering::WorldChainOrdering;
 use world_chain_builder_pool::root::{LATEST_ROOT_SLOT, OP_WORLD_ID};
 use world_chain_builder_pool::test_utils::{
-    pbh_bundle, signer, tree_root, user_op, PBH_TEST_SIGNATURE_AGGREGATOR, PBH_TEST_VALIDATOR,
+    signer, tree_root, PBH_TEST_SIGNATURE_AGGREGATOR, PBH_TEST_VALIDATOR,
 };
 use world_chain_builder_pool::tx::WorldChainPooledTransaction;
 use world_chain_builder_pool::validator::WorldChainTransactionValidator;
-use world_chain_builder_rpc::{EthTransactionsExtServer, WorldChainEthApiExt};
+use world_chain_builder_rpc::{EthApiExtServer, WorldChainEthApiExt};
+
+use crate::args::{ExtArgs, WorldChainBuilderArgs};
+use crate::node::WorldChainBuilder;
+use crate::test_utils::{tx, PBHTransactionTestContext};
 
 pub const DEV_CHAIN_ID: u64 = 8453;
 
@@ -145,30 +144,7 @@ impl WorldChainBuilderTestContext {
         tx_nonce: u64,
         user_op_nonce: U256,
     ) -> Bytes {
-        let dt = chrono::Utc::now();
-        let dt = dt.naive_local();
-
-        let month = dt.month() as u8;
-        let year = dt.year() as u16;
-
-        let ext_nullifier = ExternalNullifier::v1(month, year, pbh_nonce);
-        let (uo, proof) = user_op()
-            .acc(acc)
-            .nonce(user_op_nonce)
-            .external_nullifier(ext_nullifier)
-            .call();
-
-        let data = pbh_bundle(vec![uo], vec![proof]);
-        let encoded = data.abi_encode();
-        let tx = tx(
-            DEV_CHAIN_ID,
-            Some(Bytes::from(encoded)),
-            tx_nonce,
-            PBH_TEST_VALIDATOR,
-        );
-        let envelope = TransactionTestContext::sign_tx(signer(acc), tx).await;
-        let raw_tx = envelope.encoded_2718();
-        raw_tx.into()
+        PBHTransactionTestContext::raw_pbh_tx_bytes(acc, pbh_nonce, tx_nonce, user_op_nonce).await
     }
 }
 
@@ -294,20 +270,6 @@ pub fn optimism_payload_attributes(timestamp: u64) -> OpPayloadBuilderAttributes
         gas_limit: None,
         no_tx_pool: false,
         eip_1559_params: None,
-    }
-}
-
-fn tx(chain_id: u64, data: Option<Bytes>, nonce: u64, to: Address) -> TransactionRequest {
-    TransactionRequest {
-        nonce: Some(nonce),
-        value: Some(U256::from(100)),
-        to: Some(TxKind::Call(to)),
-        gas: Some(210000),
-        max_fee_per_gas: Some(20e10 as u128),
-        max_priority_fee_per_gas: Some(20e10 as u128),
-        chain_id: Some(chain_id),
-        input: TransactionInput { input: None, data },
-        ..Default::default()
     }
 }
 

@@ -12,6 +12,9 @@ devnet-up:
 devnet-down:
     @just ./devnet/devnet-down
 
+e2e-test:
+    @just ./world-chain-builder/e2e-test
+
 # Builds and tags the world-chain-builder image
 build:
     @just ./devnet/build
@@ -23,11 +26,3 @@ test:
 # Formats the world-chain-builder
 fmt: 
     @just ./world-chain-builder/fmt
-
-# Runs the block building assertions
-# NOTE: The devnet needs to be running for this to work
-assertor *args='':
-    @just ./world-chain-builder/assertor $@
-
-fixtures:
-    @just ./devnet/fixtures

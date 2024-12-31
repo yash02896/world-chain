@@ -13,8 +13,20 @@ jobs:
     runs-on: ubuntu-22.04-32core
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          
       - uses: taiki-e/install-action@just
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Show Forge version
+        run: |
+          forge --version
 
       - name: Setup Kurtosis
         run: |
@@ -74,15 +86,7 @@ jobs:
       - name: Setup Devnet
         run: |
           eval $(minikube -p minikube docker-env)
-          just devnet-up
-          
-      - name: Block Building
-        run: |
-          just assertor -b
-
-      - name: Fallback
-        run: |
-          just assertor -f
+          just e2e-test
 
       - name: Devnet Down
         run: |

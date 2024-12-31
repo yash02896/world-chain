@@ -11,7 +11,6 @@ import {WorldIDIdentityManager} from "@world-id-contracts/WorldIDIdentityManager
 import {WorldIDRouter} from "@world-id-contracts/WorldIDRouter.sol";
 import {IWorldID} from "@world-id-contracts/interfaces/IWorldID.sol";
 import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
-import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 import "@world-id-contracts/WorldIDRouter.sol";
@@ -28,6 +27,8 @@ import {Verifier as InsertionB1200} from "@world-id-contracts/verifiers/insertio
 
 import {Verifier as DeletionB10} from "@world-id-contracts/verifiers/deletion/b10.sol";
 import {Verifier as DeletionB100} from "@world-id-contracts/verifiers/deletion/b100.sol";
+
+import {IWorldID as IWorldIDG} from "../src/interfaces/IWorldID.sol";
 
 contract DeployDevnet is Script {
     address public entryPoint;
@@ -75,8 +76,9 @@ contract DeployDevnet is Script {
     function deployPBHEntryPoint() public {
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
         console.log("PBHEntryPointImplV1 Deployed at: ", pbhEntryPointImpl);
-        bytes memory initCallData =
-            abi.encodeCall(PBHEntryPointImplV1.initialize, (IWorldIDGroups(worldIdGroups), IEntryPoint(entryPoint), 30));
+        bytes memory initCallData = abi.encodeCall(
+            PBHEntryPointImplV1.initialize, (IWorldIDG(worldIdGroups), IEntryPoint(entryPoint), 30, address(0))
+        );
         pbhEntryPoint = address(new PBHEntryPoint(pbhEntryPointImpl, initCallData));
         console.log("PBHEntryPoint Deployed at: ", pbhEntryPoint);
     }
@@ -220,7 +222,7 @@ contract DeployDevnet is Script {
     }
 
     function beginBroadcast() internal {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
         vm.startBroadcast(deployerPrivateKey);
     }
 }
