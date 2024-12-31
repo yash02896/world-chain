@@ -102,8 +102,8 @@ contract TestSetup is Test {
         worldIDGroups = new MockWorldIDGroups();
     }
 
-    /// @notice Constructs a new router without initializing the delegate.
-    /// @dev It is constructed in the globals.
+    /// @notice Constructs a new pbhEntryPoint without initializing.
+    /// @dev Note that the owner will not be set without initilizing.
     function makeUninitPBHEntryPoint() public {
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
         pbhEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, new bytes(0x0))));

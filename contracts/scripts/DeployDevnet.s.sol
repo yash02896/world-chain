@@ -38,8 +38,7 @@ contract DeployDevnet is Script {
     address public pbhSignatureAggregator;
 
     uint8 constant TREE_DEPTH = 30;
-    uint256 constant INITIAL_ROOT =
-        0x918D46BF52D98B034413F4A1A1C41594E7A7A3F6AE08CB43D1A2A230E1959EF;
+    uint256 constant INITIAL_ROOT = 0x918D46BF52D98B034413F4A1A1C41594E7A7A3F6AE08CB43D1A2A230E1959EF;
 
     address semaphoreVerifier = address(0);
 
@@ -54,9 +53,7 @@ contract DeployDevnet is Script {
         WorldIDIdentityManager worldIDOrb = deployWorldID(INITIAL_ROOT);
         console.log("WorldIDOrb Deployed at:", address(worldIDOrb));
 
-        WorldIDRouter router = deployWorldIDRouter(
-            IWorldID(address(worldIDOrb))
-        );
+        WorldIDRouter router = deployWorldIDRouter(IWorldID(address(worldIDOrb)));
         console.log("WorldIDRouter Deployed at: ", address(router));
 
         // Add WorldIDOrb to the router again for backwards compatibility
@@ -80,28 +77,18 @@ contract DeployDevnet is Script {
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
         console.log("PBHEntryPointImplV1 Deployed at: ", pbhEntryPointImpl);
         bytes memory initCallData = abi.encodeCall(
-            PBHEntryPointImplV1.initialize,
-            (IWorldIDG(worldIdGroups), IEntryPoint(entryPoint), 30, address(0))
+            PBHEntryPointImplV1.initialize, (IWorldIDG(worldIdGroups), IEntryPoint(entryPoint), 30, address(0))
         );
-        pbhEntryPoint = address(
-            new PBHEntryPoint(pbhEntryPointImpl, initCallData)
-        );
+        pbhEntryPoint = address(new PBHEntryPoint(pbhEntryPointImpl, initCallData));
         console.log("PBHEntryPoint Deployed at: ", pbhEntryPoint);
     }
 
     function deployPBHSignatureAggregator() public {
-        pbhSignatureAggregator = address(
-            new PBHSignatureAggregator(pbhEntryPoint)
-        );
-        console.log(
-            "PBHSignatureAggregator Deployed at: ",
-            pbhSignatureAggregator
-        );
+        pbhSignatureAggregator = address(new PBHSignatureAggregator(pbhEntryPoint));
+        console.log("PBHSignatureAggregator Deployed at: ", pbhSignatureAggregator);
     }
 
-    function deployWorldID(
-        uint256 _initalRoot
-    ) public returns (WorldIDIdentityManager worldID) {
+    function deployWorldID(uint256 _initalRoot) public returns (WorldIDIdentityManager worldID) {
         VerifierLookupTable batchInsertionVerifiers = deployInsertionVerifiers();
         VerifierLookupTable batchUpdateVerifiers = deployVerifierLookupTable();
         VerifierLookupTable batchDeletionVerifiers = deployDeletionVerifiers();
@@ -128,23 +115,15 @@ contract DeployDevnet is Script {
 
         // Encode:
         // 'initializeV2(VerifierLookupTable _batchDeletionVerifiers)'
-        bytes memory initializeV2Call = abi.encodeWithSignature(
-            "initializeV2(address)",
-            batchDeletionVerifiers
-        );
+        bytes memory initializeV2Call = abi.encodeWithSignature("initializeV2(address)", batchDeletionVerifiers);
 
         WorldIDIdentityManagerImplV1 impl1 = new WorldIDIdentityManagerImplV1();
         WorldIDIdentityManagerImplV2 impl2 = new WorldIDIdentityManagerImplV2();
 
-        WorldIDIdentityManager worldID = new WorldIDIdentityManager(
-            address(impl1),
-            initializeCall
-        );
+        WorldIDIdentityManager worldID = new WorldIDIdentityManager(address(impl1), initializeCall);
 
         // Recast to access api
-        WorldIDIdentityManagerImplV1 worldIDImplV1 = WorldIDIdentityManagerImplV1(
-                address(worldID)
-            );
+        WorldIDIdentityManagerImplV1 worldIDImplV1 = WorldIDIdentityManagerImplV1(address(worldID));
         worldIDImplV1.upgradeToAndCall(address(impl2), initializeV2Call);
 
         vm.stopBroadcast();
@@ -152,17 +131,13 @@ contract DeployDevnet is Script {
         return worldID;
     }
 
-    function deployWorldIDRouter(
-        IWorldID initialGroupIdentityManager
-    ) public returns (WorldIDRouter router) {
+    function deployWorldIDRouter(IWorldID initialGroupIdentityManager) public returns (WorldIDRouter router) {
         beginBroadcast();
 
         // Encode:
         // 'initialize(IWorldID initialGroupIdentityManager)'
-        bytes memory initializeCall = abi.encodeWithSignature(
-            "initialize(address)",
-            address(initialGroupIdentityManager)
-        );
+        bytes memory initializeCall =
+            abi.encodeWithSignature("initialize(address)", address(initialGroupIdentityManager));
 
         WorldIDRouterImplV1 impl = new WorldIDRouterImplV1();
         WorldIDRouter router = new WorldIDRouter(address(impl), initializeCall);
@@ -172,10 +147,7 @@ contract DeployDevnet is Script {
         return router;
     }
 
-    function deployVerifierLookupTable()
-        public
-        returns (VerifierLookupTable lut)
-    {
+    function deployVerifierLookupTable() public returns (VerifierLookupTable lut) {
         beginBroadcast();
 
         VerifierLookupTable lut = new VerifierLookupTable();
@@ -198,10 +170,7 @@ contract DeployDevnet is Script {
         return SemaphoreVerifier(semaphoreVerifier);
     }
 
-    function deployInsertionVerifiers()
-        public
-        returns (VerifierLookupTable lut)
-    {
+    function deployInsertionVerifiers() public returns (VerifierLookupTable lut) {
         if (batchInsertionVerifiers == address(0)) {
             VerifierLookupTable lut = deployVerifierLookupTable();
             batchInsertionVerifiers = address(lut);
@@ -219,10 +188,7 @@ contract DeployDevnet is Script {
         return VerifierLookupTable(batchInsertionVerifiers);
     }
 
-    function deployDeletionVerifiers()
-        public
-        returns (VerifierLookupTable lut)
-    {
+    function deployDeletionVerifiers() public returns (VerifierLookupTable lut) {
         if (batchDeletionVerifiers == address(0)) {
             VerifierLookupTable lut = deployVerifierLookupTable();
             batchDeletionVerifiers = address(lut);
@@ -238,11 +204,7 @@ contract DeployDevnet is Script {
         return VerifierLookupTable(batchDeletionVerifiers);
     }
 
-    function updateGroup(
-        address router,
-        uint256 groupNumber,
-        address worldID
-    ) public {
+    function updateGroup(address router, uint256 groupNumber, address worldID) public {
         WorldIDRouterImplV1 routerImpl = WorldIDRouterImplV1(router);
 
         beginBroadcast();
