@@ -82,6 +82,6 @@ library PBHExternalNullifier {
         require(version == V1, InvalidExternalNullifierVersion());
         require(year == BokkyPooBahsDateTimeLibrary.getYear(block.timestamp), InvalidExternalNullifierYear());
         require(month == BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp), InvalidExternalNullifierMonth());
-        require(pbhNonce <= numPbhPerMonth, InvalidPbhNonce());
+        require(pbhNonce < numPbhPerMonth, InvalidPbhNonce());
     }
 }
