@@ -8,6 +8,7 @@ import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import "@helpers/PBHExternalNullifier.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
+import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
 
 library TestUtils {
     function encodeSignature(bytes memory proofData, uint256 signatureThreshold)
@@ -45,8 +46,20 @@ library TestUtils {
         return uOps;
     }
 
-    // TODO: rename
-    function getValidPBHExternalNullifier(uint8 pbhNonce) public view returns (uint256) {
+    function mockPBHPayload(uint256 root, uint8 pbhNonce, uint256 nullifierHash)
+        public
+        view
+        returns (IPBHEntryPoint.PBHPayload memory)
+    {
+        return IPBHEntryPoint.PBHPayload({
+            root: root,
+            pbhExternalNullifier: getPBHExternalNullifier(pbhNonce),
+            nullifierHash: nullifierHash,
+            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+        });
+    }
+
+    function getPBHExternalNullifier(uint8 pbhNonce) public view returns (uint256) {
         uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
         uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
         return PBHExternalNullifier.encode(PBHExternalNullifier.V1, pbhNonce, month, year);

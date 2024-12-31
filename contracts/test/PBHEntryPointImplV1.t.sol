@@ -24,19 +24,6 @@ contract PBHEntryPointImplV1Test is TestSetup {
     event NumPbhPerMonthSet(uint8 indexed numPbhPerMonth);
     event WorldIdSet(address indexed worldId);
 
-    // TODO: move this to test utils
-    /// @notice Test payload for the PBHVerifier
-    IPBHEntryPoint.PBHPayload public testPayload = IPBHEntryPoint.PBHPayload({
-        root: 1,
-        pbhExternalNullifier: TestUtils.getValidPBHExternalNullifier(0),
-        nullifierHash: 1,
-        proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
-    });
-
-    uint256 internal nonce = 1;
-    address internal sender = address(0x123);
-    bytes internal testCallData = hex"deadbeef";
-
     // TODO:
     function test_verifyPbh() public {
         // uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
@@ -110,6 +97,4 @@ contract PBHEntryPointImplV1Test is TestSetup {
         vm.expectRevert("Ownable: caller is not the owner");
         pbhEntryPoint.setWorldId(addr);
     }
-
-    // TODO: only init and onlyproxy tests?
 }
