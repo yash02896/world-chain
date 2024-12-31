@@ -62,6 +62,12 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
 
+    /// @notice Thrown when transient storage slot collides with another set slot
+    error StorageCollision();
+
+    /// @notice Thrown when the hash of the user operations is invalid
+    error InvalidHashedOps();
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Events                                ///
     //////////////////////////////////////////////////////////////////////////////
@@ -89,11 +95,6 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Vars                                  ///
     //////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Transient Storage for the hashed operations.
-    /// @dev The PBHSignatureAggregator will cross reference this slot to ensure
-    ///     The PBHVerifier is always the proxy to the EntryPoint for PBH Bundles.
-    bytes32 internal _hashedOps;
 
     /// @dev The World ID group ID (always 1)
     uint256 internal constant _GROUP_ID = 1;
