@@ -59,85 +59,29 @@ contract PBHEntryPointImplV1Test is TestSetup {
     // TODO:
     function test_pbhMulticall() public {}
 
-    // TODO:
-    function test_setNumPbhPerMonth() public {}
+    function test_setNumPbhPerMonth(uint8 numPbh) public {
+        vm.prank(OWNER);
+        vm.expectEmit(true, true, true, true);
+        emit NumPbhPerMonthSet(numPbh);
+        pbhEntryPoint.setNumPbhPerMonth(numPbh);
+    }
 
-    // TODO:
-    function test_setNumPbhPerMonth_RevertIf_NotOwner() public {}
+    function test_setNumPbhPerMonth_RevertIf_NotOwner(uint8 numPbh) public {
+        vm.expectRevert("Ownable: caller is not the owner");
+        pbhEntryPoint.setNumPbhPerMonth(numPbh);
+    }
 
-    // TODO:
     function test_setWorldId(address addr) public {
+        vm.prank(OWNER);
         vm.expectEmit(true, false, false, false);
         emit WorldIdSet(addr);
         pbhEntryPoint.setWorldId(addr);
     }
 
-    // TODO:
-    function test_setWorldId_RevertIf_NotOwner() public {}
+    function test_setWorldId_RevertIf_NotOwner(address addr) public {
+        vm.expectRevert("Ownable: caller is not the owner");
+        pbhEntryPoint.setWorldId(addr);
+    }
 
     // TODO: only init and onlyproxy tests?
-
-    // // TODO:
-    // function test_verifyPbh() public {
-    //     uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
-
-    //     pbhEntryPoint.verifyPbh(signalHash, testPayload);
-
-    //     // TODO: update to use mock work id
-    //     // Expect revert when proof verification fails
-    //     MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(false);
-    //     vm.expectRevert("Proof verification failed");
-    //     pbhEntryPoint.verifyPbh(signalHash, testPayload);
-
-    //     // Now expect success
-    //     MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
-    //     pbhEntryPoint.verifyPbh(signalHash, testPayload);
-    // }
-
-    /// @notice Test that setNumPBHPerMonth works as expected
-    function testSetNumPBHPerMonth() public {
-        uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
-
-        MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
-        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
-        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
-
-        // Value starts at 30, make sure 30 reverts.
-        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 30, month, year);
-
-        testPayload.nullifierHash = 0;
-        vm.expectRevert(PBHExternalNullifier.InvalidPbhNonce.selector);
-        pbhEntryPoint.verifyPbh(signalHash, testPayload);
-
-        // Increase numPbhPerMonth from non owner, expect revert
-        vm.prank(address(123));
-        vm.expectRevert("Ownable: caller is not the owner");
-        pbhEntryPoint.setNumPbhPerMonth(40);
-
-        // Increase numPbhPerMonth from owner
-        vm.prank(thisAddress);
-        vm.expectEmit(true, false, false, false);
-        emit NumPbhPerMonthSet(40);
-        pbhEntryPoint.setNumPbhPerMonth(40);
-
-        // Try again, it should work
-        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 30, month, year);
-        testPayload.nullifierHash = 1;
-        pbhEntryPoint.verifyPbh(signalHash, testPayload);
-    }
-
-    function testSetWorldId() public {
-        vm.expectEmit(true, false, false, false);
-        emit WorldIdSet(address(0x123));
-        pbhEntryPoint.setWorldId(address(0x123));
-    }
-
-    function test_FailSetWorldId_NotOwner(address naughty) public {
-        if (naughty == thisAddress) {
-            return;
-        }
-        vm.prank(naughty);
-        vm.expectRevert("Ownable: caller is not the owner");
-        pbhEntryPoint.setWorldId(address(0x123));
-    }
 }
