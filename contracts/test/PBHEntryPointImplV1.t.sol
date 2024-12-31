@@ -23,10 +23,11 @@ contract PBHEntryPointImplV1Test is TestSetup {
     event NumPbhPerMonthSet(uint8 indexed numPbhPerMonth);
     event WorldIdSet(address indexed worldId);
 
+    // TODO: move this to test utils
     /// @notice Test payload for the PBHVerifier
     IPBHEntryPoint.PBHPayload public testPayload = IPBHEntryPoint.PBHPayload({
         root: 1,
-        pbhExternalNullifier: TestUtils.getValidPBHExternalNullifier(),
+        pbhExternalNullifier: TestUtils.getValidPBHExternalNullifier(0),
         nullifierHash: 1,
         proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
     });
@@ -44,7 +45,7 @@ contract PBHEntryPointImplV1Test is TestSetup {
     // TODO:
     function test_verifyPbh_RevertIf_InvalidNullifier() public {}
 
-    // TODO: verify proof if worldid is set
+    // TODO: verify proof if worldid addr is set?
 
     // TODO:
     function test_handleAggregatedOps() public {}
@@ -65,7 +66,11 @@ contract PBHEntryPointImplV1Test is TestSetup {
     function test_setNumPbhPerMonth_RevertIf_NotOwner() public {}
 
     // TODO:
-    function test_setWorldId() public {}
+    function test_setWorldId(address addr) public {
+        vm.expectEmit(true, false, false, false);
+        emit WorldIdSet(addr);
+        pbhEntryPoint.setWorldId(addr);
+    }
 
     // TODO:
     function test_setWorldId_RevertIf_NotOwner() public {}

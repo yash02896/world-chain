@@ -34,6 +34,7 @@ contract TestSetup is Test {
     /// @notice The Mock World ID Groups contract.
     MockWorldIDGroups public worldIDGroups;
 
+    address public OWNER = address(0xc0ffee);
     address public pbhEntryPointImpl;
     address public immutable thisAddress = address(this);
     address public constant nullAddress = address(0);
@@ -45,10 +46,12 @@ contract TestSetup is Test {
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public virtual {
+        vm.startPrank(OWNER);
         deployWorldIDGroups();
         deployPBHEntryPoint(worldIDGroups, entryPoint);
         deployPBHSignatureAggregator(address(pbhEntryPoint));
         deploySafeAccount(address(pbhAggregator), 1);
+        vm.stopPrank();
 
         // Label the addresses for better errors.
         vm.label(address(entryPoint), "ERC-4337 Entry Point");
