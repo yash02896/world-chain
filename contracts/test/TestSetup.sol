@@ -61,8 +61,8 @@ contract TestSetup is Test {
         vm.deal(address(this), type(uint128).max);
         vm.deal(address(safe), type(uint256).max);
 
-        // TODO: Deposit some funds into the Entry Point from the Mock Account.
-        // entryPoint.depositTo{value: 10 ether}(address(safe));
+        // Deposit some funds into the Entry Point from the Mock Account.
+        entryPoint.depositTo{value: 10 ether}(address(safe));
     }
 
     ///////////////////////////////////////////////////////////////////////////////
