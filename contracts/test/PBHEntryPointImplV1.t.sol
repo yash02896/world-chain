@@ -38,7 +38,21 @@ contract PBHEntryPointImplV1Test is TestSetup {
     bytes internal testCallData = hex"deadbeef";
 
     // TODO:
-    function test_verifyPbh() public {}
+    function test_verifyPbh() public {
+        // uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
+
+        // pbhEntryPoint.verifyPbh(signalHash, testPayload);
+
+        // // TODO: update to use mock work id
+        // // Expect revert when proof verification fails
+        // MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(false);
+        // vm.expectRevert("Proof verification failed");
+        // pbhEntryPoint.verifyPbh(signalHash, testPayload);
+
+        // // Now expect success
+        // MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
+        // pbhEntryPoint.verifyPbh(signalHash, testPayload);
+    }
 
     // TODO:
     function test_verifyPbh_RevertIf_InvalidNullifier() public {}
