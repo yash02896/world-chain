@@ -97,8 +97,6 @@ contract PBHEntryPointImplV1InitTest is TestSetup {
         pbhEntryPoint.initialize(worldId, entryPoint, numPbh, multicall);
     }
 
-    // TODO: test if contract not deployed with initi
-
     function test_verifyPbh_RevertIf_Uninitialized() public {
         IPBHEntryPoint.PBHPayload memory pbhPayload = IPBHEntryPoint.PBHPayload({
             root: 1,
