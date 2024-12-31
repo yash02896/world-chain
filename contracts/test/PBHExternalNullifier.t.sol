@@ -33,7 +33,7 @@ contract PBHExternalNullifierTest is Test {
     function testFuzz_verify(uint8 pbhNonce, uint8 month, uint16 year, uint8 maxPbh) public {
         vm.assume(month > 0 && month <= 12);
         vm.assume(year >= 2023);
-        vm.assume(maxPbh > 0 && pbhNonce <= maxPbh);
+        vm.assume(maxPbh > 0 && pbhNonce < maxPbh);
 
         // Warp to timestamp
         uint256 timestamp = BokkyPooBahsDateTimeLibrary.timestampFromDate(year, month, 1);
@@ -93,7 +93,7 @@ contract PBHExternalNullifierTest is Test {
     }
 
     function testFuzz_verify_RevertIf_InvalidPbhNonce(uint8 pbhNonce, uint8 maxPbh) public {
-        vm.assume(maxPbh > 0 && pbhNonce > maxPbh);
+        vm.assume(maxPbh > 0 && pbhNonce >= maxPbh);
 
         uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
         uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
