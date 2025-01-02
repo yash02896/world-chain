@@ -79,7 +79,7 @@ contract PBHEntryPointImplV1Test is TestSetup {
         proofs[1] = abi.encode(proof1);
 
         PackedUserOperation[] memory uoTestFixture =
-            TestUtils.createUOTestData(vm, PBH_NONCE_KEY, address(pbh4337Module), address(safe), proofs, ownerKey);
+            TestUtils.createUOTestData(vm, PBH_NONCE_KEY, address(pbh4337Module), address(safe), proofs, safeOwnerKey);
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
 
         IEntryPoint.UserOpsPerAggregator[] memory userOpsPerAggregator = new IEntryPoint.UserOpsPerAggregator[](1);

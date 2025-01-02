@@ -10,7 +10,6 @@ import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 import {IWorldID} from "../src/interfaces/IWorldID.sol";
 import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
-import {MockAccount} from "./mocks/MockAccount.sol";
 import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
 import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 import {Safe} from "@safe-global/safe-contracts/contracts/Safe.sol";
@@ -21,6 +20,8 @@ import {SafeModuleSetup} from "@4337/SafeModuleSetup.sol";
 import {PBHSafe4337Module} from "../src/PBH4337Module.sol";
 import {Mock4337Module} from "./mocks/Mock4337Module.sol";
 import {Safe4337Module} from "@4337/Safe4337Module.sol";
+import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
+import {MockAccount} from "./mocks/MockAccount.sol";
 
 /// @title Test Setup Contract.
 /// @author Worldcoin
@@ -46,8 +47,10 @@ contract TestSetup is Test {
     SafeProxyFactory public factory;
     SafeModuleSetup public moduleSetup;
 
-    address public owner;
-    uint256 public ownerKey;
+    IAccount public mockSafe;
+
+    address public safeOwner;
+    uint256 public constant safeOwnerKey = 0x1234;
     address public OWNER = address(0xc0ffee);
     address public pbhEntryPointImpl;
     address public immutable thisAddress = address(this);
@@ -64,14 +67,13 @@ contract TestSetup is Test {
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public virtual {
-        // Create single EOA owner
-        ownerKey = 0x1234;
-        owner = vm.addr(ownerKey);
+        safeOwner = vm.addr(safeOwnerKey);
         vm.startPrank(OWNER);
         deployWorldIDGroups();
         deployPBHEntryPoint(worldIDGroups, entryPoint);
         deployPBHSignatureAggregator(address(pbhEntryPoint));
         deploySafeAndModule(address(pbhAggregator), 1);
+        deployMockSafe(address(pbhAggregator), 1);
         vm.stopPrank();
 
         // Label the addresses for better errors.
@@ -115,6 +117,12 @@ contract TestSetup is Test {
         pbhEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, initCallData)));
     }
 
+    /// @notice Initializes a new safe account.
+    /// @dev It is constructed in the globals.
+    function deployMockSafe(address _pbhSignatureAggregator, uint256 threshold) public {
+        mockSafe = new MockAccount(_pbhSignatureAggregator, threshold);
+    }
+
     /// @notice Initializes a new PBHSignatureAggregator.
     /// @dev It is constructed in the globals.
     function deployPBHSignatureAggregator(address _pbhEntryPoint) public {
@@ -142,7 +150,7 @@ contract TestSetup is Test {
 
         // Create owners array with single owner
         address[] memory owners = new address[](1);
-        owners[0] = owner;
+        owners[0] = safeOwner;
 
         // Encode initialization data for proxy
         bytes memory initData = abi.encodeCall(

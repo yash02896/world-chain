@@ -156,8 +156,6 @@ contract PBHSafe4337ModuleTest is Test {
             signature: signatureBefore
         });
 
-        bytes32 operationHash = module.getOperationHash(userOp);
-
         // Create an invalid signature
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, keccak256("invalid"));
 

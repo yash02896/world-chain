@@ -17,7 +17,7 @@ library TestUtils {
     /// @notice Encodes the ECDSA signature and proof data into a single bytes array.
     function encodeSignature(bytes memory userOpSignature, bytes memory proofData)
         public
-        view
+        pure
         returns (bytes memory res)
     {
         res = bytes.concat(userOpSignature, proofData);
@@ -34,9 +34,6 @@ library TestUtils {
     ) public view returns (PackedUserOperation[] memory) {
         PackedUserOperation[] memory uOps = new PackedUserOperation[](proofs.length);
         for (uint256 i = 0; i < proofs.length; i++) {
-            address owner = vm.addr(signingKey);
-            bool isOwner = Safe(payable(sender)).isOwner(owner);
-            console.logBool(isOwner);
             PackedUserOperation memory uo = createMockUserOperation(sender, nonceKey, i);
             bytes32 operationHash = Mock4337Module(module).getOperationHash(uo);
             bytes memory ecdsaSignature = createUserOpSignature(vm, operationHash, signingKey);
