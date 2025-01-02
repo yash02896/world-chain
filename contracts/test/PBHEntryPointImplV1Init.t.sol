@@ -123,7 +123,7 @@ contract PBHEntryPointImplV1InitTest is Test {
     }
 
     function test_pbhMulticall_RevertIf_Uninitialized() public {
-        IMulticall3.Call3Value[] memory calls;
+        IMulticall3.Call3[] memory calls;
         IPBHEntryPoint.PBHPayload memory pbhPayload = IPBHEntryPoint.PBHPayload({
             root: 1,
             pbhExternalNullifier: 0,

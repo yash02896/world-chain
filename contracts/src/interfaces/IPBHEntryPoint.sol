@@ -23,7 +23,9 @@ interface IPBHEntryPoint {
         address payable beneficiary
     ) external;
 
-    function pbhMulticall(IMulticall3.Call3Value[] calldata calls, PBHPayload calldata pbhPayload) external payable;
+    function pbhMulticall(IMulticall3.Call3[] calldata calls, PBHPayload calldata pbhPayload)
+        external
+        returns (IMulticall3.Result[] memory returnData);
 
     function initialize(IWorldID worldId, IEntryPoint entryPoint, uint8 _numPbhPerMonth, address _multicall3)
         external;

@@ -13,6 +13,7 @@ import {IMulticall3} from "../src/interfaces/IMulticall3.sol";
 import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 import {TestSetup} from "./TestSetup.sol";
 import {TestUtils} from "./TestUtils.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@helpers/PBHExternalNullifier.sol";
 
 /// @title PBHVerifer Verify Tests
@@ -42,7 +43,7 @@ contract PBHEntryPointImplV1Test is TestSetup {
         uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
         IPBHEntryPoint.PBHPayload memory testPayload = TestUtils.mockPBHPayload(0, pbhNonce, extNullifier);
 
-        IMulticall3.Call3Value[] memory calls = new IMulticall3.Call3Value[](1);
+        IMulticall3.Call3[] memory calls = new IMulticall3.Call3[](1);
         pbhEntryPoint.pbhMulticall(calls, testPayload);
 
         bytes memory testCallData = hex"c0ffee";
@@ -73,23 +74,34 @@ contract PBHEntryPointImplV1Test is TestSetup {
         uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
         IPBHEntryPoint.PBHPayload memory testPayload = TestUtils.mockPBHPayload(0, pbhNonce, extNullifier);
 
-        IMulticall3.Call3Value[] memory calls = new IMulticall3.Call3Value[](2);
+        IMulticall3.Call3[] memory calls = new IMulticall3.Call3[](2);
 
         bytes memory testCallData = hex"";
-        calls[0] = IMulticall3.Call3Value({target: addr1, allowFailure: false, callData: testCallData, value: 1});
-        calls[1] = IMulticall3.Call3Value({target: addr2, allowFailure: false, callData: testCallData, value: 1});
+        calls[0] = IMulticall3.Call3({target: addr1, allowFailure: false, callData: testCallData});
+        calls[1] = IMulticall3.Call3({target: addr2, allowFailure: false, callData: testCallData});
 
-        vm.deal(address(this), 2);
-        uint256 preBalance1 = addr1.balance;
-        uint256 preBalance2 = addr2.balance;
-        pbhEntryPoint.pbhMulticall{value: 2 ether}(calls, testPayload);
-
-        assert(addr1.balance - preBalance1 == 1);
-        assert(addr2.balance - preBalance2 == 1);
+        vm.expectEmit(true, false, false, false);
+        emit PBH(address(this), testPayload);
+        pbhEntryPoint.pbhMulticall(calls, testPayload);
     }
 
-    // TODO:
-    function test_pbhMulticall_RevertIf_Reentrancy() public {}
+    function test_pbhMulticall_RevertIf_Reentrancy(uint8 pbhNonce) public {
+        vm.assume(pbhNonce < MAX_NUM_PBH_PER_MONTH);
+
+        uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
+        IPBHEntryPoint.PBHPayload memory testPayload = TestUtils.mockPBHPayload(0, pbhNonce, extNullifier);
+
+        IMulticall3.Call3[] memory calls = new IMulticall3.Call3[](1);
+
+        bytes memory testCallData = abi.encodeWithSelector(IPBHEntryPoint.pbhMulticall.selector, calls, testPayload);
+        calls[0] = IMulticall3.Call3({target: address(pbhEntryPoint), allowFailure: true, callData: testCallData});
+
+        IMulticall3.Result memory returnData = pbhEntryPoint.pbhMulticall(calls, testPayload)[0];
+
+        bytes memory expectedReturnData = abi.encodeWithSelector(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        assert(!returnData.success);
+        assertEq(returnData.returnData, expectedReturnData);
+    }
 
     function test_setNumPbhPerMonth(uint8 numPbh) public {
         vm.assume(numPbh > 0);

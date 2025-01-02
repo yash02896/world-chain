@@ -257,22 +257,23 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         }
     }
 
-    function pbhMulticall(IMulticall3.Call3Value[] calldata calls, PBHPayload calldata pbhPayload)
+    function pbhMulticall(IMulticall3.Call3[] calldata calls, PBHPayload calldata pbhPayload)
         external
-        payable
         virtual
         onlyProxy
         onlyInitialized
         nonReentrant
+        returns (IMulticall3.Result[] memory returnData)
     {
         uint256 signalHash = abi.encode(msg.sender, calls).hashToField();
 
         verifyPbh(signalHash, pbhPayload);
         nullifierHashes[pbhPayload.nullifierHash] = true;
 
-        IMulticall3(multicall3).aggregate3Value{value: msg.value}(calls);
-
+        returnData = IMulticall3(multicall3).aggregate3(calls);
         emit PBH(msg.sender, pbhPayload);
+
+        return returnData;
     }
 
     /// @notice Sets the number of PBH transactions allowed per month.
