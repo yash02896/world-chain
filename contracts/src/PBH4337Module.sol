@@ -63,8 +63,7 @@ contract PBHSafe4337Module is Safe4337Module {
             if (userOp.signature.length - expectedLength != 352) {
                 revert InvalidProofSize();
             }
-            // Remove the proof from the signature
-            signatures = userOp.signature[0:expectedLength];
+            signatures = userOp.signature[TIMESTAMP_BYTES:expectedLength];
         }
 
         // The `checkSignatures` function in the Safe contract does not force a fixed size on signature length.

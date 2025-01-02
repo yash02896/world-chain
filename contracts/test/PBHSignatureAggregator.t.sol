@@ -16,45 +16,6 @@ contract PBHSignatureAggregatorTest is TestSetup {
         super.setUp();
     }
 
-    function testFullFlow() public {
-        uint256 timestamp = block.timestamp;
-        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(timestamp));
-        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(timestamp));
-        uint256 encoded = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
-
-        worldIDGroups.setVerifyProofSuccess(true);
-        IPBHEntryPoint.PBHPayload memory proof0 = IPBHEntryPoint.PBHPayload({
-            root: 1,
-            pbhExternalNullifier: encoded,
-            nullifierHash: 0,
-            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
-        });
-
-        IPBHEntryPoint.PBHPayload memory proof1 = IPBHEntryPoint.PBHPayload({
-            root: 2,
-            pbhExternalNullifier: encoded,
-            nullifierHash: 1,
-            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
-        });
-
-        bytes[] memory proofs = new bytes[](2);
-        proofs[0] = abi.encode(proof0);
-        proofs[1] = abi.encode(proof1);
-
-        PackedUserOperation[] memory uoTestFixture =
-            TestUtils.createUOTestData(vm, PBH_NONCE_KEY, address(pbh4337Module), address(safe), proofs, ownerKey);
-        bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
-
-        IEntryPoint.UserOpsPerAggregator[] memory userOpsPerAggregator = new IEntryPoint.UserOpsPerAggregator[](1);
-        userOpsPerAggregator[0] = IEntryPoint.UserOpsPerAggregator({
-            aggregator: pbhAggregator,
-            userOps: uoTestFixture,
-            signature: aggregatedSignature
-        });
-
-        pbhEntryPoint.handleAggregatedOps(userOpsPerAggregator, payable(address(this)));
-    }
-
     function testAggregateSignatures(
         uint256 root,
         uint256 pbhExternalNullifier,
@@ -112,7 +73,7 @@ contract PBHSignatureAggregatorTest is TestSetup {
         assertEq(decodedProofs[1].proof[6], proof.proof[6], "Proof should match");
         assertEq(decodedProofs[1].proof[7], proof.proof[7], "Proof should match");
     }
-    
+
     // TODO:
     // function testAggregateSignatures_VariableThreshold(
     //     uint256 root,

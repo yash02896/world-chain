@@ -115,7 +115,8 @@ contract PBHSafe4337ModuleTest is Test {
             s,
             v // The raw signature components
         );
-        userOp.signature = signature;
+        bytes memory proofBuffer = new bytes(352);
+        userOp.signature = bytes.concat(signature, proofBuffer);
 
         uint256 validationData = module.validateSignaturesExternal(userOp);
 

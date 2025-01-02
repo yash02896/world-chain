@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@solady/LibBytes.sol";
 import "@forge-std/console.sol";
 import "@forge-std/Vm.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
@@ -18,10 +17,10 @@ library TestUtils {
     /// @notice Encodes the ECDSA signature and proof data into a single bytes array.
     function encodeSignature(bytes memory userOpSignature, bytes memory proofData)
         public
-        pure
+        view
         returns (bytes memory res)
     {
-        res = LibBytes.concat(userOpSignature, proofData);
+        res = bytes.concat(userOpSignature, proofData);
     }
 
     /// @notice Create a test data for UserOperations.
@@ -58,7 +57,7 @@ library TestUtils {
         bytes memory data = abi.encodeCall(Safe4337Module.executeUserOp, (address(0), 0, new bytes(0), 0));
         uo = PackedUserOperation({
             sender: sender,
-            nonce: nonceKey << 64 + nonce,
+            nonce: (nonceKey << 64) + nonce,
             initCode: new bytes(0),
             callData: data,
             accountGasLimits: 0x0000000000000000000000000000ffd300000000000000000000000000000000,
@@ -70,7 +69,11 @@ library TestUtils {
     }
 
     /// @notice Creates an ECDSA signature from the UserOperation Hash, and signer.
-    function createUserOpSignature(Vm vm, bytes32 operationHash, uint256 signingKey) public pure returns (bytes memory) {
+    function createUserOpSignature(Vm vm, bytes32 operationHash, uint256 signingKey)
+        public
+        pure
+        returns (bytes memory)
+    {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signingKey, operationHash);
         bytes memory signature = abi.encodePacked(uint48(0), uint48(0), r, s, v);
         return signature;

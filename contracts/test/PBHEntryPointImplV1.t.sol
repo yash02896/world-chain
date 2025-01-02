@@ -53,8 +53,6 @@ contract PBHEntryPointImplV1Test is TestSetup {
         pbhEntryPoint.verifyPbh(signalHash, testPayload);
     }
 
-    // TODO: Verify proof onchain if worldid is set
-
     function test_handleAggregatedOps() public {
         uint256 timestamp = block.timestamp;
         uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(timestamp));
@@ -174,4 +172,6 @@ contract PBHEntryPointImplV1Test is TestSetup {
         vm.expectRevert("Ownable: caller is not the owner");
         pbhEntryPoint.setWorldId(addr);
     }
+
+    receive() external payable {}
 }
