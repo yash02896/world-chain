@@ -9,6 +9,7 @@ import {ByteHasher} from "@helpers/ByteHasher.sol";
 import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
+import {IMulticall3} from "../src/interfaces/IMulticall3.sol";
 import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 import {TestSetup} from "./TestSetup.sol";
 import {TestUtils} from "./TestUtils.sol";
@@ -24,25 +25,31 @@ contract PBHEntryPointImplV1Test is TestSetup {
     event NumPbhPerMonthSet(uint8 indexed numPbhPerMonth);
     event WorldIdSet(address indexed worldId);
 
-    // TODO:
-    function test_verifyPbh() public {
-        // uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
+    function test_verifyPbh(address sender, uint8 pbhNonce) public {
+        vm.assume(pbhNonce < MAX_NUM_PBH_PER_MONTH);
 
-        // pbhEntryPoint.verifyPbh(signalHash, testPayload);
+        uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
+        IPBHEntryPoint.PBHPayload memory testPayload = TestUtils.mockPBHPayload(0, pbhNonce, extNullifier);
+        bytes memory testCallData = hex"c0ffee";
 
-        // // TODO: update to use mock work id
-        // // Expect revert when proof verification fails
-        // MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(false);
-        // vm.expectRevert("Proof verification failed");
-        // pbhEntryPoint.verifyPbh(signalHash, testPayload);
-
-        // // Now expect success
-        // MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
-        // pbhEntryPoint.verifyPbh(signalHash, testPayload);
+        uint256 signalHash = abi.encodePacked(sender, pbhNonce, testCallData).hashToField();
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
     }
 
-    // TODO:
-    function test_verifyPbh_RevertIf_InvalidNullifier() public {}
+    function test_verifyPbh_RevertIf_InvalidNullifier(address sender, uint8 pbhNonce) public {
+        vm.assume(pbhNonce < MAX_NUM_PBH_PER_MONTH);
+
+        uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
+        IPBHEntryPoint.PBHPayload memory testPayload = TestUtils.mockPBHPayload(0, pbhNonce, extNullifier);
+        bytes memory testCallData = hex"c0ffee";
+        uint256 signalHash = abi.encodePacked(sender, pbhNonce, testCallData).hashToField();
+
+        IMulticall3.Call3[] memory calls = new IMulticall3.Call3[](1);
+        pbhEntryPoint.pbhMulticall(calls, testPayload);
+
+        vm.expectRevert(PBHEntryPointImplV1.InvalidNullifier.selector);
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
+    }
 
     // TODO: verify proof if worldid addr is set?
 

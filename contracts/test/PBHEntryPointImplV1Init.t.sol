@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import {TestSetup} from "./TestSetup.sol";
+import {Test} from "forge-std/Test.sol";
 import {IWorldIDGroups} from "@world-id-contracts/interfaces/IWorldIDGroups.sol";
 import {CheckInitialized} from "@world-id-contracts/utils/CheckInitialized.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
@@ -18,11 +18,11 @@ import {IWorldID} from "../src/interfaces/IWorldID.sol";
 /// @title PBHEntryPointImplV1InitTest
 /// @notice Contains tests asserting the correct initialization of the PBHEntryPointImplV1 contract
 /// @author Worldcoin
-contract PBHEntryPointImplV1InitTest is TestSetup {
+contract PBHEntryPointImplV1InitTest is Test {
     IPBHEntryPoint uninitializedPBHEntryPoint;
 
     function setup() public {
-        pbhEntryPointImpl = address(new PBHEntryPointImplV1());
+        address pbhEntryPointImpl = address(new PBHEntryPointImplV1());
         uninitializedPBHEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, new bytes(0x0))));
     }
 
@@ -30,7 +30,7 @@ contract PBHEntryPointImplV1InitTest is TestSetup {
         vm.assume(address(worldId) != address(0) && address(entryPoint) != address(0) && multicall != address(0));
         vm.assume(numPbh > 0);
 
-        pbhEntryPointImpl = address(new PBHEntryPointImplV1());
+        address pbhEntryPointImpl = address(new PBHEntryPointImplV1());
         bytes memory initCallData =
             abi.encodeCall(PBHEntryPointImplV1.initialize, (worldId, entryPoint, numPbh, multicall));
 
@@ -45,7 +45,7 @@ contract PBHEntryPointImplV1InitTest is TestSetup {
         uint8 numPbh = 30;
         address multicall = address(3);
 
-        pbhEntryPointImpl = address(new PBHEntryPointImplV1());
+        address pbhEntryPointImpl = address(new PBHEntryPointImplV1());
 
         // Expect revert when worldId is address(0)
         bytes memory initCallData =
@@ -71,7 +71,7 @@ contract PBHEntryPointImplV1InitTest is TestSetup {
         uint8 numPbh = 0;
         address multicall = address(3);
 
-        pbhEntryPointImpl = address(new PBHEntryPointImplV1());
+        address pbhEntryPointImpl = address(new PBHEntryPointImplV1());
 
         bytes memory initCallData =
             abi.encodeCall(PBHEntryPointImplV1.initialize, (worldId, entryPoint, numPbh, multicall));
@@ -85,7 +85,7 @@ contract PBHEntryPointImplV1InitTest is TestSetup {
         uint8 numPbh = 30;
         address multicall = address(3);
 
-        pbhEntryPointImpl = address(new PBHEntryPointImplV1());
+        address pbhEntryPointImpl = address(new PBHEntryPointImplV1());
         bytes memory initCallData =
             abi.encodeCall(PBHEntryPointImplV1.initialize, (worldId, entryPoint, numPbh, multicall));
 

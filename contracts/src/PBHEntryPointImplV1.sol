@@ -162,10 +162,8 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
-        // TODO: add address zero checks?
         worldId = _worldId;
         entryPoint = _entryPoint;
-        // TODO: ensure num pbh is not 0
         numPbhPerMonth = _numPbhPerMonth;
         multicall3 = _multicall3;
 
