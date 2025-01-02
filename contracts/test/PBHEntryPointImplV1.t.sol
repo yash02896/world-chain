@@ -52,7 +52,7 @@ contract PBHEntryPointImplV1Test is TestSetup {
         pbhEntryPoint.verifyPbh(signalHash, testPayload);
     }
 
-    // TODO: verify proof if worldid addr is set?
+    // TODO: Verify proof onchain if worldid is set
 
     // TODO:
     function test_handleAggregatedOps() public {}
