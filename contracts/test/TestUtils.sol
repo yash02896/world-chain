@@ -3,11 +3,14 @@ pragma solidity ^0.8.20;
 
 import "@solady/LibBytes.sol";
 import "@forge-std/console.sol";
+import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import "@helpers/PBHExternalNullifier.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
+import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
 
-contract TestUtils {
+library TestUtils {
     function encodeSignature(bytes memory proofData, uint256 signatureThreshold)
         public
         pure
@@ -41,5 +44,24 @@ contract TestUtils {
         }
 
         return uOps;
+    }
+
+    function mockPBHPayload(uint256 root, uint8 pbhNonce, uint256 nullifierHash)
+        public
+        view
+        returns (IPBHEntryPoint.PBHPayload memory)
+    {
+        return IPBHEntryPoint.PBHPayload({
+            root: root,
+            pbhExternalNullifier: getPBHExternalNullifier(pbhNonce),
+            nullifierHash: nullifierHash,
+            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+        });
+    }
+
+    function getPBHExternalNullifier(uint8 pbhNonce) public view returns (uint256) {
+        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
+        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
+        return PBHExternalNullifier.encode(PBHExternalNullifier.V1, pbhNonce, month, year);
     }
 }

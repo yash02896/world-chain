@@ -34,10 +34,12 @@ contract TestSetup is Test {
     /// @notice The Mock World ID Groups contract.
     MockWorldIDGroups public worldIDGroups;
 
+    address public OWNER = address(0xc0ffee);
     address public pbhEntryPointImpl;
     address public immutable thisAddress = address(this);
     address public constant nullAddress = address(0);
     address public constant MULTICALL3 = 0xcA11bde05977b3631167028862bE2a173976CA11;
+    uint8 public constant MAX_NUM_PBH_PER_MONTH = 30;
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -45,10 +47,12 @@ contract TestSetup is Test {
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public virtual {
+        vm.startPrank(OWNER);
         deployWorldIDGroups();
         deployPBHEntryPoint(worldIDGroups, entryPoint);
         deployPBHSignatureAggregator(address(pbhEntryPoint));
         deploySafeAccount(address(pbhAggregator), 1);
+        vm.stopPrank();
 
         // Label the addresses for better errors.
         vm.label(address(entryPoint), "ERC-4337 Entry Point");
@@ -77,10 +81,13 @@ contract TestSetup is Test {
     function deployPBHEntryPoint(IWorldID initialGroupAddress, IEntryPoint initialEntryPoint) public {
         pbhEntryPointImpl = address(new PBHEntryPointImplV1());
 
-        bytes memory initCallData =
-            abi.encodeCall(PBHEntryPointImplV1.initialize, (initialGroupAddress, initialEntryPoint, 30, MULTICALL3));
+        bytes memory initCallData = abi.encodeCall(
+            PBHEntryPointImplV1.initialize, (initialGroupAddress, initialEntryPoint, MAX_NUM_PBH_PER_MONTH, MULTICALL3)
+        );
         vm.expectEmit(true, true, true, true);
-        emit PBHEntryPointImplV1.PBHEntryPointImplInitialized(initialGroupAddress, initialEntryPoint, 30, MULTICALL3);
+        emit PBHEntryPointImplV1.PBHEntryPointImplInitialized(
+            initialGroupAddress, initialEntryPoint, MAX_NUM_PBH_PER_MONTH, MULTICALL3
+        );
         pbhEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, initCallData)));
     }
 
