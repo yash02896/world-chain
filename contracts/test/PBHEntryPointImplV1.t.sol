@@ -133,8 +133,8 @@ contract PBHEntryPointImplV1Test is TestSetup {
     }
 
     function test_setWorldId_RevertIf_NotOwner(address addr) public {
-        vm.expectRevert("Ownable: caller is not the owner");
         vm.assume(addr != OWNER);
+        vm.expectRevert("Ownable: caller is not the owner");
         pbhEntryPoint.setWorldId(addr);
     }
 }
