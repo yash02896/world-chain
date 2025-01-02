@@ -78,9 +78,9 @@ contract PBHSignatureAggregatorTest is TestSetup {
         bytes[] memory proofs = new bytes[](2);
         proofs[0] = abi.encode(proof);
         proofs[1] = abi.encode(proof);
-        PackedUserOperation[] memory uoTestFixture = TestUtils.createUOTestData(
-            vm, PBH_NONCE_KEY, address(pbh4337Module), address(pbh4337Module), proofs, ownerKey
-        );
+        PackedUserOperation[] memory uoTestFixture =
+            TestUtils.createUOTestData(vm, PBH_NONCE_KEY, address(pbh4337Module), address(safe), proofs, ownerKey);
+
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
         IPBHEntryPoint.PBHPayload[] memory decodedProofs =
             abi.decode(aggregatedSignature, (IPBHEntryPoint.PBHPayload[]));
@@ -112,7 +112,8 @@ contract PBHSignatureAggregatorTest is TestSetup {
         assertEq(decodedProofs[1].proof[6], proof.proof[6], "Proof should match");
         assertEq(decodedProofs[1].proof[7], proof.proof[7], "Proof should match");
     }
-
+    
+    // TODO:
     // function testAggregateSignatures_VariableThreshold(
     //     uint256 root,
     //     uint256 pbhExternalNullifier,
@@ -182,9 +183,9 @@ contract PBHSignatureAggregatorTest is TestSetup {
         bytes[] memory proofs = new bytes[](2);
         proofs[0] = abi.encode(proof);
         proofs[1] = abi.encode(proof);
-        PackedUserOperation[] memory uoTestFixture = TestUtils.createUOTestData(
-            vm, PBH_NONCE_KEY, address(pbh4337Module), address(pbh4337Module), proofs, ownerKey
-        );
+        PackedUserOperation[] memory uoTestFixture =
+            TestUtils.createUOTestData(vm, PBH_NONCE_KEY, address(pbh4337Module), address(safe), proofs, ownerKey);
+
         uoTestFixture[0].signature = new bytes(12);
         vm.expectRevert(PBHSignatureAggregator.InvalidSignatureLength.selector);
         pbhAggregator.aggregateSignatures(uoTestFixture);

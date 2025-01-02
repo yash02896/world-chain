@@ -7,11 +7,15 @@ import {CheckInitialized} from "@world-id-contracts/utils/CheckInitialized.sol";
 import {WorldIDImpl} from "@world-id-contracts/abstract/WorldIDImpl.sol";
 import {ByteHasher} from "@helpers/ByteHasher.sol";
 import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
-
-import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
-import "@helpers/PBHExternalNullifier.sol";
+import {IMulticall3} from "../src/interfaces/IMulticall3.sol";
+import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 import {TestSetup} from "./TestSetup.sol";
+import {TestUtils} from "./TestUtils.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import "@helpers/PBHExternalNullifier.sol";
 
 /// @title PBHVerifer Verify Tests
 /// @notice Contains tests for the pbhVerifier
@@ -23,89 +27,151 @@ contract PBHEntryPointImplV1Test is TestSetup {
     event NumPbhPerMonthSet(uint8 indexed numPbhPerMonth);
     event WorldIdSet(address indexed worldId);
 
-    /// @notice Test payload for the PBHVerifier
-    IPBHEntryPoint.PBHPayload public testPayload = IPBHEntryPoint.PBHPayload({
-        root: 1,
-        pbhExternalNullifier: getValidPBHExternalNullifier(),
-        nullifierHash: 1,
-        proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
-    });
+    function test_verifyPbh(address sender, uint8 pbhNonce) public view {
+        vm.assume(pbhNonce < MAX_NUM_PBH_PER_MONTH);
 
-    uint256 internal nonce = 1;
-    address internal sender = address(0x123);
-    bytes internal testCallData = hex"deadbeef";
+        uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
+        IPBHEntryPoint.PBHPayload memory testPayload = TestUtils.mockPBHPayload(0, pbhNonce, extNullifier);
+        bytes memory testCallData = hex"c0ffee";
 
-    // TODO: move this to test utils
-    function getValidPBHExternalNullifier() public view returns (uint256) {
-        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
-        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
-        return PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
+        uint256 signalHash = abi.encodePacked(sender, pbhNonce, testCallData).hashToField();
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
+    }
+
+    function test_verifyPbh_RevertIf_InvalidNullifier(address sender, uint8 pbhNonce) public {
+        vm.assume(pbhNonce < MAX_NUM_PBH_PER_MONTH);
+
+        uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
+        IPBHEntryPoint.PBHPayload memory testPayload = TestUtils.mockPBHPayload(0, pbhNonce, extNullifier);
+
+        IMulticall3.Call3[] memory calls = new IMulticall3.Call3[](1);
+        pbhEntryPoint.pbhMulticall(calls, testPayload);
+
+        bytes memory testCallData = hex"c0ffee";
+        uint256 signalHash = abi.encodePacked(sender, pbhNonce, testCallData).hashToField();
+        vm.expectRevert(PBHEntryPointImplV1.InvalidNullifier.selector);
+        pbhEntryPoint.verifyPbh(signalHash, testPayload);
+    }
+
+    // TODO: Verify proof onchain if worldid is set
+
+    function test_handleAggregatedOps() public {
+        uint256 timestamp = block.timestamp;
+        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(timestamp));
+        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(timestamp));
+        uint256 encoded = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
+
+        worldIDGroups.setVerifyProofSuccess(true);
+        IPBHEntryPoint.PBHPayload memory proof0 = IPBHEntryPoint.PBHPayload({
+            root: 1,
+            pbhExternalNullifier: encoded,
+            nullifierHash: 0,
+            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+        });
+
+        IPBHEntryPoint.PBHPayload memory proof1 = IPBHEntryPoint.PBHPayload({
+            root: 2,
+            pbhExternalNullifier: encoded,
+            nullifierHash: 1,
+            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+        });
+
+        bytes[] memory proofs = new bytes[](2);
+        proofs[0] = abi.encode(proof0);
+        proofs[1] = abi.encode(proof1);
+
+        PackedUserOperation[] memory uoTestFixture =
+            TestUtils.createUOTestData(vm, PBH_NONCE_KEY, address(pbh4337Module), address(safe), proofs, ownerKey);
+        bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
+
+        IEntryPoint.UserOpsPerAggregator[] memory userOpsPerAggregator = new IEntryPoint.UserOpsPerAggregator[](1);
+        userOpsPerAggregator[0] = IEntryPoint.UserOpsPerAggregator({
+            aggregator: pbhAggregator,
+            userOps: uoTestFixture,
+            signature: aggregatedSignature
+        });
+
+        pbhEntryPoint.handleAggregatedOps(userOpsPerAggregator, payable(address(this)));
     }
 
     // TODO:
-    function test_verifyPbh() public {
-        uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
-
-        pbhEntryPoint.verifyPbh(signalHash, testPayload);
-
-        // TODO: update to use mock work id
-        // Expect revert when proof verification fails
-        MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(false);
-        vm.expectRevert("Proof verification failed");
-        pbhEntryPoint.verifyPbh(signalHash, testPayload);
-
-        // Now expect success
-        MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
-        pbhEntryPoint.verifyPbh(signalHash, testPayload);
-    }
+    function test_handleAggregatedOps_RevertIf_Reentrancy() public {}
 
     // TODO:
-    function test_verifyPbh_RevertIfInvalidNullifier() public {}
+    function test_valdiateSignaturesCallback() public {}
 
-    /// @notice Test that setNumPBHPerMonth works as expected
-    function testSetNumPBHPerMonth() public {
-        uint256 signalHash = abi.encodePacked(sender, nonce, testCallData).hashToField();
+    // TODO:
+    function test_validateSignaturesCallback_RevertIf_IncorrectHashedOps() public {}
 
-        MockWorldIDGroups(address(worldIDGroups)).setVerifyProofSuccess(true);
-        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(block.timestamp));
-        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(block.timestamp));
+    function test_pbhMulticall(uint8 pbhNonce) public {
+        vm.assume(pbhNonce < MAX_NUM_PBH_PER_MONTH);
+        address addr1 = address(0x1);
+        address addr2 = address(0x2);
 
-        // Value starts at 30, make sure 30 reverts.
-        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 30, month, year);
+        uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
+        IPBHEntryPoint.PBHPayload memory testPayload = TestUtils.mockPBHPayload(0, pbhNonce, extNullifier);
 
-        testPayload.nullifierHash = 0;
-        vm.expectRevert(PBHExternalNullifier.InvalidPbhNonce.selector);
-        pbhEntryPoint.verifyPbh(signalHash, testPayload);
+        IMulticall3.Call3[] memory calls = new IMulticall3.Call3[](2);
 
-        // Increase numPbhPerMonth from non owner, expect revert
-        vm.prank(address(123));
-        vm.expectRevert("Ownable: caller is not the owner");
-        pbhEntryPoint.setNumPbhPerMonth(40);
+        bytes memory testCallData = hex"";
+        calls[0] = IMulticall3.Call3({target: addr1, allowFailure: false, callData: testCallData});
+        calls[1] = IMulticall3.Call3({target: addr2, allowFailure: false, callData: testCallData});
 
-        // Increase numPbhPerMonth from owner
-        vm.prank(thisAddress);
         vm.expectEmit(true, false, false, false);
-        emit NumPbhPerMonthSet(40);
-        pbhEntryPoint.setNumPbhPerMonth(40);
-
-        // Try again, it should work
-        testPayload.pbhExternalNullifier = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 30, month, year);
-        testPayload.nullifierHash = 1;
-        pbhEntryPoint.verifyPbh(signalHash, testPayload);
+        emit PBH(address(this), testPayload);
+        pbhEntryPoint.pbhMulticall(calls, testPayload);
     }
 
-    function testSetWorldId() public {
-        vm.expectEmit(true, false, false, false);
-        emit WorldIdSet(address(0x123));
-        pbhEntryPoint.setWorldId(address(0x123));
+    function test_pbhMulticall_RevertIf_Reentrancy(uint8 pbhNonce) public {
+        vm.assume(pbhNonce < MAX_NUM_PBH_PER_MONTH);
+
+        uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
+        IPBHEntryPoint.PBHPayload memory testPayload = TestUtils.mockPBHPayload(0, pbhNonce, extNullifier);
+
+        IMulticall3.Call3[] memory calls = new IMulticall3.Call3[](1);
+
+        bytes memory testCallData = abi.encodeWithSelector(IPBHEntryPoint.pbhMulticall.selector, calls, testPayload);
+        calls[0] = IMulticall3.Call3({target: address(pbhEntryPoint), allowFailure: true, callData: testCallData});
+
+        IMulticall3.Result memory returnData = pbhEntryPoint.pbhMulticall(calls, testPayload)[0];
+
+        bytes memory expectedReturnData = abi.encodeWithSelector(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        assert(!returnData.success);
+        assertEq(returnData.returnData, expectedReturnData);
     }
 
-    function test_FailSetWorldId_NotOwner(address naughty) public {
-        if (naughty == thisAddress) {
-            return;
-        }
-        vm.prank(naughty);
+    function test_setNumPbhPerMonth(uint8 numPbh) public {
+        vm.assume(numPbh > 0);
+
+        vm.prank(OWNER);
+        vm.expectEmit(true, true, true, true);
+        emit NumPbhPerMonthSet(numPbh);
+        pbhEntryPoint.setNumPbhPerMonth(numPbh);
+    }
+
+    function test_setNumPbhPerMonth_RevertIf_NotOwner(uint8 numPbh) public {
         vm.expectRevert("Ownable: caller is not the owner");
-        pbhEntryPoint.setWorldId(address(0x123));
+        pbhEntryPoint.setNumPbhPerMonth(numPbh);
+    }
+
+    function test_setNumPbhPerMonth_RevertIf_InvalidNumPbhPerMonth() public {
+        vm.prank(OWNER);
+        vm.expectRevert(PBHEntryPointImplV1.InvalidNumPbhPerMonth.selector);
+        pbhEntryPoint.setNumPbhPerMonth(0);
+    }
+
+    function test_setWorldId(address addr) public {
+        vm.assume(addr != address(0));
+
+        vm.prank(OWNER);
+        vm.expectEmit(true, false, false, false);
+        emit WorldIdSet(addr);
+        pbhEntryPoint.setWorldId(addr);
+    }
+
+    function test_setWorldId_RevertIf_NotOwner(address addr) public {
+        vm.assume(addr != OWNER);
+        vm.expectRevert("Ownable: caller is not the owner");
+        pbhEntryPoint.setWorldId(addr);
     }
 }
