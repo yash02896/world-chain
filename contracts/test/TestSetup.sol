@@ -13,6 +13,14 @@ import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
 import {MockAccount} from "./mocks/MockAccount.sol";
 import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
 import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
+import {Safe} from "@safe-global/safe-contracts/contracts/Safe.sol";
+import {SafeProxyFactory} from "@safe-global/safe-contracts/contracts/proxies/SafeProxyFactory.sol";
+import {SafeProxy} from "@safe-global/safe-contracts/contracts/proxies/SafeProxy.sol";
+import {Enum} from "@safe-global/safe-contracts/contracts/common/Enum.sol";
+import {SafeModuleSetup} from "@4337/SafeModuleSetup.sol";
+import {PBHSafe4337Module} from "../src/PBH4337Module.sol";
+import {Mock4337Module} from "./mocks/Mock4337Module.sol";
+import {Safe4337Module} from "@4337/Safe4337Module.sol";
 
 /// @title Test Setup Contract.
 /// @author Worldcoin
@@ -29,15 +37,24 @@ contract TestSetup is Test {
     IPBHEntryPoint public pbhEntryPoint;
     /// @notice The PBHSignatureAggregator contract.
     IAggregator public pbhAggregator;
-    /// @notice No-op account.
-    IAccount public safe;
     /// @notice The Mock World ID Groups contract.
     MockWorldIDGroups public worldIDGroups;
 
+    Mock4337Module public pbh4337Module;
+    Safe public singleton;
+    Safe public safe;
+    SafeProxyFactory public factory;
+    SafeModuleSetup public moduleSetup;
+
+    address public owner;
+    uint256 public ownerKey;
     address public pbhEntryPointImpl;
     address public immutable thisAddress = address(this);
     address public constant nullAddress = address(0);
     address public constant MULTICALL3 = 0xcA11bde05977b3631167028862bE2a173976CA11;
+
+    uint192 public constant PBH_NONCE_KEY = 1123123123;
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -48,7 +65,7 @@ contract TestSetup is Test {
         deployWorldIDGroups();
         deployPBHEntryPoint(worldIDGroups, entryPoint);
         deployPBHSignatureAggregator(address(pbhEntryPoint));
-        deploySafeAccount(address(pbhAggregator), 1);
+        deploySafeAndModule(address(pbhAggregator), 1);
 
         // Label the addresses for better errors.
         vm.label(address(entryPoint), "ERC-4337 Entry Point");
@@ -57,11 +74,15 @@ contract TestSetup is Test {
         vm.label(address(worldIDGroups), "Mock World ID Groups");
         vm.label(address(pbhEntryPoint), "PBH Entry Point");
         vm.label(pbhEntryPointImpl, "PBH Entry Point Impl V1");
+        vm.label(address(pbh4337Module), "PBH 4337 Module");
+        vm.label(address(factory), "Safe Proxy Factory");
+        vm.label(address(moduleSetup), "Safe Module Setup");
+        vm.label(address(singleton), "Safe Singleton");
 
         vm.deal(address(this), type(uint128).max);
-        vm.deal(address(safe), type(uint256).max);
-
-        // Deposit some funds into the Entry Point from the Mock Account.
+        vm.deal(address(pbh4337Module), type(uint128).max);
+        vm.deal(address(safe), type(uint128).max);
+        // Deposit some funds into the Entry Point from the PBH 4337 Module.
         entryPoint.depositTo{value: 10 ether}(address(safe));
     }
 
@@ -92,8 +113,55 @@ contract TestSetup is Test {
 
     /// @notice Initializes a new safe account.
     /// @dev It is constructed in the globals.
-    function deploySafeAccount(address _pbhSignatureAggregator, uint256 threshold) public {
-        safe = new MockAccount(_pbhSignatureAggregator, threshold);
+    function deploySafeAndModule(address _pbhSignatureAggregator, uint256 threshold) public {
+        // Create single EOA owner
+        ownerKey = 0x1;
+        owner = vm.addr(ownerKey);
+
+        pbh4337Module = new Mock4337Module(owner, _pbhSignatureAggregator, PBH_NONCE_KEY);
+
+        // Deploy SafeModuleSetup
+        moduleSetup = new SafeModuleSetup();
+
+        // Deploy Safe singleton and factory
+        singleton = new Safe();
+        factory = new SafeProxyFactory();
+
+        // Prepare module initialization
+        address[] memory modules = new address[](1);
+        modules[0] = address(pbh4337Module);
+
+        // Encode the moduleSetup.enableModules call
+        bytes memory moduleSetupCall = abi.encodeCall(SafeModuleSetup.enableModules, (modules));
+
+        // Create owners array with single owner
+        address[] memory owners = new address[](1);
+        owners[0] = owner;
+
+        // Encode initialization data for proxy
+        bytes memory initData = abi.encodeCall(
+            Safe.setup,
+            (
+                owners,
+                threshold, // threshold
+                address(moduleSetup), // to
+                moduleSetupCall, // data
+                address(0), // fallbackHandler
+                address(0), // paymentToken
+                0, // payment
+                payable(address(0)) // paymentReceiver
+            )
+        );
+
+        // Deploy and initialize Safe proxy
+        SafeProxy proxy = factory.createProxyWithNonce(
+            address(singleton),
+            initData,
+            0 // salt nonce
+        );
+
+        // Cast proxy to Safe for easier interaction
+        safe = Safe(payable(address(proxy)));
     }
 
     /// @notice Initializes a new World ID Groups contract.
