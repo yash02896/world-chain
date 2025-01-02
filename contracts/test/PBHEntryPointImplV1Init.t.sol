@@ -21,7 +21,7 @@ import {IWorldID} from "../src/interfaces/IWorldID.sol";
 contract PBHEntryPointImplV1InitTest is Test {
     IPBHEntryPoint uninitializedPBHEntryPoint;
 
-    function setup() public {
+    function setUp() public {
         address pbhEntryPointImpl = address(new PBHEntryPointImplV1());
         uninitializedPBHEntryPoint = IPBHEntryPoint(address(new PBHEntryPoint(pbhEntryPointImpl, new bytes(0x0))));
     }

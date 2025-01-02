@@ -192,8 +192,8 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         public
         view
         virtual
-        onlyInitialized
         onlyProxy
+        onlyInitialized
     {
         // First, we make sure this nullifier has not been used before.
         if (nullifierHashes[pbhPayload.nullifierHash]) {
@@ -285,7 +285,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
 
     /// @notice Sets the number of PBH transactions allowed per month.
     /// @param _numPbhPerMonth The number of allowed PBH transactions per month.
-    function setNumPbhPerMonth(uint8 _numPbhPerMonth) external virtual onlyOwner onlyProxy onlyInitialized {
+    function setNumPbhPerMonth(uint8 _numPbhPerMonth) external virtual onlyProxy onlyInitialized onlyOwner {
         if (_numPbhPerMonth == 0) {
             revert InvalidNumPbhPerMonth();
         }
@@ -297,7 +297,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     /// @dev If the World ID address is set to 0, then it is assumed that verification will take place off chain.
     /// @notice Sets the World ID instance that will be used for verifying proofs.
     /// @param _worldId The World ID instance that will be used for verifying proofs.
-    function setWorldId(address _worldId) external virtual onlyOwner onlyProxy onlyInitialized {
+    function setWorldId(address _worldId) external virtual onlyProxy onlyInitialized onlyOwner {
         if (_worldId == address(0)) {
             revert AddressZero();
         }
