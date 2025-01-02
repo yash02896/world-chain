@@ -10,14 +10,9 @@ import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import "@BokkyPooBahsDateTimeLibrary/BokkyPooBahsDateTimeLibrary.sol";
 import "../src/helpers/PBHExternalNullifier.sol";
 import {PBHSignatureAggregator} from "../src/PBHSignatureAggregator.sol";
-import {LibBytes} from "@solady/LibBytes.sol";
 
 contract PBHSignatureAggregatorTest is TestSetup {
-    function setUp() public override {
-        super.setUp();
-    }
-
-    function testAggregateSignatures(
+    function test_AggregateSignatures(
         uint256 root,
         uint256 pbhExternalNullifier,
         uint256 nullifierHash,
@@ -75,7 +70,7 @@ contract PBHSignatureAggregatorTest is TestSetup {
         assertEq(decodedProofs[1].proof[7], proof.proof[7], "Proof should match");
     }
 
-    function testAggregateSignatures_VariableThreshold(
+    function test_AggregateSignatures_VariableThreshold(
         uint256 root,
         uint256 pbhExternalNullifier,
         uint256 nullifierHash,
@@ -133,7 +128,7 @@ contract PBHSignatureAggregatorTest is TestSetup {
         assertEq(decodedProofs[0].proof[7], proof.proof[7], "Proof should match");
     }
 
-    function testFailAggregateSignatures_InvalidSignatureLength() public {
+    function test_AggregateSignatures_RevertIf_InvalidSignatureLength() public {
         IPBHEntryPoint.PBHPayload memory proof = IPBHEntryPoint.PBHPayload({
             root: 0,
             pbhExternalNullifier: 0,
