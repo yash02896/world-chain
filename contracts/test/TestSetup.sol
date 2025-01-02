@@ -62,6 +62,9 @@ contract TestSetup is Test {
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public virtual {
+        // Create single EOA owner
+        ownerKey = 0x1;
+        owner = vm.addr(ownerKey);
         deployWorldIDGroups();
         deployPBHEntryPoint(worldIDGroups, entryPoint);
         deployPBHSignatureAggregator(address(pbhEntryPoint));
@@ -70,7 +73,7 @@ contract TestSetup is Test {
         // Label the addresses for better errors.
         vm.label(address(entryPoint), "ERC-4337 Entry Point");
         vm.label(address(pbhAggregator), "PBH Signature Aggregator");
-        vm.label(address(safe), "Safe Account");
+        vm.label(address(safe), "Safe");
         vm.label(address(worldIDGroups), "Mock World ID Groups");
         vm.label(address(pbhEntryPoint), "PBH Entry Point");
         vm.label(pbhEntryPointImpl, "PBH Entry Point Impl V1");
@@ -114,11 +117,7 @@ contract TestSetup is Test {
     /// @notice Initializes a new safe account.
     /// @dev It is constructed in the globals.
     function deploySafeAndModule(address _pbhSignatureAggregator, uint256 threshold) public {
-        // Create single EOA owner
-        ownerKey = 0x1;
-        owner = vm.addr(ownerKey);
-
-        pbh4337Module = new Mock4337Module(owner, _pbhSignatureAggregator, PBH_NONCE_KEY);
+        pbh4337Module = new Mock4337Module(address(entryPoint), _pbhSignatureAggregator, PBH_NONCE_KEY);
 
         // Deploy SafeModuleSetup
         moduleSetup = new SafeModuleSetup();
@@ -146,7 +145,7 @@ contract TestSetup is Test {
                 threshold, // threshold
                 address(moduleSetup), // to
                 moduleSetupCall, // data
-                address(0), // fallbackHandler
+                address(pbh4337Module), // fallbackHandler
                 address(0), // paymentToken
                 0, // payment
                 payable(address(0)) // paymentReceiver

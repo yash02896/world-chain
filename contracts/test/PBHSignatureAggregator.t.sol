@@ -41,7 +41,8 @@ contract PBHSignatureAggregatorTest is TestSetup {
         proofs[0] = abi.encode(proof0);
         proofs[1] = abi.encode(proof1);
 
-        PackedUserOperation[] memory uoTestFixture = TestUtils.createUOTestData(vm, PBH_NONCE_KEY, address(pbh4337Module), address(safe), proofs, ownerKey);
+        PackedUserOperation[] memory uoTestFixture =
+            TestUtils.createUOTestData(vm, PBH_NONCE_KEY, address(pbh4337Module), address(safe), proofs, ownerKey);
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
 
         IEntryPoint.UserOpsPerAggregator[] memory userOpsPerAggregator = new IEntryPoint.UserOpsPerAggregator[](1);
@@ -77,7 +78,9 @@ contract PBHSignatureAggregatorTest is TestSetup {
         bytes[] memory proofs = new bytes[](2);
         proofs[0] = abi.encode(proof);
         proofs[1] = abi.encode(proof);
-        PackedUserOperation[] memory uoTestFixture = TestUtils.createUOTestData(vm, PBH_NONCE_KEY, address(pbh4337Module),address(pbh4337Module), proofs, ownerKey);
+        PackedUserOperation[] memory uoTestFixture = TestUtils.createUOTestData(
+            vm, PBH_NONCE_KEY, address(pbh4337Module), address(pbh4337Module), proofs, ownerKey
+        );
         bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
         IPBHEntryPoint.PBHPayload[] memory decodedProofs =
             abi.decode(aggregatedSignature, (IPBHEntryPoint.PBHPayload[]));
@@ -179,7 +182,9 @@ contract PBHSignatureAggregatorTest is TestSetup {
         bytes[] memory proofs = new bytes[](2);
         proofs[0] = abi.encode(proof);
         proofs[1] = abi.encode(proof);
-        PackedUserOperation[] memory uoTestFixture = TestUtils.createUOTestData(vm, PBH_NONCE_KEY, address(pbh4337Module),address(pbh4337Module), proofs, ownerKey);
+        PackedUserOperation[] memory uoTestFixture = TestUtils.createUOTestData(
+            vm, PBH_NONCE_KEY, address(pbh4337Module), address(pbh4337Module), proofs, ownerKey
+        );
         uoTestFixture[0].signature = new bytes(12);
         vm.expectRevert(PBHSignatureAggregator.InvalidSignatureLength.selector);
         pbhAggregator.aggregateSignatures(uoTestFixture);

@@ -8,6 +8,7 @@ import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 import {Mock4337Module} from "./mocks/Mock4337Module.sol";
+import {Safe4337Module} from "@4337/Safe4337Module.sol";
 
 library TestUtils {
     /// @notice Encodes the ECDSA signature and proof data into a single bytes array.
@@ -42,13 +43,18 @@ library TestUtils {
     }
 
     /// @notice Creates a Mock UserOperation w/ an unsigned signature.
-    function createMockUserOperation(address sender, uint256 nonceKey, uint256 nonce) public pure returns (PackedUserOperation memory uo) {
+    function createMockUserOperation(address sender, uint256 nonceKey, uint256 nonce)
+        public
+        pure
+        returns (PackedUserOperation memory uo)
+    {
+        bytes memory data = abi.encodeCall(Safe4337Module.executeUserOp, (address(0), 0, new bytes(0), 0));
         uo = PackedUserOperation({
             sender: sender,
             nonce: nonceKey << 64 + nonce,
             initCode: new bytes(0),
-            callData: new bytes(0),
-            accountGasLimits: 0x00000000000000000000000000009fd300000000000000000000000000000000,
+            callData: data,
+            accountGasLimits: 0x0000000000000000000000000000ffd300000000000000000000000000000000,
             preVerificationGas: 21000,
             gasFees: 0x0000000000000000000000000000000100000000000000000000000000000001,
             paymasterAndData: new bytes(0),
