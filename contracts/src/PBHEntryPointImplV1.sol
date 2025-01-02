@@ -257,8 +257,9 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         }
     }
 
-    function pbhMulticall(IMulticall3.Call3[] calldata calls, PBHPayload calldata pbhPayload)
+    function pbhMulticall(IMulticall3.Call3Value[] calldata calls, PBHPayload calldata pbhPayload)
         external
+        payable
         virtual
         onlyProxy
         onlyInitialized
@@ -269,7 +270,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         verifyPbh(signalHash, pbhPayload);
         nullifierHashes[pbhPayload.nullifierHash] = true;
 
-        IMulticall3(multicall3).aggregate3(calls);
+        IMulticall3(multicall3).aggregate3Value{value: msg.value}(calls);
 
         emit PBH(msg.sender, pbhPayload);
     }

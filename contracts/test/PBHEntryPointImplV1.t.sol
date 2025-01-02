@@ -25,7 +25,7 @@ contract PBHEntryPointImplV1Test is TestSetup {
     event NumPbhPerMonthSet(uint8 indexed numPbhPerMonth);
     event WorldIdSet(address indexed worldId);
 
-    function test_verifyPbh(address sender, uint8 pbhNonce) public {
+    function test_verifyPbh(address sender, uint8 pbhNonce) public view {
         vm.assume(pbhNonce < MAX_NUM_PBH_PER_MONTH);
 
         uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
@@ -41,12 +41,12 @@ contract PBHEntryPointImplV1Test is TestSetup {
 
         uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
         IPBHEntryPoint.PBHPayload memory testPayload = TestUtils.mockPBHPayload(0, pbhNonce, extNullifier);
-        bytes memory testCallData = hex"c0ffee";
-        uint256 signalHash = abi.encodePacked(sender, pbhNonce, testCallData).hashToField();
 
-        IMulticall3.Call3[] memory calls = new IMulticall3.Call3[](1);
+        IMulticall3.Call3Value[] memory calls = new IMulticall3.Call3Value[](1);
         pbhEntryPoint.pbhMulticall(calls, testPayload);
 
+        bytes memory testCallData = hex"c0ffee";
+        uint256 signalHash = abi.encodePacked(sender, pbhNonce, testCallData).hashToField();
         vm.expectRevert(PBHEntryPointImplV1.InvalidNullifier.selector);
         pbhEntryPoint.verifyPbh(signalHash, testPayload);
     }
@@ -65,8 +65,28 @@ contract PBHEntryPointImplV1Test is TestSetup {
     // TODO:
     function test_validateSignaturesCallback_RevertIf_IncorrectHashedOps() public {}
 
-    // TODO:
-    function test_pbhMulticall() public {}
+    function test_pbhMulticall(uint8 pbhNonce) public {
+        vm.assume(pbhNonce < MAX_NUM_PBH_PER_MONTH);
+        address addr1 = address(0x1);
+        address addr2 = address(0x2);
+
+        uint256 extNullifier = TestUtils.getPBHExternalNullifier(pbhNonce);
+        IPBHEntryPoint.PBHPayload memory testPayload = TestUtils.mockPBHPayload(0, pbhNonce, extNullifier);
+
+        IMulticall3.Call3Value[] memory calls = new IMulticall3.Call3Value[](2);
+
+        bytes memory testCallData = hex"";
+        calls[0] = IMulticall3.Call3Value({target: addr1, allowFailure: false, callData: testCallData, value: 1});
+        calls[1] = IMulticall3.Call3Value({target: addr2, allowFailure: false, callData: testCallData, value: 1});
+
+        vm.deal(address(this), 2);
+        uint256 preBalance1 = addr1.balance;
+        uint256 preBalance2 = addr2.balance;
+        pbhEntryPoint.pbhMulticall{value: 2 ether}(calls, testPayload);
+
+        assert(addr1.balance - preBalance1 == 1);
+        assert(addr2.balance - preBalance2 == 1);
+    }
 
     // TODO:
     function test_pbhMulticall_RevertIf_Reentrancy() public {}
