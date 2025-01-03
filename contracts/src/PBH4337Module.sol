@@ -10,6 +10,7 @@ import {ISafe} from "@4337/interfaces/Safe.sol";
 contract PBHSafe4337Module is Safe4337Module {
     uint256 constant ECDSA_SIGNATURE_LENGTH = 65;
     uint256 constant TIMESTAMP_BYTES = 12; // 6 bytes each for validAfter and validUntil
+    uint256 constant ENCODED_PROOF_BYTES = 352;
 
     address public immutable PBH_SIGNATURE_AGGREGATOR;
     uint192 public immutable PBH_NONCE_KEY;
@@ -60,11 +61,12 @@ contract PBHSafe4337Module is Safe4337Module {
         // If the signature length is greater than the expected length, then we know that the bundler appended the proof
         // We need to remove the proof from the signature before validation
         if (isPBH && userOp.signature.length > expectedLength) {
-            if (userOp.signature.length - expectedLength != 352) {
+            if (userOp.signature.length - expectedLength != ENCODED_PROOF_BYTES) {
                 revert InvalidProofSize();
             }
+
             // Remove the proof from the signature
-            signatures = userOp.signature[0:expectedLength];
+            signatures = userOp.signature[TIMESTAMP_BYTES:expectedLength];
         }
 
         // The `checkSignatures` function in the Safe contract does not force a fixed size on signature length.

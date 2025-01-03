@@ -8,7 +8,7 @@ import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 contract MockAccount is IAccount, IAccountExecute {
     address public pbhAggregator;
-    uint256 public immutable threshold;
+    uint256 public threshold;
 
     constructor(address _pbhAggregator, uint256 _threshold) {
         pbhAggregator = _pbhAggregator;
