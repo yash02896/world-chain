@@ -23,7 +23,7 @@ The `PBHEntryPoint` contract exposes two functions:
 - The `PBHSignatureAggregator` serves as a utility contract to the bundler to aggregate UserOperation proofs onto the aggregate signature of `handleAggregatedOps`. It also serves as a cryptographic link between the `PBHEntryPoint` guaranteeing a bundler cannot prevent a `PBH` `UserOperation` from being included without priority.
 
 *PBH4337Module*
-- The `PBH4337Module` is an extension of the [4337 module](https://github.com/worldcoin/safe-modules/blob/9abf69ea1df673c1010aeb9bbbc6aa14124ba425/modules/4337/contracts/Safe4337Module.sol) that returns a custom validation path based on the nonce key signed over by the signatory of the user operation. The validation path returned from `_validateSignatures` allows the bundler to seemlessly group Priority UserOperations on the `PBHSignatureAggregator`. 
+- The `PBH4337Module` is an extension of the [Safe 4337 module](https://github.com/worldcoin/safe-modules/blob/9abf69ea1df673c1010aeb9bbbc6aa14124ba425/modules/4337/contracts/Safe4337Module.sol) that returns a custom validation path based on the [nonce key](TODO: link). The validation path returned from `_validateSignatures` allows the bundler to seamlessly group PBH UserOperations that specify the `PBHSignatureAggregator`.
 
 Signature Scheme:
 ```
