@@ -55,22 +55,17 @@ contract PBHEntryPointImplV1Test is TestSetup {
     }
 
     function test_handleAggregatedOps() public {
-        uint256 timestamp = block.timestamp;
-        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(timestamp));
-        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(timestamp));
-        uint256 encoded = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
-
         worldIDGroups.setVerifyProofSuccess(true);
         IPBHEntryPoint.PBHPayload memory proof0 = IPBHEntryPoint.PBHPayload({
             root: 1,
-            pbhExternalNullifier: encoded,
+            pbhExternalNullifier: TestUtils.getPBHExternalNullifier(0),
             nullifierHash: 0,
             proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
         });
 
         IPBHEntryPoint.PBHPayload memory proof1 = IPBHEntryPoint.PBHPayload({
             root: 2,
-            pbhExternalNullifier: encoded,
+            pbhExternalNullifier: TestUtils.getPBHExternalNullifier(1),
             nullifierHash: 1,
             proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
         });
@@ -94,15 +89,10 @@ contract PBHEntryPointImplV1Test is TestSetup {
     }
 
     function test_handleAggregatedOps_RevertIf_Reentrancy() public {
-        uint256 timestamp = block.timestamp;
-        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(timestamp));
-        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(timestamp));
-        uint256 encoded = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
-
         worldIDGroups.setVerifyProofSuccess(true);
         IPBHEntryPoint.PBHPayload memory proof0 = IPBHEntryPoint.PBHPayload({
             root: 1,
-            pbhExternalNullifier: encoded,
+            pbhExternalNullifier: TestUtils.getPBHExternalNullifier(0),
             nullifierHash: 0,
             proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
         });
