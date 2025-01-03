@@ -135,10 +135,6 @@ contract PBHEntryPointImplV1Test is TestSetup {
         pbhEntryPoint.handleAggregatedOps(userOpsPerAggregator, payable(address(this)));
     }
 
-    function test_valdiateSignaturesCallback() public {
-
-    }
-
     function test_validateSignaturesCallback_RevertIf_IncorrectHashedOps() public {
         bytes32 hashedOps = 0x0000000000000000000000000000000000000000000000000000000000000001;
         vm.expectRevert(PBHEntryPointImplV1.InvalidHashedOps.selector);
