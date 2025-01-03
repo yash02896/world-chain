@@ -13,6 +13,7 @@ import {IMulticall3} from "../src/interfaces/IMulticall3.sol";
 import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 import {TestSetup} from "./TestSetup.sol";
 import {TestUtils} from "./TestUtils.sol";
+import {Safe4337Module} from "@4337/Safe4337Module.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import "@helpers/PBHExternalNullifier.sol";
@@ -92,14 +93,57 @@ contract PBHEntryPointImplV1Test is TestSetup {
         pbhEntryPoint.handleAggregatedOps(userOpsPerAggregator, payable(address(this)));
     }
 
-    // TODO:
-    function test_handleAggregatedOps_RevertIf_Reentrancy() public {}
+    function test_handleAggregatedOps_RevertIf_Reentrancy() public {
+        uint256 timestamp = block.timestamp;
+        uint8 month = uint8(BokkyPooBahsDateTimeLibrary.getMonth(timestamp));
+        uint16 year = uint16(BokkyPooBahsDateTimeLibrary.getYear(timestamp));
+        uint256 encoded = PBHExternalNullifier.encode(PBHExternalNullifier.V1, 0, month, year);
 
-    // TODO:
-    function test_valdiateSignaturesCallback() public {}
+        worldIDGroups.setVerifyProofSuccess(true);
+        IPBHEntryPoint.PBHPayload memory proof0 = IPBHEntryPoint.PBHPayload({
+            root: 1,
+            pbhExternalNullifier: encoded,
+            nullifierHash: 0,
+            proof: [uint256(0), 0, 0, 0, 0, 0, 0, 0]
+        });
 
-    // TODO:
-    function test_validateSignaturesCallback_RevertIf_IncorrectHashedOps() public {}
+        bytes[] memory proofs = new bytes[](1);
+        proofs[0] = abi.encode(proof0);
+
+        PackedUserOperation[] memory uoTestFixture =
+            TestUtils.createUOTestData(vm, PBH_NONCE_KEY, address(pbh4337Module), address(safe), proofs, safeOwnerKey);
+        bytes memory aggregatedSignature = pbhAggregator.aggregateSignatures(uoTestFixture);
+
+        IEntryPoint.UserOpsPerAggregator[] memory userOpsPerAggregator = new IEntryPoint.UserOpsPerAggregator[](1);
+        userOpsPerAggregator[0] = IEntryPoint.UserOpsPerAggregator({
+            aggregator: pbhAggregator,
+            userOps: uoTestFixture,
+            signature: aggregatedSignature
+        });
+
+        bytes memory innerData = abi.encodeWithSelector(
+            PBHEntryPointImplV1.handleAggregatedOps.selector,
+            userOpsPerAggregator,
+            payable(address(this))
+        );
+        bytes memory data = abi.encodeCall(Safe4337Module.executeUserOp, (address(pbhEntryPoint), 0, innerData, 0));
+        userOpsPerAggregator[0].userOps[0].callData = data;
+        bytes32 operationHash = pbh4337Module.getOperationHash(userOpsPerAggregator[0].userOps[0]);
+        // Recreate the signature
+        bytes memory signature = TestUtils.createUserOpSignature(vm, operationHash, safeOwnerKey);
+        userOpsPerAggregator[0].userOps[0].signature = bytes.concat(signature, abi.encode(proof0));
+        pbhEntryPoint.handleAggregatedOps(userOpsPerAggregator, payable(address(this)));
+    }
+
+    function test_valdiateSignaturesCallback() public {
+
+    }
+
+    function test_validateSignaturesCallback_RevertIf_IncorrectHashedOps() public {
+        bytes32 hashedOps = 0x0000000000000000000000000000000000000000000000000000000000000001;
+        vm.expectRevert(PBHEntryPointImplV1.InvalidHashedOps.selector);
+        pbhEntryPoint.validateSignaturesCallback(hashedOps);
+    }
 
     function test_pbhMulticall(uint8 pbhNonce) public {
         vm.assume(pbhNonce < MAX_NUM_PBH_PER_MONTH);

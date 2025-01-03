@@ -230,7 +230,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
             assembly ("memory-safe") {
                 if gt(tload(hashedOps), 0) {
                     mstore(0x00, 0x5e75ad06) // StorageCollision()
-                    revert(0x00, 0x04)
+                    revert(0x1c, 0x04)
                 }
 
                 tstore(hashedOps, hashedOps)
@@ -259,7 +259,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         assembly ("memory-safe") {
             if iszero(eq(tload(hashedOps), hashedOps)) {
                 mstore(0x00, 0xf5806179) // InvalidHashedOps()
-                revert(0x00, 0x04)
+                revert(0x1c, 0x04)
             }
         }
     }
