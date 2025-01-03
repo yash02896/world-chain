@@ -79,7 +79,7 @@ contract PBHSafe4337ModuleTest is Test {
         safe = Safe(payable(address(proxy)));
     }
 
-    function testValidSignature() public {
+    function testValidSignature_WithProof() public {
         bytes memory signatureBefore = abi.encodePacked(uint48(0), uint48(0));
 
         PackedUserOperation memory userOp = PackedUserOperation({
@@ -117,6 +117,58 @@ contract PBHSafe4337ModuleTest is Test {
         );
         bytes memory proofBuffer = new bytes(352);
         userOp.signature = bytes.concat(signature, proofBuffer);
+
+        uint256 validationData = module.validateSignaturesExternal(userOp);
+
+        // // Extract validation components
+        address authorizer = address(uint160(validationData));
+        uint48 validUntil = uint48(validationData >> 160);
+        uint48 validAfter = uint48(validationData >> 208);
+
+        // Verify signature was valid (authorizer should be address(0) for valid non-PBH signature)
+        assertEq(authorizer, PBH_SIGNATURE_AGGREGATOR, "PBH Aggregator address not returned");
+        assertEq(validUntil, 0, "ValidUntil should be 0");
+        assertEq(validAfter, 0, "ValidAfter should be 0");
+    }
+
+    function testValidSignature_WithoutProof() public {
+        bytes memory signatureBefore = abi.encodePacked(uint48(0), uint48(0));
+
+        PackedUserOperation memory userOp = PackedUserOperation({
+            sender: address(safe),
+            nonce: uint256(PBH_NONCE_KEY) << 64, // Keep the nonce key format
+            initCode: "", // Empty for already deployed safe
+            callData: "",
+            accountGasLimits: bytes32(
+                abi.encode( // Pack verification and call gas limits
+                    uint128(100000), // verification gas limit
+                    uint128(300000) // call gas limit
+                )
+            ),
+            preVerificationGas: 21000, // Base cost
+            gasFees: bytes32(
+                abi.encode( // Pack max priority fee and max fee
+                    uint128(1 gwei), // maxPriorityFeePerGas
+                    uint128(100 gwei) // maxFeePerGas
+                )
+            ),
+            paymasterAndData: "", // No paymaster
+            signature: signatureBefore
+        });
+
+        bytes32 operationHash = module.getOperationHash(userOp);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, operationHash);
+
+        bytes memory signature = abi.encodePacked(
+            uint48(0),
+            uint48(0),
+            r,
+            s,
+            v // The raw signature components
+        );
+
+        userOp.signature = signature;
 
         uint256 validationData = module.validateSignaturesExternal(userOp);
 

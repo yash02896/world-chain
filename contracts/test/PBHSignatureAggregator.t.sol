@@ -12,7 +12,7 @@ import "../src/helpers/PBHExternalNullifier.sol";
 import {PBHSignatureAggregator} from "../src/PBHSignatureAggregator.sol";
 
 contract PBHSignatureAggregatorTest is TestSetup {
-    function test_AggregateSignatures(
+    function testFuzz_AggregateSignatures(
         uint256 root,
         uint256 pbhExternalNullifier,
         uint256 nullifierHash,
@@ -70,7 +70,7 @@ contract PBHSignatureAggregatorTest is TestSetup {
         assertEq(decodedProofs[1].proof[7], proof.proof[7], "Proof should match");
     }
 
-    function test_AggregateSignatures_VariableThreshold(
+    function testFuzz_AggregateSignatures_VariableThreshold(
         uint256 root,
         uint256 pbhExternalNullifier,
         uint256 nullifierHash,
