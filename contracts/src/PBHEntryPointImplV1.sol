@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {IWorldID} from "./interfaces/IWorldID.sol";
+import {IWorldID} from "@world-id-contracts/interfaces/IWorldID.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IPBHEntryPoint} from "./interfaces/IPBHEntryPoint.sol";
 import {IMulticall3} from "./interfaces/IMulticall3.sol";
@@ -101,9 +101,6 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  Vars                                  ///
     //////////////////////////////////////////////////////////////////////////////
-
-    /// @dev The World ID group ID (always 1)
-    uint256 internal constant _GROUP_ID = 1;
 
     /// @dev The World ID instance that will be used for verifying proofs
     IWorldID public worldId;
@@ -208,12 +205,7 @@ contract PBHEntryPointImplV1 is IPBHEntryPoint, WorldIDImpl, ReentrancyGuard {
         if (address(worldId) != address(0)) {
             // We now verify the provided proof is valid and the user is verified by World ID
             worldId.verifyProof(
-                pbhPayload.root,
-                _GROUP_ID,
-                signalHash,
-                pbhPayload.nullifierHash,
-                pbhPayload.pbhExternalNullifier,
-                pbhPayload.proof
+                pbhPayload.root, signalHash, pbhPayload.nullifierHash, pbhPayload.pbhExternalNullifier, pbhPayload.proof
             );
         }
     }

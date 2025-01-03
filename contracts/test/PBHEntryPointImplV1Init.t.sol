@@ -13,7 +13,7 @@ import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";
 import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
 import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
 import {IMulticall3} from "../src/interfaces/IMulticall3.sol";
-import {IWorldID} from "../src/interfaces/IWorldID.sol";
+import {IWorldID} from "@world-id-contracts/interfaces/IWorldID.sol";
 
 /// @title PBHEntryPointImplV1InitTest
 /// @notice Contains tests asserting the correct initialization of the PBHEntryPointImplV1 contract
