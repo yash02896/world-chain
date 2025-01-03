@@ -12,13 +12,15 @@ use reth_primitives::{Block, SealedBlock, TransactionSigned};
 use reth_provider::{BlockReaderIdExt, StateProviderFactory};
 use semaphore::protocol::verify_proof;
 use world_chain_builder_pbh::date_marker::DateMarker;
-use world_chain_builder_pbh::payload::{PbhPayload, TREE_DEPTH};
+use world_chain_builder_pbh::external_nullifier::ExternalNullifier;
+use world_chain_builder_pbh::payload::{PbhPayload, Proof, TREE_DEPTH};
 
 use super::error::{TransactionValidationError, WorldChainTransactionPoolInvalid};
 use super::ordering::WorldChainOrdering;
 use super::root::WorldChainRootValidator;
 use super::tx::{WorldChainPoolTransaction, WorldChainPooledTransaction};
-use crate::bindings::IPBHValidator;
+use crate::bindings::IPBHEntryPoint;
+use crate::eip4337::hash_pbh_multicall;
 
 /// Type alias for World Chain transaction pool
 pub type WorldChainTransactionPool<Client, S> = Pool<
@@ -137,18 +139,24 @@ where
         }
     }
 
+    /// Validates preconditions for a PBH bundle
+    ///
+    /// If the conditions here are not satisfied the transaction is still valid
+    /// but will not receive priority inclusion
+    ///
+    /// Returns parsed calldata
     pub fn is_valid_eip4337_pbh_bundle(
         &self,
         tx: &Tx,
-    ) -> Option<IPBHValidator::handleAggregatedOpsCall> {
+    ) -> Option<IPBHEntryPoint::handleAggregatedOpsCall> {
         if !tx
             .input()
-            .starts_with(&IPBHValidator::handleAggregatedOpsCall::SELECTOR)
+            .starts_with(&IPBHEntryPoint::handleAggregatedOpsCall::SELECTOR)
         {
             return None;
         }
 
-        let Ok(decoded) = IPBHValidator::handleAggregatedOpsCall::abi_decode(tx.input(), true)
+        let Ok(decoded) = IPBHEntryPoint::handleAggregatedOpsCall::abi_decode(tx.input(), true)
         else {
             return None;
         };
@@ -166,6 +174,30 @@ where
         }
     }
 
+    /// Validates preconditions for a PBH multicall
+    ///
+    /// If the conditions here are not satisfied the transaction is still valid
+    /// but will not receive priority inclusion
+    ///
+    /// Returns the calldata
+    pub fn is_valid_pbh_multicall(&self, tx: &Tx) -> Option<IPBHEntryPoint::pbhMulticallCall> {
+        if !tx
+            .input()
+            .starts_with(&IPBHEntryPoint::pbhMulticallCall::SELECTOR)
+        {
+            return None;
+        }
+
+        let Ok(decoded) = IPBHEntryPoint::pbhMulticallCall::abi_decode(tx.input(), true) else {
+            return None;
+        };
+
+        Some(decoded)
+    }
+
+    /// Validates a PBH bundle transaction
+    ///
+    /// If the transaction is valid marks it for priority inclusion
     pub fn validate_pbh_bundle(
         &self,
         transaction: &mut Tx,
@@ -200,6 +232,54 @@ where
 
         Ok(())
     }
+
+    /// Validates a PBH multicall transaction
+    ///
+    /// If the transaction is valid marks it for priority inclusion
+    pub fn validate_pbh_multicall(
+        &self,
+        transaction: &mut Tx,
+    ) -> Result<(), TransactionValidationError> {
+        let Some(calldata) = self.is_valid_pbh_multicall(transaction) else {
+            return Ok(());
+        };
+
+        //let semaphore::protocol::Proof(g1a, g2, g1b) = call
+        let proof: [ethers_core::types::U256; 8] = calldata
+            .payload
+            .proof
+            .into_iter()
+            .map(|x| {
+                // TODO: Switch to ruint in semaphore-rs and remove this
+                let bytes_repr: [u8; 32] = x.to_be_bytes();
+                ethers_core::types::U256::from_big_endian(&bytes_repr)
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        let g1a = (proof[0], proof[1]);
+        let g2 = ([proof[2], proof[3]], [proof[4], proof[5]]);
+        let g1b = (proof[6], proof[7]);
+
+        let proof = semaphore::protocol::Proof(g1a, g2, g1b);
+        let proof = Proof(proof);
+
+        let pbh_payload = PbhPayload {
+            external_nullifier: ExternalNullifier::from_word(calldata.payload.pbhExternalNullifier),
+            nullifier_hash: calldata.payload.nullifierHash,
+            root: calldata.payload.root,
+            proof,
+        };
+
+        let signal_hash = hash_pbh_multicall(transaction.sender(), calldata.calls);
+
+        self.validate_pbh_payload(&pbh_payload, signal_hash)?;
+
+        transaction.set_valid_pbh();
+
+        Ok(())
+    }
 }
 
 impl<Client, Tx> TransactionValidator for WorldChainTransactionValidator<Client, Tx>
@@ -215,7 +295,13 @@ where
         mut transaction: Self::Transaction,
     ) -> TransactionValidationOutcome<Self::Transaction> {
         if transaction.to().unwrap_or_default() == self.pbh_validator {
+            // Try and validate a PBH bundle tx
             if let Err(e) = self.validate_pbh_bundle(&mut transaction) {
+                return e.to_outcome(transaction);
+            }
+
+            // Try and valdiate a PBH multicall
+            if let Err(e) = self.validate_pbh_multicall(&mut transaction) {
                 return e.to_outcome(transaction);
             }
         };
@@ -401,7 +487,7 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn validate_pbh_missing_proof_for_user_op() {
+    async fn validate_pbh_bundle_missing_proof_for_user_op() {
         const BUNDLER_ACCOUNT: u32 = 9;
         const USER_ACCOUNT: u32 = 0;
 
@@ -435,6 +521,33 @@ pub mod tests {
         assert!(err
             .to_string()
             .contains("one or more user ops are missing pbh payloads"),);
+    }
+
+    #[tokio::test]
+    async fn validate_pbh_multicall() {
+        const USER_ACCOUNT: u32 = 1;
+
+        let pool = setup().await;
+
+        let calldata = test_utils::pbh_multicall()
+            .acc(USER_ACCOUNT)
+            .external_nullifier(ExternalNullifier::with_date_marker(
+                DateMarker::from(chrono::Utc::now()),
+                0,
+            ))
+            .call();
+        let calldata = calldata.abi_encode();
+
+        let tx = test_utils::eip1559()
+            .to(PBH_TEST_VALIDATOR)
+            .input(calldata)
+            .call();
+
+        let tx = test_utils::eth_tx(USER_ACCOUNT, tx).await;
+
+        pool.add_external_transaction(tx.clone().into())
+            .await
+            .expect("Failed to add PBH multicall transaction");
     }
 
     #[tokio::test]
