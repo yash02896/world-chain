@@ -9,7 +9,7 @@ For those unfamiliar, [ERC-4337](https://eips.ethereum.org/EIPS/eip-4337) is des
 
 *PBHEntryPoint*
 
-The `PBHEntryPoint` acts as a proxy in front of the singleton 4337 EntryPoint contract on chain. The builder is able to identify a PBH transaction by the target. All PBH transactions will target the `PBHEntryPoint`. 
+The `PBHEntryPoint` acts as a proxy in front of the singleton 4337 EntryPoint contract onchain. The builder is able to identify a PBH transaction by the target. For a transaction to be considered PBH, the `to` address of the transaction must be set to the `PBHEntryPoint`. 
 
 The `PBHEntryPoint` contract exposes two functions:
 
