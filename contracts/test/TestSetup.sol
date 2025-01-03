@@ -8,7 +8,7 @@ import {IPBHEntryPoint} from "../src/interfaces/IPBHEntryPoint.sol";
 import {PBHSignatureAggregator} from "../src/PBHSignatureAggregator.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
-import {IWorldID} from "../src/interfaces/IWorldID.sol";
+import {IWorldID} from "@world-id-contracts/interfaces/IWorldID.sol";
 import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
 import {PBHEntryPointImplV1} from "../src/PBHEntryPointImplV1.sol";
 import {PBHEntryPoint} from "../src/PBHEntryPoint.sol";

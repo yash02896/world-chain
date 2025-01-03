@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IWorldID} from "../../src/interfaces/IWorldID.sol";
+import {IWorldID} from "@world-id-contracts/interfaces/IWorldID.sol";
 
 contract MockWorldIDGroups is IWorldID {
     bool public verifyProofSuccess = true;
@@ -19,7 +19,7 @@ contract MockWorldIDGroups is IWorldID {
         verifyProofSuccess = _success;
     }
 
-    function verifyProof(uint256, uint256, uint256, uint256, uint256, uint256[8] memory) external view override {
+    function verifyProof(uint256, uint256, uint256, uint256, uint256[8] memory) external view override {
         if (!verifyProofSuccess) {
             revert("Proof verification failed");
         }
