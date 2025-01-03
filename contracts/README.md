@@ -14,7 +14,7 @@ The `PBHEntryPoint` acts as a proxy in front of the singleton 4337 EntryPoint co
 The `PBHEntryPoint` contract exposes two functions:
 
 `handleAggregatedOps()` 
-- Allows a Bundler to submit a Priority Bundle transaction where the [aggregated signature](https://github.com/eth-infinitism/account-abstraction/blob/b3bae63bd9bc0ed394dfca8668008213127adb62/contracts/interfaces/IEntryPoint.sol#L144) contains a vector encoding of WorldID proof's, and associated proof data to be verified on chain, or by the block builder ordering the block. 
+- Allows a Bundler to submit a Priority Bundle transaction where the [aggregated signature](https://github.com/eth-infinitism/account-abstraction/blob/b3bae63bd9bc0ed394dfca8668008213127adb62/contracts/interfaces/IEntryPoint.sol#L144) contains a vector encoding of WorldID proof's, and associated proof data to be verified onchain, or by the block builder ordering the block. 
 
 `pbhMulticall()` 
 - PBH Multicall additionally allows WorldID verified actors to execute a multicall with top of block inclusion by attaching a valid WorldID proof in the calldata to be verified by the block builder, or on chain. This allows non-4337 individual transactions to get top of block priority. 
