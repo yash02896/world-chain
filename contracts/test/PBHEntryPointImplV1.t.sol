@@ -122,9 +122,7 @@ contract PBHEntryPointImplV1Test is TestSetup {
         });
 
         bytes memory innerData = abi.encodeWithSelector(
-            PBHEntryPointImplV1.handleAggregatedOps.selector,
-            userOpsPerAggregator,
-            payable(address(this))
+            PBHEntryPointImplV1.handleAggregatedOps.selector, userOpsPerAggregator, payable(address(this))
         );
         bytes memory data = abi.encodeCall(Safe4337Module.executeUserOp, (address(pbhEntryPoint), 0, innerData, 0));
         userOpsPerAggregator[0].userOps[0].callData = data;
